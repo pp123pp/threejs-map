@@ -1,6 +1,6 @@
+import { combine } from '@/Core/combine';
 import { defaultValue } from '@/Core/defaultValue';
 import { defined } from '@/Core/defined';
-import { DeveloperError } from '@/Core/DeveloperError';
 import { FeatureDetection } from '@/Core/FeatureDetection';
 import { Camera } from '@/Scene/Camera';
 import { RenderStateParameters } from '@/Scene/MapRenderer';
@@ -25,7 +25,7 @@ function startRenderLoop (widget: MapWidgets) {
                     widget.render();
                     requestAnimationFrame(render);
                 } else {
-                    const interval = 1000.0 / targetFrameRate;
+                    const interval = 1000.0 / (targetFrameRate as number);
                     const delta = frameTime - lastFrameTime;
 
                     if (delta > interval) {
@@ -61,7 +61,7 @@ class MapWidgets {
     protected _canvasClientHeight: number;
     protected _lastDevicePixelRatio: number;
     protected _resolutionScale: number;
-    _targetFrameRate: number;
+    _targetFrameRate: number | undefined;
     protected _canRender: boolean;
     _renderLoopRunning: boolean;
     protected _clock: Clock
@@ -81,7 +81,7 @@ class MapWidgets {
 
         const element = document.createElement('div');
         element.className = 'cesium-widget';
-        // container.appendChild(element);
+        container.appendChild(element);
 
         const canvas: HTMLCanvasElement = document.createElement('canvas');
         const supportsImageRenderingPixelated = FeatureDetection.supportsImageRenderingPixelated();
@@ -118,7 +118,7 @@ class MapWidgets {
         this._canvasClientWidth = 0;
         this._canvasClientHeight = 0;
         this._lastDevicePixelRatio = 0;
-        this._forceResize = false;
+        this._forceResize = true;
         this._canRender = false;
         this._renderLoopRunning = false;
         this._resolutionScale = 1.0;
@@ -127,8 +127,14 @@ class MapWidgets {
 
         this.configureCanvasSize();
 
-        this._scene = new Scene(container, {
-            renderState: options?.renderState,
+        const combineRenderState = combine({
+            canvas: canvas,
+            antialias: true,
+            logarithmicDepthBuffer: true
+        }, options.renderState);
+
+        this._scene = new Scene({
+            renderState: combineRenderState,
             enabledEffect: options?.enabledEffect,
             requestRenderMode: options?.requestRenderMode
         });
@@ -140,7 +146,7 @@ class MapWidgets {
         );
 
         this._targetFrameRate = 60;
-        this.targetFrameRate = 60;
+        this.targetFrameRate = undefined;
     }
 
     get container (): Element {
@@ -172,15 +178,15 @@ class MapWidgets {
         }
     }
 
-    get targetFrameRate (): number {
+    get targetFrameRate (): number | undefined {
         return this._targetFrameRate;
     }
 
-    set targetFrameRate (value: number) {
+    set targetFrameRate (value: number | undefined) {
         // >>includeStart('debug', pragmas.debug);
-        if (value <= 0) {
-            throw new DeveloperError('targetFrameRate must be greater than 0, or undefined.');
-        }
+        // if (value <= 0) {
+        //     throw new DeveloperError('targetFrameRate must be greater than 0, or undefined.');
+        // }
         // >>includeEnd('debug');
         this._targetFrameRate = value;
     }
@@ -198,8 +204,8 @@ class MapWidgets {
     }
 
     configureCanvasSize () : void{
-        const canvas = this._canvas;
-        let width = canvas.clientWidth;
+        const canvas = this._element;
+        let width = this._canvas.clientWidth;
         let height = canvas.clientHeight;
         const pixelRatio = this.configurePixelRatio();
 
@@ -209,20 +215,20 @@ class MapWidgets {
         width *= pixelRatio;
         height *= pixelRatio;
 
-        canvas.width = width;
-        canvas.height = height;
+        this._canvas.width = width;
+        this._canvas.height = height;
 
         this._canRender = width !== 0 && height !== 0;
         this._lastDevicePixelRatio = window.devicePixelRatio;
     }
 
     resize (): void {
-        const canvas = this._canvas;
+        const canvas = this._element;
         if (
             !this._forceResize &&
-    this._canvasClientWidth === canvas.clientWidth &&
-    this._canvasClientHeight === canvas.clientHeight &&
-    this._lastDevicePixelRatio === window.devicePixelRatio
+            this._canvasClientWidth === canvas.clientWidth &&
+            this._canvasClientHeight === canvas.clientHeight &&
+            this._lastDevicePixelRatio === window.devicePixelRatio
         ) {
             return;
         }

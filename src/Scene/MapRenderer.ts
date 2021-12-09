@@ -1,27 +1,27 @@
 import { LinearToneMapping, sRGBEncoding, Vector2, WebGLRenderer, WebGLRendererParameters } from 'three';
 
 export interface RenderStateParameters extends WebGLRendererParameters{
-    antialias: true
+    antialias?: true
 }
 
 const drawingBufferSize = new Vector2();
 
 class MapRenderer extends WebGLRenderer {
-    constructor (container: Element, options?: WebGLRendererParameters) {
+    constructor (options?: WebGLRendererParameters) {
         super(options);
 
-        const { clientWidth, clientHeight } = container;
+        // const { clientWidth, clientHeight } = container;
 
-        this.setSize(clientWidth, clientHeight);
-        this.setViewport(0, 0, clientWidth, clientHeight);
+        // this.setSize(clientWidth, clientHeight);
+        // this.setViewport(0, 0, clientWidth, clientHeight);
         // this.autoClear = false;
         this.toneMapping = LinearToneMapping;
         this.toneMappingExposure = 1.0;
         this.outputEncoding = sRGBEncoding;
 
-        this.setClearColor(0xff0000);
+        this.setClearColor(0x128caa);
 
-        container.appendChild(this.domElement);
+        // container.appendChild(this.domElement);
     }
 
     /**

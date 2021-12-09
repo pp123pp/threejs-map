@@ -12,11 +12,13 @@ import { MapRenderer, RenderStateParameters } from './MapRenderer';
 import { Pass } from './../Renderer/Pass';
 import { PerspectiveFrustumCamera } from './PerspectiveFrustumCamera';
 import { CesiumColor } from '@/Core/CesiumColor';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
 interface SceneOptions {
     renderState?: RenderStateParameters;
     enabledEffect?: false;
     requestRenderMode?: false;
+    [name: string]: any
 }
 
 function updateFrameNumber (scene: Scene, frameNumber: number) {
@@ -94,6 +96,7 @@ function executeCommandsInViewport (firstViewport: boolean, scene:Scene, backgro
     // }
 
     // executeCommands(scene, passState);
+    scene.renderer.clear();
     scene.renderer.render(scene, scene.activeCamera);
 }
 
@@ -110,8 +113,10 @@ class Scene extends THREE.Scene {
     readonly postUpdate: Event;
     readonly preRender: Event;
     readonly rethrowRenderErrors: boolean;
-    backgroundColor: CesiumColor
-    constructor (container: Element, options: SceneOptions) {
+    backgroundColor: CesiumColor;
+    readonly screenSpaceCameraController: OrbitControls;
+    canvas: HTMLCanvasElement;
+    constructor (options: SceneOptions) {
         super();
 
         this.renderError = new Event();
@@ -119,12 +124,16 @@ class Scene extends THREE.Scene {
         this.preRender = new Event();
 
         this._camera = new Camera(this, {
-
+            near: 0.1,
+            far: 100000000
         });
 
-        this.activeCamera.position.set(10, 10, 10);
+        this.canvas = options.canvas;
 
-        this.renderer = new MapRenderer(container, options?.renderState);
+        this.activeCamera.position.set(10, 10, 10);
+        this.activeCamera.lookAt(0, 0, 0);
+
+        this.renderer = new MapRenderer(options.renderState);
 
         this._frameState = new FrameState(this);
 
@@ -147,6 +156,8 @@ class Scene extends THREE.Scene {
         this._mode = SceneMode.SCENE3D;
 
         this._context = new Context(this);
+
+        this.screenSpaceCameraController = new OrbitControls(this.activeCamera, this.renderer.domElement);
 
         /**
          * Exceptions occurring in <code>render</code> are always caught in order to raise the

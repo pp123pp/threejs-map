@@ -262,6 +262,180 @@ export const equalsEpsilon = function (
     );
 };
 
+/**
+ * pi
+ *
+ * @type {Number}
+ * @constant
+ */
+const PI = Math.PI;
+
+/**
+  * 1/pi
+  *
+  * @type {Number}
+  * @constant
+  */
+const ONE_OVER_PI = 1.0 / Math.PI;
+
+/**
+  * pi/2
+  *
+  * @type {Number}
+  * @constant
+  */
+const PI_OVER_TWO = Math.PI / 2.0;
+
+/**
+  * pi/3
+  *
+  * @type {Number}
+  * @constant
+  */
+const PI_OVER_THREE = Math.PI / 3.0;
+
+/**
+  * pi/4
+  *
+  * @type {Number}
+  * @constant
+  */
+const PI_OVER_FOUR = Math.PI / 4.0;
+
+/**
+  * pi/6
+  *
+  * @type {Number}
+  * @constant
+  */
+const PI_OVER_SIX = Math.PI / 6.0;
+
+/**
+  * 3pi/2
+  *
+  * @type {Number}
+  * @constant
+  */
+const THREE_PI_OVER_TWO = (3.0 * Math.PI) / 2.0;
+
+/**
+  * 2pi
+  *
+  * @type {Number}
+  * @constant
+  */
+const TWO_PI = 2.0 * Math.PI;
+
+/**
+  * 1/2pi
+  *
+  * @type {Number}
+  * @constant
+  */
+const ONE_OVER_TWO_PI = 1.0 / (2.0 * Math.PI);
+
+/**
+  * The number of radians in a degree.
+  *
+  * @type {Number}
+  * @constant
+  */
+const RADIANS_PER_DEGREE = Math.PI / 180.0;
+
+/**
+  * The number of degrees in a radian.
+  *
+  * @type {Number}
+  * @constant
+  */
+const DEGREES_PER_RADIAN = 180.0 / Math.PI;
+
+/**
+  * The number of radians in an arc second.
+  *
+  * @type {Number}
+  * @constant
+  */
+const RADIANS_PER_ARCSECOND = RADIANS_PER_DEGREE / 3600.0;
+
+/**
+ * Converts degrees to radians.
+ * @param {Number} degrees The angle to convert in degrees.
+ * @returns {Number} The corresponding angle in radians.
+ */
+export const toRadians = function (degrees: number): number {
+    // >>includeStart('debug', pragmas.debug);
+    if (!defined(degrees)) {
+        throw new DeveloperError('degrees is required.');
+    }
+    // >>includeEnd('debug');
+    return degrees * CesiumMath.RADIANS_PER_DEGREE;
+};
+
+/**
+ * Returns 1.0 if the given value is positive or zero, and -1.0 if it is negative.
+ * This is similar to {@link CesiumMath#sign} except that returns 1.0 instead of
+ * 0.0 when the input value is 0.0.
+ * @param {Number} value The value to return the sign of.
+ * @returns {Number} The sign of value.
+ */
+const signNotZero = function (value:number): number {
+    return value < 0.0 ? -1.0 : 1.0;
+};
+
+/**
+ * Constraint a value to lie between two values.
+ *
+ * @param {Number} value The value to constrain.
+ * @param {Number} min The minimum value.
+ * @param {Number} max The maximum value.
+ * @returns {Number} The value clamped so that min <= value <= max.
+ */
+const clamp = function (value: number, min: number, max: number): number {
+    // >>includeStart('debug', pragmas.debug);
+    if (!defined(value)) {
+        throw new DeveloperError('value is required');
+    }
+    if (!defined(min)) {
+        throw new DeveloperError('min is required.');
+    }
+    if (!defined(max)) {
+        throw new DeveloperError('max is required.');
+    }
+    // >>includeEnd('debug');
+    return value < min ? min : value > max ? max : value;
+};
+
+/**
+ * Converts a scalar value in the range [-1.0, 1.0] to a SNORM in the range [0, rangeMaximum]
+ * @param {Number} value The scalar value in the range [-1.0, 1.0]
+ * @param {Number} [rangeMaximum=255] The maximum value in the mapped range, 255 by default.
+ * @returns {Number} A SNORM value, where 0 maps to -1.0 and rangeMaximum maps to 1.0.
+ *
+ * @see CesiumMath.fromSNorm
+ */
+const toSNorm = function (value: number, rangeMaximum: number): number {
+    rangeMaximum = defaultValue(rangeMaximum, 255);
+    return Math.round(
+        (CesiumMath.clamp(value, -1.0, 1.0) * 0.5 + 0.5) * rangeMaximum
+    );
+};
+
+/**
+ * Converts a SNORM value in the range [0, rangeMaximum] to a scalar in the range [-1.0, 1.0].
+ * @param {Number} value SNORM value in the range [0, rangeMaximum]
+ * @param {Number} [rangeMaximum=255] The maximum value in the SNORM range, 255 by default.
+ * @returns {Number} Scalar in the range [-1.0, 1.0].
+ *
+ * @see CesiumMath.toSNorm
+ */
+const fromSNorm = function (value: number, rangeMaximum: number): number {
+    rangeMaximum = defaultValue(rangeMaximum, 255);
+    return (
+        (CesiumMath.clamp(value, 0.0, rangeMaximum) / rangeMaximum) * 2.0 - 1.0
+    );
+};
+
 const CesiumMath = {
     EPSILON1,
     EPSILON2,
@@ -279,7 +453,24 @@ const CesiumMath = {
     EPSILON14,
 
     incrementWrap,
-    equalsEpsilon
+    equalsEpsilon,
+    PI,
+    ONE_OVER_PI,
+    PI_OVER_TWO,
+    PI_OVER_THREE,
+    PI_OVER_FOUR,
+    PI_OVER_SIX,
+    THREE_PI_OVER_TWO,
+    TWO_PI,
+    ONE_OVER_TWO_PI,
+    DEGREES_PER_RADIAN,
+    RADIANS_PER_DEGREE,
+    RADIANS_PER_ARCSECOND,
+    toRadians,
+    signNotZero,
+    clamp,
+    toSNorm,
+    fromSNorm
 };
 
 export { CesiumMath };

@@ -1,6 +1,7 @@
 /* eslint-disable no-useless-constructor */
 import { defaultValue } from './defaultValue';
 import { defined } from './defined';
+import { DeveloperError } from './DeveloperError';
 
 class Cartesian3 {
     x: number;
@@ -111,6 +112,29 @@ class Cartesian3 {
    */
     static magnitude (cartesian: Cartesian3): number {
         return Math.sqrt(Cartesian3.magnitudeSquared(cartesian));
+    }
+
+    /**
+     * Computes the normalized form of the supplied Cartesian.
+     *
+     * @param {Cartesian3} cartesian The Cartesian to be normalized.
+     * @param {Cartesian3} result The object onto which to store the result.
+     * @returns {Cartesian3} The modified result parameter.
+     */
+    static normalize (cartesian:Cartesian3, result:Cartesian3):Cartesian3 {
+        const magnitude = Cartesian3.magnitude(cartesian);
+
+        result.x = cartesian.x / magnitude;
+        result.y = cartesian.y / magnitude;
+        result.z = cartesian.z / magnitude;
+
+        // >>includeStart('debug', pragmas.debug);
+        if (isNaN(result.x) || isNaN(result.y) || isNaN(result.z)) {
+            throw new DeveloperError('normalized result is not a number');
+        }
+        // >>includeEnd('debug');
+
+        return result;
     }
 }
 

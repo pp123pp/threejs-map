@@ -23,6 +23,8 @@ class PerspectiveFrustumCamera extends PerspectiveCamera {
 
         this.containerWidth = 0;
         this.containerHeight = 0;
+
+        this.up.set(0, 0, 1);
     }
 
     get frustum (): Frustum {
