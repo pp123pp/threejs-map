@@ -1,4 +1,4 @@
-function defaultValue (a: any, b: any): any {
+function defaultValue<T> (a: T, b: T): T {
     if (a !== undefined && a !== null) {
         return a;
     }

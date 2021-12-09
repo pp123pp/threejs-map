@@ -3,6 +3,7 @@
     "useTabs": false,
     "printWidth": 120,
     "space-before-function-paren": "off",
-    "trailingComma":"none"
+    "trailingComma":"none",
+    "singleQuotes":true
   }
   

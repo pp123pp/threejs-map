@@ -5,7 +5,7 @@ import { PerspectiveFrustumCamera, PerspectiveFrustumCameraParameters } from './
 import { Scene } from './Scene';
 
 class Camera {
-    readonly activeCamera: PerspectiveFrustumCamera
+    readonly activeCamera: PerspectiveFrustumCamera;
     constructor (scene: Scene, options: PerspectiveFrustumCameraParameters | OrthographicFrustumCameraParameters) {
         // 默认使用透视相机
         this.activeCamera = new PerspectiveFrustumCamera(scene, options);

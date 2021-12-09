@@ -466,11 +466,30 @@ const CesiumMath = {
     DEGREES_PER_RADIAN,
     RADIANS_PER_DEGREE,
     RADIANS_PER_ARCSECOND,
+    LUNAR_RADIUS,
     toRadians,
     signNotZero,
     clamp,
     toSNorm,
-    fromSNorm
+    fromSNorm,
+
+    /**
+     * Returns the sign of the value; 1 if the value is positive, -1 if the value is
+     * negative, or 0 if the value is 0.
+     *
+     * @function
+     * @param {Number} value The value to return the sign of.
+     * @returns {Number} The sign of value.
+     */
+    sign: defaultValue(Math.sign, function sign (value) {
+        value = +value; // coerce to number
+        // eslint-disable-next-line no-self-compare
+        if (value === 0 || value !== value) {
+            // zero or NaN
+            return value;
+        }
+        return value > 0 ? 1 : -1;
+    })
 };
 
 export { CesiumMath };

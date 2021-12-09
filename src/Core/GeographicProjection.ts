@@ -1,3 +1,4 @@
+import { defaultValue } from './defaultValue';
 
 class GeographicProjection {
     constructor (ellipsoid) {
