@@ -12,10 +12,12 @@
     "core-js": "^3.6.5",
     "three": "^0.135.0",
     "vue": "^3.0.0",
-    "vue-class-component": "^8.0.0-0"
+    "vue-class-component": "^8.0.0-0",
+    "when": "^3.7.8"
   },
   "devDependencies": {
     "@tweenjs/tween.js": "^18.6.4",
+    "@types/when": "^2.4.34",
     "@typescript-eslint/eslint-plugin": "^4.18.0",
     "@typescript-eslint/parser": "^4.18.0",
     "@vue/cli-plugin-babel": "~4.5.0",

@@ -4,7 +4,7 @@ class Cartographic {
     longitude: number;
     latitude: number;
     height: number;
-    constructor (longitude?: number, latitude?: number, height?:number) {
+    constructor (longitude = 0.0, latitude = 0.0, height = 0.0) {
         /**
    * The longitude, in radians.
    * @type {Number}

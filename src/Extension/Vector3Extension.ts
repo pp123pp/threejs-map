@@ -37,3 +37,5 @@ import { Vector3 } from 'three';
   * @constant
   */
 (Vector3 as any).UNIT_Z = Object.freeze(new Vector3(0.0, 0.0, 1.0));
+
+export { Vector3 };

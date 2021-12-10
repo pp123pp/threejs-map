@@ -13,6 +13,7 @@ import { Pass } from './../Renderer/Pass';
 import { PerspectiveFrustumCamera } from './PerspectiveFrustumCamera';
 import { CesiumColor } from '@/Core/CesiumColor';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { GeographicProjection } from '@/Core/GeographicProjection';
 
 interface SceneOptions {
     renderState?: RenderStateParameters;
@@ -116,6 +117,7 @@ class Scene extends THREE.Scene {
     backgroundColor: CesiumColor;
     readonly screenSpaceCameraController: OrbitControls;
     canvas: HTMLCanvasElement;
+    _mapProjection: GeographicProjection;
     constructor (options: SceneOptions) {
         super();
 
@@ -150,10 +152,13 @@ class Scene extends THREE.Scene {
          * @type {Boolean}
          * @default false
          */
-        this.requestRenderMode = defaultValue(options.requestRenderMode, false);
+        this.requestRenderMode = defaultValue(options.requestRenderMode, false) as boolean;
         this._renderRequested = true;
         this._shaderFrameCount = 0;
         this._mode = SceneMode.SCENE3D;
+
+        // 地图的投影方式
+        this._mapProjection = defaultValue(options.mapProjection, new GeographicProjection()) as GeographicProjection;
 
         this._context = new Context(this);
 
@@ -199,6 +204,10 @@ class Scene extends THREE.Scene {
 
     get frameState ():FrameState {
         return this._frameState;
+    }
+
+    get mapProjection (): GeographicProjection {
+        return this._mapProjection;
     }
 
     requestRender () :void{

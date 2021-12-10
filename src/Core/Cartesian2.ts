@@ -1,10 +1,12 @@
+import { Cartesian3 } from './Cartesian3';
+import { CesiumMath } from './CesiumMath';
 import { defaultValue } from './defaultValue';
 import { defined } from './defined';
 
 class Cartesian2 {
     x: number;
     y: number;
-    constructor (x?:number, y?:number) {
+    constructor (x = 0.0, y = 0.0) {
         /**
          * The X component.
          * @type {Number}
@@ -92,8 +94,132 @@ class Cartesian2 {
          return result;
      }
 
-    static lerp: (start: Cartesian2, end: Cartesian2, t: number, result: Cartesian2)=>Cartesian2
+    static lerp: (start: Cartesian2, end: Cartesian2, t: number, result: Cartesian2) => Cartesian2
+
+    /**
+ * Compares the provided Cartesians componentwise and returns
+ * <code>true</code> if they pass an absolute or relative tolerance test,
+ * <code>false</code> otherwise.
+ *
+ * @param {Cartesian2} [left] The first Cartesian.
+ * @param {Cartesian2} [right] The second Cartesian.
+ * @param {Number} [relativeEpsilon=0] The relative epsilon tolerance to use for equality testing.
+ * @param {Number} [absoluteEpsilon=relativeEpsilon] The absolute epsilon tolerance to use for equality testing.
+ * @returns {Boolean} <code>true</code> if left and right are within the provided epsilon, <code>false</code> otherwise.
+ */
+    static equalsEpsilon (
+        left?:Cartesian2,
+        right?:Cartesian2,
+        relativeEpsilon = 0.0,
+        absoluteEpsilon?: number
+    ):boolean {
+        return (
+            left === right ||
+    (defined(left) &&
+      defined(right) &&
+      CesiumMath.equalsEpsilon(
+          (left as Cartesian2).x,
+          (right as Cartesian2).x,
+          relativeEpsilon,
+          absoluteEpsilon
+      ) &&
+      CesiumMath.equalsEpsilon(
+          (left as Cartesian2).y,
+          (right as Cartesian2).y,
+          relativeEpsilon,
+          absoluteEpsilon
+      ))
+        );
+    }
+
+    /**
+     * Compares the provided Cartesians componentwise and returns
+     * <code>true</code> if they are equal, <code>false</code> otherwise.
+     *
+     * @param {Cartesian2} [left] The first Cartesian.
+     * @param {Cartesian2} [right] The second Cartesian.
+     * @returns {Boolean} <code>true</code> if left and right are equal, <code>false</code> otherwise.
+     */
+    static equals (left?:Cartesian2, right?:Cartesian2):boolean {
+        return (
+            left === right ||
+            (defined(left) &&
+            defined(right) &&
+            (left as Cartesian2).x === (right as Cartesian2).x &&
+            (left as Cartesian2).y === (right as Cartesian2).y)
+        );
+    }
+
+    /**
+     * Computes the componentwise difference of two Cartesians.
+     *
+     * @param {Cartesian2} left The first Cartesian.
+     * @param {Cartesian2} right The second Cartesian.
+     * @param {Cartesian2} result The object onto which to store the result.
+     * @returns {Cartesian2} The modified result parameter.
+     */
+    static subtract (left:Cartesian2, right:Cartesian2, result:Cartesian2):Cartesian2 {
+        result.x = left.x - right.x;
+        result.y = left.y - right.y;
+        return result;
+    }
+
+    /**
+     * Computes the provided Cartesian's squared magnitude.
+     *
+     * @param {Cartesian2} cartesian The Cartesian instance whose squared magnitude is to be computed.
+     * @returns {Number} The squared magnitude.
+     */
+    static magnitudeSquared (cartesian: Cartesian2): number {
+        return cartesian.x * cartesian.x + cartesian.y * cartesian.y;
+    }
+
+    /**
+     * Computes the Cartesian's magnitude (length).
+     *
+     * @param {Cartesian2} cartesian The Cartesian instance whose magnitude is to be computed.
+     * @returns {Number} The magnitude.
+     */
+    static magnitude (cartesian:Cartesian2): number {
+        return Math.sqrt(Cartesian2.magnitudeSquared(cartesian));
+    }
+
+    /**
+     * Computes the distance between two points.
+     *
+     * @param {Cartesian2} left The first point to compute the distance from.
+     * @param {Cartesian2} right The second point to compute the distance to.
+     * @returns {Number} The distance between two points.
+     *
+     * @example
+     * // Returns 1.0
+     * var d = Cesium.Cartesian2.distance(new Cesium.Cartesian2(1.0, 0.0), new Cesium.Cartesian2(2.0, 0.0));
+     */
+    static distance = function (left:Cartesian2, right:Cartesian2): number {
+        Cartesian2.subtract(left, right, distanceScratch);
+        return Cartesian2.magnitude(distanceScratch);
+    }
+
+    /**
+     * Creates a Cartesian2 instance from x and y coordinates.
+     *
+     * @param {Number} x The x coordinate.
+     * @param {Number} y The y coordinate.
+     * @param {Cartesian2} [result] The object onto which to store the result.
+     * @returns {Cartesian2} The modified result parameter or a new Cartesian2 instance if one was not provided.
+     */
+    static fromElements (x: number, y: number, result?:Cartesian2):Cartesian2 {
+        if (!defined(result)) {
+            return new Cartesian2(x, y);
+        }
+
+        (result as Cartesian2).x = x;
+        (result as Cartesian2).y = y;
+        return (result as Cartesian2);
+    }
 }
+
+const distanceScratch = new Cartesian2();
 
 const lerpScratch = new Cartesian2();
 /**

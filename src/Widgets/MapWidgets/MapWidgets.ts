@@ -122,7 +122,7 @@ class MapWidgets {
         this._canRender = false;
         this._renderLoopRunning = false;
         this._resolutionScale = 1.0;
-        this._useBrowserRecommendedResolution = useBrowserRecommendedResolution;
+        this._useBrowserRecommendedResolution = useBrowserRecommendedResolution as boolean;
         this._clock = new Clock();
 
         this.configureCanvasSize();
@@ -143,7 +143,7 @@ class MapWidgets {
         this.useDefaultRenderLoop = defaultValue(
             options.useDefaultRenderLoop,
             true
-        );
+        ) as boolean;
 
         this._targetFrameRate = 60;
         this.targetFrameRate = undefined;

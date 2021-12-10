@@ -1,11 +1,9 @@
+import { AxesHelper, DoubleSide, Mesh, MeshNormalMaterial, SphereGeometry } from 'three';
+import { CameraEventType } from './Core/CameraEventType';
+import { Scene } from './Scene/Scene';
+import './Widgets/MapWidgets/CesiumWidget.css';
 import { MapWidgets } from './Widgets/MapWidgets/MapWidgets';
 
-import './Widgets/MapWidgets/CesiumWidget.css';
-
-import { Scene } from './Scene/Scene';
-import { AxesHelper, BoxGeometry, DoubleSide, Mesh, MeshNormalMaterial, SphereGeometry } from 'three';
-import { Camera } from './Scene/Camera';
-import { CameraEventType } from './Core/CameraEventType';
 // const a = document.querySelector('#app');
 // console.log(a);
 

@@ -5,7 +5,7 @@ class CesiumColor {
     green: number;
     blue: number;
     alpha: number;
-    constructor (red?: number, green?: number, blue?: number, alpha?: number) {
+    constructor (red = 0.0, green = 0.0, blue = 0.0, alpha = 0.0) {
         /**
          * The red component.
          * @type {Number}

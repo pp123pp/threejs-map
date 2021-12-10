@@ -4,7 +4,7 @@ import { clone } from './clone';
 import { defaultValue } from './defaultValue';
 import { defined } from './defined';
 import { DeveloperError } from './DeveloperError';
-import { EasingFunction, EasingFunctionParameters } from './EasingFunction';
+import { EasingFunction } from './EasingFunction';
 import { getTimestamp } from './getTimestamp';
 import { TimeConstants } from './TimeConstants';
 
@@ -91,13 +91,15 @@ class Tween {
     }
 
     /**
- * Cancels the tween calling the {@link Tween#cancel} callback if one exists.  This
- * has no effect if the tween finished or was already canceled.
- */
-    cancelTween () {
+     * Cancels the tween calling the {@link Tween#cancel} callback if one exists.  This
+     * has no effect if the tween finished or was already canceled.
+     */
+    cancelTween ():void {
         this._tweens.remove(this);
     }
 }
+
+export { Tween };
 
 class TweenCollection {
     _tweens: any[];
@@ -134,11 +136,11 @@ class TweenCollection {
      * @exception {DeveloperError} options.duration must be positive.
      */
     add (options: {
-        startObject: { [name: string]: any },
-        stopObject: { [name: string]: any },
-        duration: number,
-        delay: number,
-        easingFunction?: EasingFunctionParameters,
+        startObject?: unknown,
+        stopObject?: { [name: string]: any },
+        duration?: number,
+        delay?: number,
+        easingFunction?: number,
         update?:any,
         complete?: any,
         cancel?:any
@@ -153,7 +155,7 @@ class TweenCollection {
             );
         }
 
-        if (!defined(options.duration) || options.duration < 0.0) {
+        if (!defined(options.duration) || (options.duration as number) < 0.0) {
             throw new DeveloperError(
                 'options.duration is required and must be positive.'
             );
@@ -167,15 +169,15 @@ class TweenCollection {
             return new Tween(this);
         }
 
-        const duration = options.duration / TimeConstants.SECONDS_PER_MILLISECOND;
-        const delayInSeconds = defaultValue(options.delay, 0.0);
+        const duration = (options.duration as number) / TimeConstants.SECONDS_PER_MILLISECOND;
+        const delayInSeconds = defaultValue(options.delay, 0.0) as number;
         const delay = delayInSeconds / TimeConstants.SECONDS_PER_MILLISECOND;
         const easingFunction = defaultValue(
             options.easingFunction,
-            EasingFunction.LINEAR_NONE
-        );
+            (EasingFunction.LINEAR_NONE as unknown)
+        ) as any;
 
-        const value = options.startObject;
+        const value:any = options.startObject;
         const tweenjs = new TweenJS.Tween(value);
         tweenjs.to(clone(options.stopObject), duration);
         tweenjs.delay(delay);
@@ -186,7 +188,7 @@ class TweenCollection {
             });
         }
         tweenjs.onComplete(defaultValue(options.complete, null));
-        tweenjs.repeat(defaultValue(options._repeat, 0.0));
+        tweenjs.repeat(defaultValue(options._repeat, 0.0) as number);
 
         const tween = new Tween(
             this,

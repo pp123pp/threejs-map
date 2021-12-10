@@ -3,6 +3,7 @@ import { CesiumMath } from './CesiumMath';
 import { defaultValue } from './defaultValue';
 import { defined } from './defined';
 import { DeveloperError } from './DeveloperError';
+import { Ellipsoid } from './Ellipsoid';
 
 class Cartesian3 {
     x: number;
@@ -286,6 +287,218 @@ class Cartesian3 {
         result.z = left.z - right.z;
         return result;
     }
+
+    /**
+     * Compares the provided Cartesians componentwise and returns
+     * <code>true</code> if they are equal, <code>false</code> otherwise.
+     *
+     * @param {Cartesian3} [left] The first Cartesian.
+     * @param {Cartesian3} [right] The second Cartesian.
+     * @returns {Boolean} <code>true</code> if left and right are equal, <code>false</code> otherwise.
+     */
+    static equals (left?:Cartesian3, right?:Cartesian3):boolean {
+        return (
+            left === right ||
+            (defined(left) &&
+            defined(right) &&
+            (left as Cartesian3).x === (right as Cartesian3).x &&
+            (left as Cartesian3).y === (right as Cartesian3).y &&
+            (left as Cartesian3).z === (right as Cartesian3).z)
+        );
+    }
+
+    /**
+     * Creates a Cartesian3 instance from x, y and z coordinates.
+     *
+     * @param {Number} x The x coordinate.
+     * @param {Number} y The y coordinate.
+     * @param {Number} z The z coordinate.
+     * @param {Cartesian3} [result] The object onto which to store the result.
+     * @returns {Cartesian3} The modified result parameter or a new Cartesian3 instance if one was not provided.
+     */
+    static fromElements (x:number, y: number, z: number, result?:Cartesian3):Cartesian3 {
+        if (!defined(result)) {
+            return new Cartesian3(x, y, z);
+        }
+
+        (result as Cartesian3).x = x;
+        (result as Cartesian3).y = y;
+        (result as Cartesian3).z = z;
+        return (result as Cartesian3);
+    }
+
+    /**
+     * Computes the cross (outer) product of two Cartesians.
+     *
+     * @param {Cartesian3} left The first Cartesian.
+     * @param {Cartesian3} right The second Cartesian.
+     * @param {Cartesian3} result The object onto which to store the result.
+     * @returns {Cartesian3} The cross product.
+     */
+    static cross (left:Cartesian3, right:Cartesian3, result:Cartesian3):Cartesian3 {
+        const leftX = left.x;
+        const leftY = left.y;
+        const leftZ = left.z;
+        const rightX = right.x;
+        const rightY = right.y;
+        const rightZ = right.z;
+
+        const x = leftY * rightZ - leftZ * rightY;
+        const y = leftZ * rightX - leftX * rightZ;
+        const z = leftX * rightY - leftY * rightX;
+
+        result.x = x;
+        result.y = y;
+        result.z = z;
+        return result;
+    }
+
+    /**
+     * Computes the midpoint between the right and left Cartesian.
+     * @param {Cartesian3} left The first Cartesian.
+     * @param {Cartesian3} right The second Cartesian.
+     * @param {Cartesian3} result The object onto which to store the result.
+     * @returns {Cartesian3} The midpoint.
+     */
+    static midpoint (left: Cartesian3, right: Cartesian3, result: Cartesian3): Cartesian3 {
+        result.x = (left.x + right.x) * 0.5;
+        result.y = (left.y + right.y) * 0.5;
+        result.z = (left.z + right.z) * 0.5;
+
+        return result;
+    }
+
+    /**
+     * Computes the absolute value of the provided Cartesian.
+     *
+     * @param {Cartesian3} cartesian The Cartesian whose absolute value is to be computed.
+     * @param {Cartesian3} result The object onto which to store the result.
+     * @returns {Cartesian3} The modified result parameter.
+     */
+    static abs (cartesian:Cartesian3, result:Cartesian3) :Cartesian3 {
+        result.x = Math.abs(cartesian.x);
+        result.y = Math.abs(cartesian.y);
+        result.z = Math.abs(cartesian.z);
+        return result;
+    }
+
+    /**
+     * Returns the axis that is most orthogonal to the provided Cartesian.
+     *
+     * @param {Cartesian3} cartesian The Cartesian on which to find the most orthogonal axis.
+     * @param {Cartesian3} result The object onto which to store the result.
+     * @returns {Cartesian3} The most orthogonal axis.
+     */
+    static mostOrthogonalAxis (cartesian:Cartesian3, result:Cartesian3):Cartesian3 {
+        const f = Cartesian3.normalize(cartesian, mostOrthogonalAxisScratch);
+        Cartesian3.abs(f, f);
+
+        if (f.x <= f.y) {
+            if (f.x <= f.z) {
+                result = Cartesian3.clone(Cartesian3.UNIT_X, result);
+            } else {
+                result = Cartesian3.clone(Cartesian3.UNIT_Z, result);
+            }
+        } else if (f.y <= f.z) {
+            result = Cartesian3.clone(Cartesian3.UNIT_Y, result);
+        } else {
+            result = Cartesian3.clone(Cartesian3.UNIT_Z, result);
+        }
+
+        return result;
+    }
+
+    /**
+     * Computes the distance between two points.
+     *
+     * @param {Cartesian3} left The first point to compute the distance from.
+     * @param {Cartesian3} right The second point to compute the distance to.
+     * @returns {Number} The distance between two points.
+     *
+     * @example
+     * // Returns 1.0
+     * var d = Cesium.Cartesian3.distance(new Cesium.Cartesian3(1.0, 0.0, 0.0), new Cesium.Cartesian3(2.0, 0.0, 0.0));
+     */
+    static distance = function (left:Cartesian3, right:Cartesian3): number {
+        Cartesian3.subtract(left, right, distanceScratch);
+        return Cartesian3.magnitude(distanceScratch);
+    };
+
+    /**
+     * Negates the provided Cartesian.
+     *
+     * @param {Cartesian3} cartesian The Cartesian to be negated.
+     * @param {Cartesian3} result The object onto which to store the result.
+     * @returns {Cartesian3} The modified result parameter.
+     */
+    static negate (cartesian:Cartesian3, result:Cartesian3):Cartesian3 {
+        result.x = -cartesian.x;
+        result.y = -cartesian.y;
+        result.z = -cartesian.z;
+        return result;
+    }
+
+    /**
+     * Computes the value of the maximum component for the supplied Cartesian.
+     *
+     * @param {Cartesian3} cartesian The cartesian to use.
+     * @returns {Number} The value of the maximum component.
+     */
+    static maximumComponent (cartesian: Cartesian3):number {
+        return Math.max(cartesian.x, cartesian.y, cartesian.z);
+    }
+
+    /**
+     * Returns a Cartesian3 position from longitude and latitude values given in radians.
+     *
+     * @param {Number} longitude The longitude, in radians
+     * @param {Number} latitude The latitude, in radians
+     * @param {Number} [height=0.0] The height, in meters, above the ellipsoid.
+     * @param {Ellipsoid} [ellipsoid=Ellipsoid.WGS84] The ellipsoid on which the position lies.
+     * @param {Cartesian3} [result] The object onto which to store the result.
+     * @returns {Cartesian3} The position
+     *
+     * @example
+     * var position = Cesium.Cartesian3.fromRadians(-2.007, 0.645);
+     */
+    static fromRadians (
+        longitude: number,
+        latitude: number,
+        height: number,
+        ellipsoid: Ellipsoid,
+        result?:Cartesian3
+    ) :Cartesian3 {
+        height = defaultValue(height, 0.0);
+        const radiiSquared = defined(ellipsoid)
+            ? ellipsoid.radiiSquared
+            : wgs84RadiiSquared;
+
+        const cosLatitude = Math.cos(latitude);
+        scratchN.x = cosLatitude * Math.cos(longitude);
+        scratchN.y = cosLatitude * Math.sin(longitude);
+        scratchN.z = Math.sin(latitude);
+        scratchN = Cartesian3.normalize(scratchN, scratchN);
+
+        Cartesian3.multiplyComponents((radiiSquared as Cartesian3), scratchN, scratchK);
+        const gamma = Math.sqrt(Cartesian3.dot(scratchN, scratchK));
+        scratchK = Cartesian3.divideByScalar(scratchK, gamma, scratchK);
+        scratchN = Cartesian3.multiplyByScalar(scratchN, height, scratchN);
+
+        if (!defined(result)) {
+            result = new Cartesian3();
+        }
+        return Cartesian3.add(scratchK, scratchN, (result as Cartesian3));
+    }
 }
+const distanceScratch = new Cartesian3();
+const mostOrthogonalAxisScratch = new Cartesian3();
+
+let scratchN = new Cartesian3();
+let scratchK = new Cartesian3();
+const wgs84RadiiSquared = new Cartesian3(
+    6378137.0 * 6378137.0,
+    6378137.0 * 6378137.0,
+    6356752.3142451793 * 6356752.3142451793
+);
 
 export { Cartesian3 };

@@ -436,6 +436,90 @@ const fromSNorm = function (value: number, rangeMaximum: number): number {
     );
 };
 
+/**
+ * Produces an angle in the range -Pi <= angle <= Pi which is equivalent to the provided angle.
+ *
+ * @param {Number} angle in radians
+ * @returns {Number} The angle in the range [<code>-CesiumMath.PI</code>, <code>CesiumMath.PI</code>].
+ */
+const negativePiToPi = function (angle: number): number {
+    // >>includeStart('debug', pragmas.debug);
+    if (!defined(angle)) {
+        throw new DeveloperError('angle is required.');
+    }
+    // >>includeEnd('debug');
+    return CesiumMath.zeroToTwoPi(angle + CesiumMath.PI) - CesiumMath.PI;
+};
+
+/**
+ * Produces an angle in the range 0 <= angle <= 2Pi which is equivalent to the provided angle.
+ *
+ * @param {Number} angle in radians
+ * @returns {Number} The angle in the range [0, <code>CesiumMath.TWO_PI</code>].
+ */
+const zeroToTwoPi = function (angle:number):number {
+    // >>includeStart('debug', pragmas.debug);
+    if (!defined(angle)) {
+        throw new DeveloperError('angle is required.');
+    }
+    // >>includeEnd('debug');
+    const mod = CesiumMath.mod(angle, CesiumMath.TWO_PI);
+    if (Math.abs(mod) < CesiumMath.EPSILON14 && Math.abs(angle) > CesiumMath.EPSILON14) {
+        return CesiumMath.TWO_PI;
+    }
+    return mod;
+};
+
+/**
+ * The modulo operation that also works for negative dividends.
+ *
+ * @param {Number} m The dividend.
+ * @param {Number} n The divisor.
+ * @returns {Number} The remainder.
+ */
+const mod = function (m: number, n: number): number {
+    // >>includeStart('debug', pragmas.debug);
+    if (!defined(m)) {
+        throw new DeveloperError('m is required.');
+    }
+    if (!defined(n)) {
+        throw new DeveloperError('n is required.');
+    }
+    // >>includeEnd('debug');
+    return (m % n + n) % n;
+};
+
+/**
+ * Computes <code>Math.acos(value)</code>, but first clamps <code>value</code> to the range [-1.0, 1.0]
+ * so that the function will never return NaN.
+ *
+ * @param {Number} value The value for which to compute acos.
+ * @returns {Number} The acos of the value if the value is in the range [-1.0, 1.0], or the acos of -1.0 or 1.0,
+ *          whichever is closer, if the value is outside the range.
+ */
+const acosClamped = function (value:number): number {
+    // >>includeStart('debug', pragmas.debug);
+    if (!defined(value)) {
+        throw new DeveloperError('value is required.');
+    }
+    // >>includeEnd('debug');
+    return Math.acos(CesiumMath.clamp(value, -1.0, 1.0));
+};
+
+/**
+ * Converts radians to degrees.
+ * @param {Number} radians The angle to convert in radians.
+ * @returns {Number} The corresponding angle in degrees.
+ */
+const toDegrees = function (radians: number): number {
+    // >>includeStart('debug', pragmas.debug);
+    if (!defined(radians)) {
+        throw new DeveloperError('radians is required.');
+    }
+    // >>includeEnd('debug');
+    return radians * CesiumMath.DEGREES_PER_RADIAN;
+};
+
 const CesiumMath = {
     EPSILON1,
     EPSILON2,
@@ -451,6 +535,8 @@ const CesiumMath = {
     EPSILON12,
     EPSILON13,
     EPSILON14,
+    EPSILON15,
+    EPSILON20,
 
     incrementWrap,
     equalsEpsilon,
@@ -467,12 +553,18 @@ const CesiumMath = {
     RADIANS_PER_DEGREE,
     RADIANS_PER_ARCSECOND,
     LUNAR_RADIUS,
+    FOUR_GIGABYTES,
     toRadians,
     signNotZero,
     clamp,
     toSNorm,
     fromSNorm,
-
+    negativePiToPi,
+    zeroToTwoPi,
+    mod,
+    acosClamped,
+    toDegrees,
+    SIXTY_FOUR_KILOBYTES,
     /**
      * Returns the sign of the value; 1 if the value is positive, -1 if the value is
      * negative, or 0 if the value is 0.

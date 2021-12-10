@@ -67,7 +67,7 @@ class DeveloperError {
         return str;
     }
 
-    private static throwInstantiationError (): void {
+    static throwInstantiationError (): void {
         throw new DeveloperError('This function defines an interface and should not be called directly.');
     }
 }
