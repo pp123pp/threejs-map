@@ -1,3 +1,4 @@
+/* eslint-disable no-mixed-operators */
 
 import { BoundingSphere } from '@/Core/BoundingSphere';
 import { Cartesian3 } from '@/Core/Cartesian3';
@@ -12,6 +13,8 @@ import { GeographicTilingScheme } from '@/Core/GeographicTilingScheme';
 import { OrientedBoundingBox } from '@/Core/OrientedBoundingBox';
 import { Rectangle } from '@/Core/Rectangle';
 import { SceneMode } from '@/Core/SceneMode';
+import { TerrainQuantization } from '@/Core/TerrainQuantization';
+import { TileMaterial } from '@/Material/TileMaterial';
 import { Vector4, Vector3 } from 'three';
 import { TerrainProvider } from './../Core/TerrainProvider';
 import { FrameState } from './FrameState';
@@ -79,8 +82,28 @@ const surfaceShaderSetOptionsScratch : {
     surfaceTile: any,
     enableLighting: boolean,
     useWebMercatorProjection: boolean,
+    numberOfDayTextures?: number
 } = {
+    surfaceTile: undefined,
+    enableLighting: false,
+    useWebMercatorProjection: false
+};
 
+const createTileUniformMap = (frameState: FrameState, tileProvider: any, surfaceShaderSetOptions: any, quantization: TerrainQuantization) => {
+    const material = new TileMaterial({
+        // side: DoubleSide,
+        // wireframe: true
+        // depthTest: false
+    }, surfaceShaderSetOptions);
+
+    if (quantization === TerrainQuantization.NONE) {
+        material.defines.INCLUDE_WEB_MERCATOR_Y = '';
+        return material;
+    }
+
+    material.defines.QUANTIZATION_BITS12 = '';
+    material.defines.INCLUDE_WEB_MERCATOR_Y = '';
+    return material;
 };
 
 const addDrawCommandsForTile = (tileProvider: any, tile: any, frameState: FrameState) => {
@@ -134,8 +157,8 @@ const addDrawCommandsForTile = (tileProvider: any, tile: any, frameState: FrameS
     do {
         let numberOfDayTextures = 0;
 
-        var command;
-        var uniformMap;
+        let command;
+        let uniformMap;
 
         const dayTextures = [];
         const dayTextureTranslationAndScale = [];
@@ -195,7 +218,7 @@ const addDrawCommandsForTile = (tileProvider: any, tile: any, frameState: FrameS
         uniformMap.dayTextureTranslationAndScale = dayTextureTranslationAndScale;
         uniformMap.dayTextureTexCoordsRectangle = dayTextureTexCoordsRectangle;
 
-        Vector4.clone(initialColor, uniformMap.initialColor);
+        Cartesian4.clone(initialColor, uniformMap.initialColor);
 
         command.owner = tile;
 

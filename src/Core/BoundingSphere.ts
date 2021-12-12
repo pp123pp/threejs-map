@@ -35,6 +35,9 @@ const fromRectangle2DUpperRight = new Cartesian3();
 const fromRectangle2DSouthwest = new Cartographic();
 const fromRectangle2DNortheast = new Cartographic();
 
+const unionScratch = new Cartesian3();
+const unionScratchCenter = new Cartesian3();
+
 /**
      * A bounding sphere with a center and a radius.
      * @alias BoundingSphere
@@ -341,6 +344,70 @@ class BoundingSphere {
             return Intersect.INTERSECTING;
         }
         return Intersect.INSIDE;
+    }
+
+    /**
+ * Duplicates this BoundingSphere instance.
+ *
+ * @param {BoundingSphere} [result] The object onto which to store the result.
+ * @returns {BoundingSphere} The modified result parameter or a new BoundingSphere instance if none was provided.
+ */
+    clone (result?: BoundingSphere): BoundingSphere | undefined {
+        return BoundingSphere.clone(this, result);
+    }
+
+    /**
+ * Computes a bounding sphere that contains both the left and right bounding spheres.
+ *
+ * @param {BoundingSphere} left A sphere to enclose in a bounding sphere.
+ * @param {BoundingSphere} right A sphere to enclose in a bounding sphere.
+ * @param {BoundingSphere} [result] The object onto which to store the result.
+ * @returns {BoundingSphere} The modified result parameter or a new BoundingSphere instance if none was provided.
+ */
+    static union (left: BoundingSphere, right: BoundingSphere, result?: BoundingSphere):BoundingSphere {
+        if (!defined(result)) {
+            result = new BoundingSphere();
+        }
+
+        const leftCenter = left.center;
+        const leftRadius = left.radius;
+        const rightCenter = right.center;
+        const rightRadius = right.radius;
+
+        const toRightCenter = Cartesian3.subtract(
+            rightCenter,
+            leftCenter,
+            unionScratch
+        );
+        const centerSeparation = Cartesian3.magnitude(toRightCenter);
+
+        if (leftRadius >= centerSeparation + rightRadius) {
+            // Left sphere wins.
+            left.clone(result);
+            return result as BoundingSphere;
+        }
+
+        if (rightRadius >= centerSeparation + leftRadius) {
+            // Right sphere wins.
+            right.clone(result);
+            return result as BoundingSphere;
+        }
+
+        // There are two tangent points, one on far side of each sphere.
+        const halfDistanceBetweenTangentPoints =
+      (leftRadius + centerSeparation + rightRadius) * 0.5;
+
+        // Compute the center point halfway between the two tangent points.
+        const center = Cartesian3.multiplyByScalar(
+            toRightCenter,
+            (-leftRadius + halfDistanceBetweenTangentPoints) / centerSeparation,
+            unionScratchCenter
+        );
+        Cartesian3.add(center, leftCenter, center);
+        Cartesian3.clone(center, (result as BoundingSphere).center);
+        (result as BoundingSphere).radius = halfDistanceBetweenTangentPoints;
+
+        return (result as BoundingSphere);
     }
 }
 

@@ -70,6 +70,29 @@ class Cartesian4 {
         (result as Cartesian4).w = color.alpha;
         return (result as Cartesian4);
     }
+
+    /**
+     * Duplicates a Cartesian4 instance.
+     *
+     * @param {Cartesian4} cartesian The Cartesian to duplicate.
+     * @param {Cartesian4} [result] The object onto which to store the result.
+     * @returns {Cartesian4} The modified result parameter or a new Cartesian4 instance if one was not provided. (Returns undefined if cartesian is undefined)
+     */
+    static clone (cartesian: Cartesian4, result?: Cartesian4): Cartesian4 | undefined {
+        if (!defined(cartesian)) {
+            return undefined;
+        }
+
+        if (!defined(result)) {
+            return new Cartesian4(cartesian.x, cartesian.y, cartesian.z, cartesian.w);
+        }
+
+        (result as Cartesian4).x = cartesian.x;
+        (result as Cartesian4).y = cartesian.y;
+        (result as Cartesian4).z = cartesian.z;
+        (result as Cartesian4).w = cartesian.w;
+        return (result as Cartesian4);
+    }
 }
 
 export { Cartesian4 };
