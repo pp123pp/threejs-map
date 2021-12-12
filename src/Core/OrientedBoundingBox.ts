@@ -289,6 +289,28 @@ class OrientedBoundingBox {
 
         return result;
     }
+
+    /**
+   * Duplicates a OrientedBoundingBox instance.
+   *
+   * @param {OrientedBoundingBox} box The bounding box to duplicate.
+   * @param {OrientedBoundingBox} [result] The object onto which to store the result.
+   * @returns {OrientedBoundingBox} The modified result parameter or a new OrientedBoundingBox instance if none was provided. (Returns undefined if box is undefined)
+   */
+    static clone (box: OrientedBoundingBox, result?: OrientedBoundingBox): OrientedBoundingBox |undefined {
+        if (!defined(box)) {
+            return undefined;
+        }
+
+        if (!defined(result)) {
+            return new OrientedBoundingBox(box.center, box.halfAxes);
+        }
+
+        Cartesian3.clone(box.center, (result as OrientedBoundingBox).center);
+        Matrix3.clone(box.halfAxes, (result as OrientedBoundingBox).halfAxes);
+
+        return result;
+    }
 }
 
 export { OrientedBoundingBox };

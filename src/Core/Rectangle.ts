@@ -121,14 +121,14 @@ class Rectangle {
       * @param {Cartographic} [result] The object onto which to store the result.
       * @returns {Cartographic} The modified result parameter or a new Cartographic instance if none was provided.
       */
-    static southwest (rectangle:Rectangle, result:Cartographic):Cartographic {
+    static southwest (rectangle:Rectangle, result?:Cartographic):Cartographic {
         if (!defined(result)) {
             return new Cartographic(rectangle.west, rectangle.south);
         }
-        result.longitude = rectangle.west;
-        result.latitude = rectangle.south;
-        result.height = 0.0;
-        return result;
+        (result as Cartographic).longitude = rectangle.west;
+        (result as Cartographic).latitude = rectangle.south;
+        (result as Cartographic).height = 0.0;
+        return (result as Cartographic);
     }
 
     /**

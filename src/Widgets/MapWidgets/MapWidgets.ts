@@ -1,8 +1,10 @@
 import { combine } from '@/Core/combine';
 import { defaultValue } from '@/Core/defaultValue';
 import { defined } from '@/Core/defined';
+import { Ellipsoid } from '@/Core/Ellipsoid';
 import { FeatureDetection } from '@/Core/FeatureDetection';
 import { Camera } from '@/Scene/Camera';
+import { Globe } from '@/Scene/Globe';
 import { RenderStateParameters } from '@/Scene/MapRenderer';
 import { Scene } from '@/Scene/Scene';
 import { Clock } from 'three';
@@ -75,7 +77,8 @@ class MapWidgets {
         enabledEffect?: false,
         useBrowserRecommendedResolution?: true,
         useDefaultRenderLoop?: true,
-        targetFrameRate?: number
+        targetFrameRate?: number,
+        globe?: Globe
     }) {
         container = getElement(container);
 
@@ -138,6 +141,18 @@ class MapWidgets {
             enabledEffect: options?.enabledEffect,
             requestRenderMode: options?.requestRenderMode
         });
+
+        const ellipsoid = defaultValue(
+            this._scene.mapProjection.ellipsoid,
+            Ellipsoid.WGS84
+        );
+
+        let globe = options.globe;
+        if (!defined(globe)) {
+            globe = new Globe(ellipsoid);
+        }
+
+        this._scene.globe = (globe as Globe);
 
         this._useDefaultRenderLoop = false;
         this.useDefaultRenderLoop = defaultValue(

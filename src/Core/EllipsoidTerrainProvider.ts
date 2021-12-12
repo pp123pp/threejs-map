@@ -55,6 +55,24 @@ class EllipsoidTerrainProvider {
         this._errorEvent = new Event();
         this._readyPromise = when.resolve(true);
     }
+
+    get tilingScheme (): GeographicTilingScheme {
+        return this._tilingScheme;
+    }
+
+    get ready (): boolean {
+        return true;
+    }
+
+    /**
+     * Gets the maximum geometric error allowed in a tile at a given level.
+     *
+     * @param {Number} level The tile level for which to get the maximum geometric error.
+     * @returns {Number} The maximum geometric error.
+     */
+    getLevelMaximumGeometricError (level: number): number {
+        return this._levelZeroMaximumGeometricError / (1 << level);
+    }
 }
 
 export { EllipsoidTerrainProvider };

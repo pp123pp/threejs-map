@@ -3,6 +3,8 @@ import { SceneMode } from '@/Core/SceneMode';
 import { Camera } from './Camera';
 import { CullingVolume } from '@/Core/CullingVolume';
 import { Frustum } from 'three';
+import { Context } from './Context';
+import { PerspectiveFrustumCamera } from './PerspectiveFrustumCamera';
 
 export interface PassesInterface{
     render: boolean,
@@ -13,7 +15,8 @@ export interface PassesInterface{
 }
 
 class FrameState {
-    protected scene: Scene;
+    scene: Scene;
+    context: Context;
     pixelRatio: number;
     frameNumber: number;
     mode: number
@@ -21,11 +24,17 @@ class FrameState {
     passes: PassesInterface;
     readonly commandList: any[];
     readonly shadowMaps: any[];
-    camera: Camera;
     cullingVolume: CullingVolume;
-    maximumScreenSpaceError: number
+    maximumScreenSpaceError: number;
+    afterRender: Array<() => void>;
+    mapProjection: any;
+    terrainExaggerationRelativeHeight: number
+    terrainExaggeration: number;
+    minimumTerrainHeight: number;
     constructor (scene: Scene) {
         this.scene = scene;
+
+        this.context = scene.context;
 
         /**
          * <code>true</code> if a new frame has been issued and the frame number has been updated.
@@ -91,11 +100,58 @@ class FrameState {
 
         this.commandList = [];
         this.shadowMaps = [];
-        this.camera = scene.camera;
+        // this.camera = scene.camera;
 
         this.cullingVolume = new CullingVolume();
 
         this.maximumScreenSpaceError = 2.0;
+
+        this.mapProjection = undefined;
+
+        /**
+         * An array of functions to be called at the end of the frame.  This array
+         * will be cleared after each frame.
+         * <p>
+         * This allows queueing up events in <code>update</code> functions and
+         * firing them at a time when the subscribers are free to change the
+         * scene state, e.g., manipulate the camera, instead of firing events
+         * directly in <code>update</code> functions.
+         * </p>
+         *
+         * @type {FrameState.AfterRenderCallback[]}
+         *
+         * @example
+         * frameState.afterRender.push(function() {
+         *   // take some action, raise an event, etc.
+         * });
+         */
+        this.afterRender = [];
+
+        /**
+         * A scalar used to exaggerate the terrain.
+         * @type {Number}
+         * @default 1.0
+         */
+        this.terrainExaggeration = 1.0;
+
+        /**
+         * The height relative to which terrain is exaggerated.
+         * @type {Number}
+         * @default 0.0
+         */
+        this.terrainExaggerationRelativeHeight = 0.0;
+
+        /**
+         * The minimum terrain height out of all rendered terrain tiles. Used to improve culling for objects underneath the ellipsoid but above terrain.
+         *
+         * @type {Number}
+         * @default 0.0
+         */
+        this.minimumTerrainHeight = 0.0;
+    }
+
+    get camera (): PerspectiveFrustumCamera {
+        return this.scene.activeCamera;
     }
 }
 

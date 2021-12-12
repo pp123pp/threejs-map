@@ -1,4 +1,5 @@
-import { Frustum, Matrix4, PerspectiveCamera } from 'three';
+import { Cartographic } from '@/Core/Cartographic';
+import { Frustum, Matrix4, PerspectiveCamera, Vector3 } from 'three';
 import { Scene } from './Scene';
 
 export interface PerspectiveFrustumCameraParameters {
@@ -8,12 +9,16 @@ export interface PerspectiveFrustumCameraParameters {
     far?: number;
 }
 
+const scratchCartesian = new Vector3();
 class PerspectiveFrustumCamera extends PerspectiveCamera {
     protected scene: Scene;
     private _frustum;
     private _projScreenMatrix: Matrix4;
     public containerWidth: number;
     public containerHeight: number
+    sseDenominator: number;
+    _positionWC: Vector3;
+    _positionCartographic: Cartographic;
     constructor (scene: Scene, options: PerspectiveFrustumCameraParameters) {
         super(options.fov, options.aspect, options.near, options.far);
         this.scene = scene;
@@ -25,6 +30,12 @@ class PerspectiveFrustumCamera extends PerspectiveCamera {
         this.containerHeight = 0;
 
         this.up.set(0, 0, 1);
+
+        // 使用经纬度表示的坐标
+        this._positionCartographic = new Cartographic();
+
+        this._positionWC = new Vector3();
+        this.sseDenominator = 0;
     }
 
     get frustum (): Frustum {
@@ -44,6 +55,31 @@ class PerspectiveFrustumCamera extends PerspectiveCamera {
 
         this.containerWidth = clientWidth;
         this.containerHeight = clientHeight;
+    }
+
+    get positionWC () {
+        this._positionWC.x = this.position.z;
+        this._positionWC.y = this.position.x;
+        this._positionWC.z = this.position.y;
+
+        // this._positionWC.x = this.position.x;
+        // this._positionWC.y = this.position.y;
+        // this._positionWC.z = this.position.z;
+
+        return this._positionWC;
+    }
+
+    get positionCartographic () {
+        const positionENU = scratchCartesian;
+        // positionENU.x = this.positionWC.y;
+        // positionENU.y = this.positionWC.z;
+        // positionENU.z = this.positionWC.x;
+
+        positionENU.x = this.position.x;
+        positionENU.y = this.position.y;
+        positionENU.z = this.position.z;
+
+        return this.scene.mapProjection.unproject(positionENU, this._positionCartographic);
     }
 }
 

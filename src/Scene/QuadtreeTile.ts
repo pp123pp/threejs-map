@@ -1,3 +1,5 @@
+import { defined } from '@/Core/defined';
+import { DeveloperError } from '@/Core/DeveloperError';
 import { GeographicTilingScheme } from '@/Core/GeographicTilingScheme';
 import { Rectangle } from '@/Core/Rectangle';
 import { QuadtreeTileLoadState } from './QuadtreeTileLoadState';
@@ -114,6 +116,42 @@ class QuadtreeTile {
          * @default undefined
          */
         this.data = undefined;
+    }
+
+    /**
+ * Creates a rectangular set of tiles for level of detail zero, the coarsest, least detailed level.
+ *
+ * @memberof QuadtreeTile
+ *
+ * @param {TilingScheme} tilingScheme The tiling scheme for which the tiles are to be created.
+ * @returns {QuadtreeTile[]} An array containing the tiles at level of detail zero, starting with the
+ * tile in the northwest corner and followed by the tile (if any) to its east.
+ */
+    static createLevelZeroTiles (tilingScheme:GeographicTilingScheme): QuadtreeTile[] {
+    // >>includeStart('debug', pragmas.debug);
+        if (!defined(tilingScheme)) {
+            throw new DeveloperError('tilingScheme is required.');
+        }
+        // >>includeEnd('debug');
+
+        const numberOfLevelZeroTilesX = tilingScheme.getNumberOfXTilesAtLevel(0);
+        const numberOfLevelZeroTilesY = tilingScheme.getNumberOfYTilesAtLevel(0);
+
+        const result = new Array(numberOfLevelZeroTilesX * numberOfLevelZeroTilesY);
+
+        let index = 0;
+        for (let y = 0; y < numberOfLevelZeroTilesY; ++y) {
+            for (let x = 0; x < numberOfLevelZeroTilesX; ++x) {
+                result[index++] = new QuadtreeTile({
+                    tilingScheme: tilingScheme,
+                    x: x,
+                    y: y,
+                    level: 0
+                });
+            }
+        }
+
+        return result;
     }
 }
 

@@ -520,6 +520,21 @@ const toDegrees = function (radians: number): number {
     return radians * CesiumMath.DEGREES_PER_RADIAN;
 };
 
+/**
+ * Computes the linear interpolation of two values.
+ *
+ * @param {Number} p The start value to interpolate.
+ * @param {Number} q The end value to interpolate.
+ * @param {Number} time The time of interpolation generally in the range <code>[0.0, 1.0]</code>.
+ * @returns {Number} The linearly interpolated value.
+ *
+ * @example
+ * var n = Cesium.Math.lerp(0.0, 2.0, 0.5); // returns 1.0
+ */
+const lerp = function (p: number, q: number, time: number): number {
+    return (1.0 - time) * p + time * q;
+};
+
 const CesiumMath = {
     EPSILON1,
     EPSILON2,
@@ -564,6 +579,7 @@ const CesiumMath = {
     mod,
     acosClamped,
     toDegrees,
+    lerp,
     SIXTY_FOUR_KILOBYTES,
     /**
      * Returns the sign of the value; 1 if the value is positive, -1 if the value is

@@ -20,7 +20,7 @@ class Event {
         return this._listeners.length - this._toRemove.length;
     }
 
-    addEventListener (listener: (...params: any[]) => any, scope?: Event): any {
+    addEventListener (listener: (...params: any[]) => any, scope?: any): any {
         this._listeners.push(listener);
         this._scopes.push(scope);
 
@@ -30,7 +30,7 @@ class Event {
         };
     }
 
-    removeEventListener (listener: (...params: any[]) => any, scope?: Event): boolean {
+    removeEventListener (listener: (...params: any[]) => any, scope?: any): boolean {
         const listeners = this._listeners;
         const scopes = this._scopes;
 

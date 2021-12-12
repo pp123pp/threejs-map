@@ -1,4 +1,6 @@
+import { CesiumColor } from './CesiumColor';
 import { defaultValue } from './defaultValue';
+import { defined } from './defined';
 
 /**
  * A 4D Cartesian point.
@@ -19,7 +21,7 @@ class Cartesian4 {
     y: number;
     z: number;
     w: number;
-    constructor (x?: number, y?: number, z?: number, w?:number) {
+    constructor (x = 0.0, y = 0.0, z = 0.0, w = 0.0) {
         /**
          * The X component.
          * @type {Number}
@@ -47,6 +49,26 @@ class Cartesian4 {
         * @default 0.0
         */
         this.w = defaultValue(w, 0.0);
+    }
+
+    /**
+     * Creates a Cartesian4 instance from a {@link Color}. <code>red</code>, <code>green</code>, <code>blue</code>,
+     * and <code>alpha</code> map to <code>x</code>, <code>y</code>, <code>z</code>, and <code>w</code>, respectively.
+     *
+     * @param {Color} color The source color.
+     * @param {Cartesian4} [result] The object onto which to store the result.
+     * @returns {Cartesian4} The modified result parameter or a new Cartesian4 instance if one was not provided.
+     */
+    static fromColor (color:CesiumColor, result?:Cartesian4):Cartesian4 {
+        if (!defined(result)) {
+            return new Cartesian4(color.red, color.green, color.blue, color.alpha);
+        }
+
+        (result as Cartesian4).x = color.red;
+        (result as Cartesian4).y = color.green;
+        (result as Cartesian4).z = color.blue;
+        (result as Cartesian4).w = color.alpha;
+        return (result as Cartesian4);
     }
 }
 

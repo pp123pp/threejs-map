@@ -4,7 +4,7 @@ import { defaultValue } from '@/Core/defaultValue';
 import { Event } from '@/Core/Event';
 import { SceneMode } from '@/Core/SceneMode';
 import * as THREE from 'three';
-import { WebGLRenderer, WebGLRendererParameters } from 'three';
+import { Vector2, WebGLRenderer, WebGLRendererParameters } from 'three';
 import { Camera } from './Camera';
 import { Context } from './Context';
 import { FrameState, PassesInterface } from './FrameState';
@@ -14,12 +14,47 @@ import { PerspectiveFrustumCamera } from './PerspectiveFrustumCamera';
 import { CesiumColor } from '@/Core/CesiumColor';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { GeographicProjection } from '@/Core/GeographicProjection';
+import { Globe } from './Globe';
+import { ComputeEngine } from '../Renderer/ComputeEngine';
+import { defined } from '@/Core/defined';
+import { ComputeCommand } from '@/Renderer/ComputeCommand';
+import { PrimitiveCollection } from './PrimitiveCollection';
 
 interface SceneOptions {
     renderState?: RenderStateParameters;
     enabledEffect?: false;
     requestRenderMode?: false;
     [name: string]: any
+}
+
+const requestRenderAfterFrame = function (scene: Scene) {
+    return function () {
+        scene.frameState.afterRender.push(function () {
+            scene.requestRender();
+        });
+    };
+};
+
+function updateGlobeListeners (scene: Scene, globe: Globe) {
+    for (let i = 0; i < scene._removeGlobeCallbacks.length; ++i) {
+        scene._removeGlobeCallbacks[i]();
+    }
+    scene._removeGlobeCallbacks.length = 0;
+
+    const removeGlobeCallbacks = [];
+    if (defined(globe)) {
+        removeGlobeCallbacks.push(
+            globe.imageryLayersUpdatedEvent.addEventListener(
+                requestRenderAfterFrame(scene)
+            )
+        );
+        removeGlobeCallbacks.push(
+            globe.terrainProviderChanged.addEventListener(
+                requestRenderAfterFrame(scene)
+            )
+        );
+    }
+    scene._removeGlobeCallbacks = removeGlobeCallbacks;
 }
 
 function updateFrameNumber (scene: Scene, frameNumber: number) {
@@ -46,9 +81,9 @@ function prePassesUpdate (scene:Scene) {
     // const primitives = scene.primitives;
     // primitives.prePassesUpdate(frameState);
 
-    // if (defined(scene.globe)) {
-    //     scene.globe.update(frameState);
-    // }
+    if (defined(scene.globe)) {
+        scene.globe.update(frameState);
+    }
 
     // scene._picking.update();
     // frameState.creditDisplay.update();
@@ -63,13 +98,45 @@ function render (scene:Scene) {
 
     frameState.passes.render = true;
 
-    // if (defined(scene.globe)) {
-    //     scene.globe.beginFrame(frameState);
-    // }
+    if (defined(scene.globe)) {
+        scene.globe.beginFrame(frameState);
+
+        if (!scene.globe.tilesLoaded) {
+            scene._renderRequested = true;
+        }
+    }
 
     scene.updateAndExecuteCommands(scene.backgroundColor);
+
+    if (defined(scene.globe)) {
+        scene.globe.endFrame(frameState);
+
+        if (!scene.globe.tilesLoaded) {
+            scene._renderRequested = true;
+        }
+    }
 }
 
+function updateAndRenderPrimitives (scene: Scene) {
+    const frameState = scene._frameState;
+
+    // scene._groundPrimitives.update(frameState);
+    scene._primitives.update(frameState);
+
+    // updateDebugFrustumPlanes(scene);
+    // updateShadowMaps(scene);
+
+    if (scene._globe) {
+        scene._globe.render(frameState);
+    }
+}
+
+/**
+ * 执行渲染
+ * @param firstViewport
+ * @param scene
+ * @param backgroundColor
+ */
 function executeCommandsInViewport (firstViewport: boolean, scene:Scene, backgroundColor: CesiumColor) {
     // const environmentState = scene._environmentState;
     // const view = scene._view;
@@ -96,15 +163,22 @@ function executeCommandsInViewport (firstViewport: boolean, scene:Scene, backgro
     //     }
     // }
 
+    if (!firstViewport) {
+        scene.frameState.commandList.length = 0;
+    }
+
+    updateAndRenderPrimitives(scene);
+
     // executeCommands(scene, passState);
     scene.renderer.clear();
     scene.renderer.render(scene, scene.activeCamera);
 }
 
 class Scene extends THREE.Scene {
+    _primitives: PrimitiveCollection
     readonly renderer: MapRenderer;
     _frameState: FrameState;
-    protected _renderRequested: boolean;
+    _renderRequested: boolean;
     protected _shaderFrameCount: number;
     protected _context: Context;
     protected _mode: number;
@@ -116,10 +190,16 @@ class Scene extends THREE.Scene {
     readonly rethrowRenderErrors: boolean;
     backgroundColor: CesiumColor;
     readonly screenSpaceCameraController: OrbitControls;
-    canvas: HTMLCanvasElement;
     _mapProjection: GeographicProjection;
+    _canvas: HTMLCanvasElement;
+    _globe: Globe | undefined;
+    _computeEngine: ComputeEngine;
+    _removeGlobeCallbacks: any[];
+    _computeCommandList: ComputeCommand[];
     constructor (options: SceneOptions) {
         super();
+
+        this._primitives = new PrimitiveCollection();
 
         this.renderError = new Event();
         this.postUpdate = new Event();
@@ -129,8 +209,6 @@ class Scene extends THREE.Scene {
             near: 0.1,
             far: 100000000
         });
-
-        this.canvas = options.canvas;
 
         this.activeCamera.position.set(10, 10, 10);
         this.activeCamera.lookAt(0, 0, 0);
@@ -160,9 +238,13 @@ class Scene extends THREE.Scene {
         // 地图的投影方式
         this._mapProjection = defaultValue(options.mapProjection, new GeographicProjection()) as GeographicProjection;
 
+        this._canvas = options.canvas as HTMLCanvasElement;
         this._context = new Context(this);
+        this._computeEngine = new ComputeEngine(this, this._context);
 
         this.screenSpaceCameraController = new OrbitControls(this.activeCamera, this.renderer.domElement);
+
+        this._removeGlobeCallbacks = [];
 
         /**
          * Exceptions occurring in <code>render</code> are always caught in order to raise the
@@ -176,6 +258,8 @@ class Scene extends THREE.Scene {
         this.rethrowRenderErrors = false;
 
         this.backgroundColor = new CesiumColor(1.0, 0.0, 0.0, 1.0);
+
+        this._computeCommandList = [];
     }
 
     get pixelRatio (): number {
@@ -208,6 +292,24 @@ class Scene extends THREE.Scene {
 
     get mapProjection (): GeographicProjection {
         return this._mapProjection;
+    }
+
+    get canvas (): HTMLCanvasElement {
+        return this._canvas;
+    }
+
+    get globe (): Globe {
+        return this._globe as Globe;
+    }
+
+    set globe (globe: Globe) {
+        this._globe = globe;
+
+        updateGlobeListeners(this, globe);
+    }
+
+    get drawingBufferSize (): Vector2 {
+        return this.renderer.drawingBufferSize;
     }
 
     requestRender () :void{
@@ -293,7 +395,6 @@ class Scene extends THREE.Scene {
         frameState.shadowMaps.length = 0;
 
         frameState.mode = this._mode;
-        frameState.camera = camera;
 
         // frameState.cullingVolume = camera.computeCullingVolume();
 
