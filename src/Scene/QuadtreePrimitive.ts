@@ -702,7 +702,7 @@ class QuadtreePrimitive {
         this._tileReplacementQueue.markStartOfRenderFrame();
     }
 
-    endFrame (frameState) {
+    endFrame (frameState: FrameState): void {
         const passes = frameState.passes;
         if (!passes.render || frameState.mode === SceneMode.MORPHING) {
             // Only process the load queue for a single pass.

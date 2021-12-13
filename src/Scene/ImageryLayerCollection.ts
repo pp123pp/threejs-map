@@ -3,6 +3,7 @@ import { defined } from '@/Core/defined';
 import { destroyObject } from '@/Core/destroyObject';
 import { DeveloperError } from '@/Core/DeveloperError';
 import { Event } from '@/Core/Event';
+import { FrameState } from './FrameState';
 import { ImageryLayer } from './ImageryLayer';
 
 class ImageryLayerCollection {
@@ -280,6 +281,20 @@ class ImageryLayerCollection {
                 layer = (layersShownOrHidden as ImageryLayer[])[i];
                 this.layerShownOrHidden.raiseEvent(layer, layer._layerIndex, layer.show);
             }
+        }
+    }
+
+    /**
+     * Updates frame state to execute any queued texture re-projections.
+     *
+     * @private
+     *
+     * @param {FrameState} frameState The frameState.
+     */
+    queueReprojectionCommands (frameState: FrameState): void {
+        const layers = this._layers;
+        for (let i = 0, len = layers.length; i < len; ++i) {
+            layers[i].queueReprojectionCommands(frameState);
         }
     }
 }

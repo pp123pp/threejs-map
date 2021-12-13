@@ -13,10 +13,10 @@
  * @see Packable
  */
 
-import { Cartographic } from './Cartographic.js';
-import { CesiumMath } from './CesiumMath.js';
-import { defaultValue } from './defaultValue.js';
-import { defined } from './defined.js';
+import { Cartographic } from './Cartographic';
+import { CesiumMath } from './CesiumMath';
+import { defaultValue } from './defaultValue';
+import { defined } from './defined';
 
 class Rectangle {
     west: number;

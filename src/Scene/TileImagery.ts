@@ -1,12 +1,12 @@
 /* eslint-disable no-mixed-operators */
 
-import { Cartesian4 } from '@/Core/Cartesian4.js';
-import { defined } from '@/Core/defined.js';
-import { Rectangle } from '@/Core/Rectangle.js';
-import { FrameState } from './FrameState.js';
-import { Imagery } from './Imagery.js';
-import { ImageryState } from './ImageryState.js';
-import { QuadtreeTile } from './QuadtreeTile.js';
+import { defined } from '@/Core/defined';
+import { Cartesian4 } from './../Core/Cartesian4';
+
+import { FrameState } from './FrameState';
+import { Imagery } from './Imagery';
+import { ImageryState } from './ImageryState';
+import { QuadtreeTile } from './QuadtreeTile';
 
 class TileImagery {
     readyImagery: Imagery | undefined;

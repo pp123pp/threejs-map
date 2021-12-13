@@ -130,6 +130,8 @@ class Globe extends Object3DCollection {
                 this._zoomedOutOceanSpecularIntensity = 0.5;
             }
 
+            tileProvider.terrainProvider = this.terrainProvider;
+
             surface.maximumScreenSpaceError = this.maximumScreenSpaceError;
             surface.tileCacheSize = this.tileCacheSize;
 

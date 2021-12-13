@@ -1,15 +1,15 @@
 /* eslint-disable max-lines */
-import { defaultValue } from '../core/defaultValue.js';
-import { Cartesian3 } from './Cartesian3.js';
-import { Cartographic } from './Cartographic.js';
-import { CesiumMath } from './CesiumMath.js';
-import { defined } from './defined.js';
-import { GeographicProjection } from './GeographicProjection.js';
-import { Intersect } from './Intersect.js';
-import { Plane } from './Plane.js';
-import { Rectangle } from './Rectangle.js';
+import { defaultValue } from './defaultValue';
+import { Cartesian3 } from './Cartesian3';
+import { Cartographic } from './Cartographic';
+import { CesiumMath } from './CesiumMath';
+import { defined } from './defined';
+import { GeographicProjection } from './GeographicProjection';
+import { Intersect } from './Intersect';
+import { Plane } from './Plane';
+import { Rectangle } from './Rectangle';
 import { CesiumMatrix3 as Matrix3 } from './CesiumMatrix3';
-import { OrientedBoundingBox } from './OrientedBoundingBox.js';
+import { OrientedBoundingBox } from './OrientedBoundingBox';
 
 const fromOrientedBoundingBoxScratchU = new Cartesian3();
 const fromOrientedBoundingBoxScratchV = new Cartesian3();

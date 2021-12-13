@@ -22,11 +22,11 @@ import { defined } from './defined';
 class DeveloperError {
     readonly name: string;
 
-    readonly message: string;
+    readonly message?: string;
 
     readonly stack: string;
 
-    constructor (message: string) {
+    constructor (message?: string) {
         /**
          * 'DeveloperError' indicating that this exception was thrown due to a developer error.
          * @type {String}

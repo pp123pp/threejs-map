@@ -4,7 +4,7 @@
  *
  * Grauw URI utilities
  *
- * See: http://hg.grauw.nl/grauw-lib/file/tip/src/uri.js
+ * See: http://hg.grauw.nl/grauw-lib/file/tip/src/uri
  *
  * @author Laurens Holst (http://www.grauw.nl/)
  *

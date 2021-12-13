@@ -1,10 +1,10 @@
 /* eslint-disable no-mixed-operators */
 
-import { Cartesian3 } from './Cartesian3.js';
-import { defaultValue } from './defaultValue.js';
-import { defined } from './defined.js';
-import { Intersect } from './Intersect.js';
-import { Plane } from './Plane.js';
+import { Cartesian3 } from './Cartesian3';
+import { defaultValue } from './defaultValue';
+import { defined } from './defined';
+import { Intersect } from './Intersect';
+import { Plane } from './Plane';
 
 let intersectScratch = new Cartesian3();
 /**

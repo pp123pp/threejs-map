@@ -20,6 +20,7 @@ import when from 'when';
 import { RequestType } from '@/Core/RequestType';
 import { ImagerySplitDirection } from '@/Core/ImagerySplitDirection';
 import { ComputeCommand } from '@/Renderer/ComputeCommand';
+import { Request } from '@/Core/Request';
 
 const imageryBoundsScratch = new Rectangle();
 const tileImageryBoundsScratch = new Rectangle();
@@ -670,7 +671,8 @@ class ImageryLayer {
                 imagery.credits = imageryProvider.getTileCredits(imagery.x, imagery.y, imagery.level);
             }
 
-            when(imagePromise, success, failure);
+            // when临时
+            when(imagePromise, success);
 
         // imagePromise.then(texture => {
         //     success(texture);

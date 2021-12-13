@@ -15,6 +15,7 @@ import { Rectangle } from '@/Core/Rectangle';
 import { SceneMode } from '@/Core/SceneMode';
 import { TerrainQuantization } from '@/Core/TerrainQuantization';
 import { TileMaterial } from '@/Material/TileMaterial';
+import { DrawMeshCommand } from '@/Renderer/DrawMeshCommand';
 import { Vector4, Vector3 } from 'three';
 import { TerrainProvider } from './../Core/TerrainProvider';
 import { FrameState } from './FrameState';
@@ -88,6 +89,20 @@ const surfaceShaderSetOptionsScratch : {
     enableLighting: false,
     useWebMercatorProjection: false
 };
+
+function sortTileImageryByLayerIndex (a: any, b: any) {
+    let aImagery = a.loadingImagery;
+    if (!defined(aImagery)) {
+        aImagery = a.readyImagery;
+    }
+
+    let bImagery = b.loadingImagery;
+    if (!defined(bImagery)) {
+        bImagery = b.readyImagery;
+    }
+
+    return aImagery.imageryLayer._layerIndex - bImagery.imageryLayer._layerIndex;
+}
 
 const createTileUniformMap = (frameState: FrameState, tileProvider: any, surfaceShaderSetOptions: any, quantization: TerrainQuantization) => {
     const material = new TileMaterial({
@@ -275,7 +290,7 @@ const addDrawCommandsForTile = (tileProvider: any, tile: any, frameState: FrameS
 
 class GlobeSurfaceTileProvider {
     _imageryLayers: ImageryLayerCollection;
-    _quadtree: QuadtreePrimitive | undefined;
+    _quadtree?: QuadtreePrimitive;
     _terrainProvider: EllipsoidTerrainProvider | TerrainProvider;
     _errorEvent: Event;
     _imageryLayersUpdatedEvent: Event;
@@ -752,6 +767,24 @@ class GlobeSurfaceTileProvider {
     update (frameState: FrameState) {
     // update collection: imagery indices, base layers, raise layer show/hide event
         this._imageryLayers._update();
+    }
+
+    /**
+ * Called at the beginning of each render frame, before {@link QuadtreeTileProvider#showTileThisFrame}
+ * @param {FrameState} frameState The frame state.
+ */
+    initialize (frameState: FrameState): void {
+        // update each layer for texture reprojection.
+        this._imageryLayers.queueReprojectionCommands(frameState);
+
+        if (this._layerOrderChanged) {
+            this._layerOrderChanged = false;
+
+            // Sort the TileImagery instances in each tile by the layer index.
+            (this._quadtree as QuadtreePrimitive).forEachLoadedTile(function (tile: any) {
+                tile.data.imagery.sort(sortTileImageryByLayerIndex);
+            });
+        }
     }
 }
 export { GlobeSurfaceTileProvider };

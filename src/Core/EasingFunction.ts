@@ -1,9 +1,9 @@
-import * as Tween from '@tweenjs/tween.js';
+import * as Tween from '@tweenjs/tween';
 
 /**
  * Easing functions for use with TweenCollection.  These function are from
- {@link https://github.com/sole/tween.js/|Tween.js} and Robert Penner.  See the
- {@link http://sole.github.io/tween.js/examples/03_graphs.html|Tween.js graphs for each function}.
+ {@link https://github.com/sole/tween/|Tween} and Robert Penner.  See the
+ {@link http://sole.github.io/tween/examples/03_graphs.html|Tween graphs for each function}.
   */
 const EasingFunction = {
     /**

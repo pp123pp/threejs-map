@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-empty-function */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { MapRenderer } from '@/Scene/MapRenderer';
 import {
@@ -27,7 +28,9 @@ class ComputedPass {
         this.renderToScreen = false;
     }
 
-    setSize (/* width, height */) {}
+    setSize (/* width, height */) {
+
+    }
 
     public render (renderer: any, writeBuffer: any, readBuffer: any, deltaTime: any, maskActive: any):void {
         console.error('THREE.Pass: .render() must be implemented in derived pass.');
@@ -38,7 +41,7 @@ class ComputedPass {
 
 const _camera = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
-// https://github.com/mrdoob/three.js/pull/21358
+// https://github.com/mrdoob/three/pull/21358
 
 const _geometry = new BufferGeometry();
 _geometry.setAttribute('position', new Float32BufferAttribute([-1, 3, 0, -1, -1, 0, 3, -1, 0], 3));

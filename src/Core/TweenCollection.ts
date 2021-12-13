@@ -1,5 +1,5 @@
 
-import * as TweenJS from '@tweenjs/tween.js';
+import * as TweenJS from '@tweenjs/tween';
 import { clone } from './clone';
 import { defaultValue } from './defaultValue';
 import { defined } from './defined';

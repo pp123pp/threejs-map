@@ -489,6 +489,48 @@ class Cartesian3 {
         }
         return Cartesian3.add(scratchK, scratchN, (result as Cartesian3));
     }
+
+    /**
+     * Compares two Cartesians and computes a Cartesian which contains the minimum components of the supplied Cartesians.
+     *
+     * @param {Cartesian3} first A cartesian to compare.
+     * @param {Cartesian3} second A cartesian to compare.
+     * @param {Cartesian3} result The object into which to store the result.
+     * @returns {Cartesian3} A cartesian with the minimum components.
+     */
+    static minimumByComponent (first: Cartesian3, second: Cartesian3, result: Cartesian3): Cartesian3 {
+        result.x = Math.min(first.x, second.x);
+        result.y = Math.min(first.y, second.y);
+        result.z = Math.min(first.z, second.z);
+
+        return result;
+    }
+
+    /**
+     * Compares two Cartesians and computes a Cartesian which contains the maximum components of the supplied Cartesians.
+     *
+     * @param {Cartesian3} first A cartesian to compare.
+     * @param {Cartesian3} second A cartesian to compare.
+     * @param {Cartesian3} result The object into which to store the result.
+     * @returns {Cartesian3} A cartesian with the maximum components.
+     */
+    static maximumByComponent (first: Cartesian3, second: Cartesian3, result: Cartesian3): Cartesian3 {
+        result.x = Math.max(first.x, second.x);
+        result.y = Math.max(first.y, second.y);
+        result.z = Math.max(first.z, second.z);
+        return result;
+    }
+
+    /**
+     * Creates a Cartesian3 instance from an existing Cartesian4.  This simply takes the
+     * x, y, and z properties of the Cartesian4 and drops w.
+     * @function
+     *
+     * @param {Cartesian4} cartesian The Cartesian4 instance to create a Cartesian3 instance from.
+     * @param {Cartesian3} [result] The object onto which to store the result.
+     * @returns {Cartesian3} The modified result parameter or a new Cartesian3 instance if one was not provided.
+     */
+    static fromCartesian4 = Cartesian3.clone;
 }
 const distanceScratch = new Cartesian3();
 const mostOrthogonalAxisScratch = new Cartesian3();

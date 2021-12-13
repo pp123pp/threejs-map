@@ -6,6 +6,7 @@ import { GeographicTilingScheme } from './GeographicTilingScheme';
 
 import when from 'when';
 import { TerrainProvider } from './TerrainProvider';
+import { Request } from './Request';
 
 interface EllipsoidTerrainProviderInterFace {
     tilingScheme?: GeographicTilingScheme | undefined;
@@ -56,6 +57,14 @@ class EllipsoidTerrainProvider {
         this._readyPromise = when.resolve(true);
     }
 
+    get errorEvent (): Event {
+        return this._errorEvent;
+    }
+
+    get credit (): undefined {
+        return undefined;
+    }
+
     get tilingScheme (): GeographicTilingScheme {
         return this._tilingScheme;
     }
@@ -64,14 +73,80 @@ class EllipsoidTerrainProvider {
         return true;
     }
 
+    get readyPromise ():When.Promise<boolean> {
+        return this._readyPromise;
+    }
+
+    get hasWaterMask (): boolean {
+        return false;
+    }
+
+    get hasVertexNormals (): boolean {
+        return false;
+    }
+
+    get availability (): undefined {
+        return undefined;
+    }
+
     /**
-     * Gets the maximum geometric error allowed in a tile at a given level.
-     *
-     * @param {Number} level The tile level for which to get the maximum geometric error.
-     * @returns {Number} The maximum geometric error.
-     */
+ * Requests the geometry for a given tile.  This function should not be called before
+ * {@link TerrainProvider#ready} returns true.  The result includes terrain
+ * data and indicates that all child tiles are available.
+ *
+ * @param {Number} x The X coordinate of the tile for which to request geometry.
+ * @param {Number} y The Y coordinate of the tile for which to request geometry.
+ * @param {Number} level The level of the tile for which to request geometry.
+ * @param {Request} [request] The request object. Intended for internal use only.
+ *
+ * @returns {Promise.<TerrainData>|undefined} A promise for the requested geometry.  If this method
+ *          returns undefined instead of a promise, it is an indication that too many requests are already
+ *          pending and the request will be retried later.
+ */
+    requestTileGeometry (x: number, y: number, level: number, request: Request): when.Promise<any> {
+        const width = 16;
+        const height = 16;
+        return when.resolve(
+            new HeightmapTerrainData({
+                buffer: new Uint8Array(width * height),
+                width: width,
+                height: height
+            })
+        );
+    }
+
+    /**
+   * Gets the maximum geometric error allowed in a tile at a given level.
+   *
+   * @param {Number} level The tile level for which to get the maximum geometric error.
+   * @returns {Number} The maximum geometric error.
+   */
     getLevelMaximumGeometricError (level: number): number {
         return this._levelZeroMaximumGeometricError / (1 << level);
+    }
+
+    /**
+   * Determines whether data for a tile is available to be loaded.
+   *
+   * @param {Number} x The X coordinate of the tile for which to request geometry.
+   * @param {Number} y The Y coordinate of the tile for which to request geometry.
+   * @param {Number} level The level of the tile for which to request geometry.
+   * @returns {Boolean|undefined} Undefined if not supported, otherwise true or false.
+   */
+    getTileDataAvailable (x: number, y: number, level: number): undefined {
+        return undefined;
+    }
+
+    /**
+   * Makes sure we load availability data for a tile
+   *
+   * @param {Number} x The X coordinate of the tile for which to request geometry.
+   * @param {Number} y The Y coordinate of the tile for which to request geometry.
+   * @param {Number} level The level of the tile for which to request geometry.
+   * @returns {undefined|Promise<void>} Undefined if nothing need to be loaded or a Promise that resolves when all required tiles are loaded
+   */
+    loadTileDataAvailability (x: number, y: number, level: number): undefined {
+        return undefined;
     }
 }
 

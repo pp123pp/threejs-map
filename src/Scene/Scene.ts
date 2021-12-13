@@ -1,8 +1,8 @@
 
-import { incrementWrap } from '@/Core/CesiumMath';
-import { defaultValue } from '@/Core/defaultValue';
-import { Event } from '@/Core/Event';
-import { SceneMode } from '@/Core/SceneMode';
+import { incrementWrap } from '../Core/CesiumMath';
+import { defaultValue } from '../Core/defaultValue';
+import { Event } from '../Core/Event';
+import { SceneMode } from '../Core/SceneMode';
 import * as THREE from 'three';
 import { Vector2, WebGLRenderer, WebGLRendererParameters } from 'three';
 import { Camera } from './Camera';
@@ -11,14 +11,15 @@ import { FrameState, PassesInterface } from './FrameState';
 import { MapRenderer, RenderStateParameters } from './MapRenderer';
 import { Pass } from './../Renderer/Pass';
 import { PerspectiveFrustumCamera } from './PerspectiveFrustumCamera';
-import { CesiumColor } from '@/Core/CesiumColor';
+import { CesiumColor } from '../Core/CesiumColor';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { GeographicProjection } from '@/Core/GeographicProjection';
+import { GeographicProjection } from '../Core/GeographicProjection';
 import { Globe } from './Globe';
 import { ComputeEngine } from '../Renderer/ComputeEngine';
-import { defined } from '@/Core/defined';
-import { ComputeCommand } from '@/Renderer/ComputeCommand';
+
+import { ComputeCommand } from '../Renderer/ComputeCommand';
 import { PrimitiveCollection } from './PrimitiveCollection';
+import { defined } from '@/Core/defined';
 
 interface SceneOptions {
     renderState?: RenderStateParameters;
@@ -109,7 +110,7 @@ function render (scene:Scene) {
     scene.updateAndExecuteCommands(scene.backgroundColor);
 
     if (defined(scene.globe)) {
-        scene.globe.endFrame(frameState);
+        // scene.globe.endFrame(frameState);
 
         if (!scene.globe.tilesLoaded) {
             scene._renderRequested = true;

@@ -1,12 +1,16 @@
 import { Cartesian2 } from './Cartesian2';
 import { Cartesian3 } from './Cartesian3';
 import { Cartographic } from './Cartographic';
+import { CesiumMath } from './CesiumMath';
 import { CesiumMatrix3, CesiumMatrix3 as Matrix3 } from './CesiumMatrix3';
 import { Check } from './Check';
 import { defaultValue } from './defaultValue';
 import { defined } from './defined';
 import { DeveloperError } from './DeveloperError';
+import { Ellipsoid } from './Ellipsoid';
+import { EllipsoidTangentPlane } from './EllipsoidTangentPlane';
 import { Plane } from './Plane';
+import { Rectangle } from './Rectangle';
 
 const scratchCartesian1 = new Cartesian3();
 const scratchCartesian2 = new Cartesian3();
@@ -99,7 +103,7 @@ const scratchPlaneOrigin = new Cartesian3();
 const scratchPlaneNormal = new Cartesian3();
 const scratchPlaneXAxis = new Cartesian3();
 const scratchHorizonCartesian = new Cartesian3();
-const scratchHorizonProjected = new Cartesian2();
+const scratchHorizonProjected:any = new Cartesian2();
 const scratchMaxY = new Cartesian3();
 const scratchMinY = new Cartesian3();
 const scratchZ = new Cartesian3();
@@ -310,6 +314,280 @@ class OrientedBoundingBox {
         Matrix3.clone(box.halfAxes, (result as OrientedBoundingBox).halfAxes);
 
         return result;
+    }
+
+    /**
+ * Computes an OrientedBoundingBox that bounds a {@link Rectangle} on the surface of an {@link Ellipsoid}.
+ * There are no guarantees about the orientation of the bounding box.
+ *
+ * @param {Rectangle} rectangle The cartographic rectangle on the surface of the ellipsoid.
+ * @param {Number} [minimumHeight=0.0] The minimum height (elevation) within the tile.
+ * @param {Number} [maximumHeight=0.0] The maximum height (elevation) within the tile.
+ * @param {Ellipsoid} [ellipsoid=Ellipsoid.WGS84] The ellipsoid on which the rectangle is defined.
+ * @param {OrientedBoundingBox} [result] The object onto which to store the result.
+ * @returns {OrientedBoundingBox} The modified result parameter or a new OrientedBoundingBox instance if none was provided.
+ *
+ * @exception {DeveloperError} rectangle.width must be between 0 and pi.
+ * @exception {DeveloperError} rectangle.height must be between 0 and pi.
+ * @exception {DeveloperError} ellipsoid must be an ellipsoid of revolution (<code>radii.x == radii.y</code>)
+ */
+    static fromRectangle (
+        rectangle: Rectangle,
+        minimumHeight = 0.0,
+        maximumHeight = 0.0,
+        ellipsoid = Ellipsoid.WGS84,
+        result?: OrientedBoundingBox
+    ): OrientedBoundingBox {
+    // >>includeStart('debug', pragmas.debug);
+        if (!defined(rectangle)) {
+            throw new DeveloperError('rectangle is required');
+        }
+        if (rectangle.width < 0.0 || rectangle.width > CesiumMath.TWO_PI) {
+            throw new DeveloperError('Rectangle width must be between 0 and 2*pi');
+        }
+        if (rectangle.height < 0.0 || rectangle.height > CesiumMath.PI) {
+            throw new DeveloperError('Rectangle height must be between 0 and pi');
+        }
+        if (defined(ellipsoid) && !CesiumMath.equalsEpsilon(ellipsoid.radii.x, ellipsoid.radii.y, CesiumMath.EPSILON15)) {
+            throw new DeveloperError(
+                'Ellipsoid must be an ellipsoid of revolution (radii.x == radii.y)'
+            );
+        }
+        // >>includeEnd('debug');
+
+        minimumHeight = defaultValue(minimumHeight, 0.0);
+        maximumHeight = defaultValue(maximumHeight, 0.0);
+        ellipsoid = defaultValue(ellipsoid, Ellipsoid.WGS84);
+
+        let minX, maxX, minY, maxY, minZ, maxZ, plane;
+
+        if (rectangle.width <= CesiumMath.PI) {
+            // The bounding box will be aligned with the tangent plane at the center of the rectangle.
+            const tangentPointCartographic = Rectangle.center(
+                rectangle,
+                scratchRectangleCenterCartographic
+            );
+            const tangentPoint = ellipsoid.cartographicToCartesian(
+                tangentPointCartographic,
+                scratchRectangleCenter
+            );
+            const tangentPlane = new EllipsoidTangentPlane(tangentPoint, ellipsoid);
+            plane = tangentPlane.plane;
+
+            // If the rectangle spans the equator, CW is instead aligned with the equator (because it sticks out the farthest at the equator).
+            const lonCenter = tangentPointCartographic.longitude;
+            const latCenter =
+            rectangle.south < 0.0 && rectangle.north > 0.0
+                ? 0.0
+                : tangentPointCartographic.latitude;
+
+            // Compute XY extents using the rectangle at maximum height
+            const perimeterCartographicNC = Cartographic.fromRadians(
+                lonCenter,
+                rectangle.north,
+                maximumHeight,
+                scratchPerimeterCartographicNC
+            );
+            const perimeterCartographicNW = Cartographic.fromRadians(
+                rectangle.west,
+                rectangle.north,
+                maximumHeight,
+                scratchPerimeterCartographicNW
+            );
+            const perimeterCartographicCW = Cartographic.fromRadians(
+                rectangle.west,
+                latCenter,
+                maximumHeight,
+                scratchPerimeterCartographicCW
+            );
+            const perimeterCartographicSW = Cartographic.fromRadians(
+                rectangle.west,
+                rectangle.south,
+                maximumHeight,
+                scratchPerimeterCartographicSW
+            );
+            const perimeterCartographicSC = Cartographic.fromRadians(
+                lonCenter,
+                rectangle.south,
+                maximumHeight,
+                scratchPerimeterCartographicSC
+            );
+
+            const perimeterCartesianNC = ellipsoid.cartographicToCartesian(
+                perimeterCartographicNC,
+                scratchPerimeterCartesianNC
+            );
+            let perimeterCartesianNW = ellipsoid.cartographicToCartesian(
+                perimeterCartographicNW,
+                scratchPerimeterCartesianNW
+            );
+            const perimeterCartesianCW = ellipsoid.cartographicToCartesian(
+                perimeterCartographicCW,
+                scratchPerimeterCartesianCW
+            );
+            let perimeterCartesianSW = ellipsoid.cartographicToCartesian(
+                perimeterCartographicSW,
+                scratchPerimeterCartesianSW
+            );
+            const perimeterCartesianSC = ellipsoid.cartographicToCartesian(
+                perimeterCartographicSC,
+                scratchPerimeterCartesianSC
+            );
+
+            const perimeterProjectedNC = tangentPlane.projectPointToNearestOnPlane(
+                perimeterCartesianNC,
+                scratchPerimeterProjectedNC
+            );
+            const perimeterProjectedNW = tangentPlane.projectPointToNearestOnPlane(
+                perimeterCartesianNW,
+                scratchPerimeterProjectedNW
+            );
+            const perimeterProjectedCW = tangentPlane.projectPointToNearestOnPlane(
+                perimeterCartesianCW,
+                scratchPerimeterProjectedCW
+            );
+            const perimeterProjectedSW = tangentPlane.projectPointToNearestOnPlane(
+                perimeterCartesianSW,
+                scratchPerimeterProjectedSW
+            );
+            const perimeterProjectedSC = tangentPlane.projectPointToNearestOnPlane(
+                perimeterCartesianSC,
+                scratchPerimeterProjectedSC
+            );
+
+            minX = Math.min(
+                perimeterProjectedNW.x,
+                perimeterProjectedCW.x,
+                perimeterProjectedSW.x
+            );
+            maxX = -minX; // symmetrical
+
+            maxY = Math.max(perimeterProjectedNW.y, perimeterProjectedNC.y);
+            minY = Math.min(perimeterProjectedSW.y, perimeterProjectedSC.y);
+
+            // Compute minimum Z using the rectangle at minimum height, since it will be deeper than the maximum height
+            perimeterCartographicNW.height = perimeterCartographicSW.height = minimumHeight;
+            perimeterCartesianNW = ellipsoid.cartographicToCartesian(
+                perimeterCartographicNW,
+                scratchPerimeterCartesianNW
+            );
+            perimeterCartesianSW = ellipsoid.cartographicToCartesian(
+                perimeterCartographicSW,
+                scratchPerimeterCartesianSW
+            );
+
+            minZ = Math.min(
+                Plane.getPointDistance(plane, perimeterCartesianNW),
+                Plane.getPointDistance(plane, perimeterCartesianSW)
+            );
+            maxZ = maximumHeight; // Since the tangent plane touches the surface at height = 0, this is okay
+
+            return fromPlaneExtents(
+                tangentPlane.origin,
+                tangentPlane.xAxis,
+                tangentPlane.yAxis,
+                tangentPlane.zAxis,
+                minX,
+                maxX,
+                minY,
+                maxY,
+                minZ,
+                maxZ,
+                result
+            );
+        }
+
+        // Handle the case where rectangle width is greater than PI (wraps around more than half the ellipsoid).
+        const fullyAboveEquator = rectangle.south > 0.0;
+        const fullyBelowEquator = rectangle.north < 0.0;
+        const latitudeNearestToEquator = fullyAboveEquator
+            ? rectangle.south
+            : fullyBelowEquator
+                ? rectangle.north
+                : 0.0;
+        const centerLongitude = Rectangle.center(
+            rectangle,
+            scratchRectangleCenterCartographic
+        ).longitude;
+
+        // Plane is located at the rectangle's center longitude and the rectangle's latitude that is closest to the equator. It rotates around the Z axis.
+        // This results in a better fit than the obb approach for smaller rectangles, which orients with the rectangle's center normal.
+        const planeOrigin = Cartesian3.fromRadians(
+            centerLongitude,
+            latitudeNearestToEquator,
+            maximumHeight,
+            ellipsoid,
+            scratchPlaneOrigin
+        );
+        planeOrigin.z = 0.0; // center the plane on the equator to simpify plane normal calculation
+        const isPole =
+          Math.abs(planeOrigin.x) < CesiumMath.EPSILON10 &&
+          Math.abs(planeOrigin.y) < CesiumMath.EPSILON10;
+        const planeNormal = !isPole
+            ? Cartesian3.normalize(planeOrigin, scratchPlaneNormal)
+            : Cartesian3.UNIT_X;
+        const planeYAxis = Cartesian3.UNIT_Z;
+        const planeXAxis = Cartesian3.cross(planeNormal, planeYAxis, scratchPlaneXAxis);
+        plane = Plane.fromPointNormal(planeOrigin, planeNormal, scratchPlane);
+
+        // Get the horizon point relative to the center. This will be the farthest extent in the plane's X dimension.
+        const horizonCartesian = Cartesian3.fromRadians(
+            centerLongitude + CesiumMath.PI_OVER_TWO,
+            latitudeNearestToEquator,
+            maximumHeight,
+            ellipsoid,
+            scratchHorizonCartesian
+        );
+        maxX = Cartesian3.dot(
+            Plane.projectPointOntoPlane(
+                plane,
+                horizonCartesian,
+                scratchHorizonProjected
+            ),
+            planeXAxis
+        );
+        minX = -maxX; // symmetrical
+
+        // Get the min and max Y, using the height that will give the largest extent
+        maxY = Cartesian3.fromRadians(
+            0.0,
+            rectangle.north,
+            fullyBelowEquator ? minimumHeight : maximumHeight,
+            ellipsoid,
+            scratchMaxY
+        ).z;
+        minY = Cartesian3.fromRadians(
+            0.0,
+            rectangle.south,
+            fullyAboveEquator ? minimumHeight : maximumHeight,
+            ellipsoid,
+            scratchMinY
+        ).z;
+
+        const farZ = Cartesian3.fromRadians(
+            rectangle.east,
+            latitudeNearestToEquator,
+            maximumHeight,
+            ellipsoid,
+            scratchZ
+        );
+        minZ = Plane.getPointDistance(plane, farZ);
+        maxZ = 0.0; // plane origin starts at maxZ already
+
+        // min and max are local to the plane axes
+        return fromPlaneExtents(
+            planeOrigin,
+            planeXAxis,
+            planeYAxis,
+            planeNormal,
+            minX,
+            maxX,
+            minY,
+            maxY,
+            minZ,
+            maxZ,
+            result
+        );
     }
 }
 
