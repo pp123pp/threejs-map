@@ -9,9 +9,18 @@ import { TerrainEncoding } from './TerrainEncoding';
 import { TerrainMesh } from './TerrainMesh';
 import { TerrainProvider } from './TerrainProvider';
 import when from 'when';
+import { GeographicTilingScheme } from './GeographicTilingScheme';
 
 class HeightmapTerrainData {
-    constructor (options) {
+    _buffer: any;
+    _width: any;
+    _height: any;
+    _childTileMask: number;
+    _createdByUpsampling: boolean;
+    _skirtHeight?: number
+    _mesh?: any
+    _structure?: any
+    constructor (options:any) {
         this._buffer = options.buffer;
         this._width = options.width;
         this._height = options.height;
@@ -34,7 +43,7 @@ class HeightmapTerrainData {
      *          asynchronous mesh creations are already in progress and the operation should
      *          be retried later.
      */
-    createMesh (tilingScheme, x, y, level, exaggeration) {
+    createMesh (tilingScheme:GeographicTilingScheme, x: number, y: number, level: number, exaggeration = 1.0): when.Promise<TerrainMesh | undefined> {
         // >>includeStart('debug', pragmas.debug);
         if (!defined(tilingScheme)) {
             throw new DeveloperError('tilingScheme is required.');

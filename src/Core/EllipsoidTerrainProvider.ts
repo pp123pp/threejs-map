@@ -7,6 +7,7 @@ import { GeographicTilingScheme } from './GeographicTilingScheme';
 import when from 'when';
 import { TerrainProvider } from './TerrainProvider';
 import { Request } from './Request';
+import { HeightmapTerrainData } from './HeightmapTerrainData';
 
 interface EllipsoidTerrainProviderInterFace {
     tilingScheme?: GeographicTilingScheme | undefined;
