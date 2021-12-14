@@ -1,3 +1,4 @@
+/* eslint-disable no-useless-escape */
 /* eslint-disable eqeqeq */
 /**
  * @license
@@ -25,11 +26,11 @@
  */
 
 /**
- * Constructs a URI object.
- * @constructor
- * @class Implementation of URI parsing and base URI resolving algorithm in RFC 3986.
- * @param {string|URI} uri A string or URI object to create the object from.
- */
+     * Constructs a URI object.
+     * @constructor
+     * @class Implementation of URI parsing and base URI resolving algorithm in RFC 3986.
+     * @param {string|URI} uri A string or URI object to create the object from.
+     */
 
 const parseRegex = new RegExp('^(?:([^:/?#]+):)?(?://([^/?#]*))?([^?#]*)(?:\\?([^#]*))?(?:#(.*))?$');
 

@@ -70,7 +70,7 @@ class ImageryLayerCollection {
  *
  * @exception {DeveloperError} index, if supplied, must be greater than or equal to zero and less than or equal to the number of the layers.
  */
-    add (layer: ImageryLayer, index: number): void {
+    add (layer: ImageryLayer, index?: number): void {
         const hasIndex = defined(index);
 
         // >>includeStart('debug', pragmas.debug);
@@ -78,9 +78,9 @@ class ImageryLayerCollection {
             throw new DeveloperError('layer is required.');
         }
         if (hasIndex) {
-            if (index < 0) {
+            if ((index as number) < 0) {
                 throw new DeveloperError('index must be greater than or equal to zero.');
-            } else if (index > this._layers.length) {
+            } else if ((index as number) > this._layers.length) {
                 throw new DeveloperError(
                     'index must be less than or equal to the number of layers.'
                 );
@@ -92,7 +92,7 @@ class ImageryLayerCollection {
             index = this._layers.length;
             this._layers.push(layer);
         } else {
-            this._layers.splice(index, 0, layer);
+            this._layers.splice((index as number), 0, layer);
         }
 
         this._update();
@@ -109,7 +109,7 @@ class ImageryLayerCollection {
    */
     addImageryProvider (
         imageryProvider: any,
-        index: number
+        index?: number
     ): ImageryLayer {
     // >>includeStart('debug', pragmas.debug);
         if (!defined(imageryProvider)) {

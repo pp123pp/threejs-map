@@ -1,8 +1,14 @@
-import { defaultValue } from '@/Core/defaultValue';
-import { defined } from '@/Core/defined';
-import { DeveloperError } from '@/Core/DeveloperError';
-import { GeographicTilingScheme } from '@/Core/GeographicTilingScheme';
-import { Resource } from '@/Core/Resource.js';
+import { Cartesian2 } from '../Core/Cartesian2';
+import { Credit } from '../Core/Credit';
+import { defaultValue } from '../Core/defaultValue';
+import { defined } from '../Core/defined';
+import { DeveloperError } from '../Core/DeveloperError';
+import { Event } from '../Core/Event';
+import { GeographicTilingScheme } from '../Core/GeographicTilingScheme';
+import { Rectangle } from '../Core/Rectangle';
+import { Resource } from '../Core/Resource';
+import when from 'when';
+import { WebMercatorTilingScheme } from './WebMercatorTilingScheme';
 
 const defaultParameters = {
     service: 'WMTS',
@@ -10,7 +16,7 @@ const defaultParameters = {
     request: 'GetTile'
 };
 class WebMapTileServiceImageryProvider {
-    _tilingScheme: GeographicTilingScheme;
+    _tilingScheme: any;
     defaultAlpha?: number;
     defaultNightAlpha?: number;
     defaultDayAlpha?: number;
@@ -22,11 +28,38 @@ class WebMapTileServiceImageryProvider {
     _style: string;
     _tileMatrixSetID: string;
     _tileWidth: number;
+    _tileHeight: number;
+    _tileMatrixLabels?: any;
+    _format: string;
+    _tileDiscardPolicy: any;
+    _minimumLevel: number;
+    _maximumLevel?: number;
+    _rectangle: Rectangle;
+    _dimensions?: Cartesian2;
+    _reload: any;
+    _readyPromise: any;
+    _errorEvent: Event;
+    _subdomains: any;
+    _credit: any
     constructor (options: {
         url: string;
         layer: string;
         style: string;
         tileMatrixSetID: string;
+        tileMatrixLabels?: any;
+        format?: string;
+        tileDiscardPolicy?: any;
+        tilingScheme?: any;
+        tileWidth?: number;
+        tileHeight?: number;
+        minimumLevel?: number;
+        maximumLevel?: number;
+        rectangle?: Rectangle;
+        dimensions?: Cartesian2;
+        times?: any;
+        ellipsoid?: any;
+        subdomains?: any;
+        credit?: any;
     }) {
         // options = defaultValue(options, defaultValue.EMPTY_OBJECT);
 
@@ -142,7 +175,7 @@ class WebMapTileServiceImageryProvider {
         const tileMatrixSetID = options.tileMatrixSetID;
         const url = resource.url;
 
-        const bracketMatch = url.match(/{/g);
+        const bracketMatch = url.match(/{/g) as any;
         if (
             !defined(bracketMatch) ||
           (bracketMatch.length === 1 && /{s}/.test(url))
@@ -165,16 +198,16 @@ class WebMapTileServiceImageryProvider {
         this._style = style;
         this._tileMatrixSetID = tileMatrixSetID;
         this._tileMatrixLabels = options.tileMatrixLabels;
-        this._format = defaultValue(options.format, 'image/jpeg');
+        this._format = defaultValue(options.format, 'image/jpeg') as string;
         this._tileDiscardPolicy = options.tileDiscardPolicy;
 
         this._tilingScheme = defined(options.tilingScheme)
             ? options.tilingScheme
             : new WebMercatorTilingScheme({ ellipsoid: options.ellipsoid });
-        this._tileWidth = defaultValue(options.tileWidth, 256);
-        this._tileHeight = defaultValue(options.tileHeight, 256);
+        this._tileWidth = defaultValue(options.tileWidth, 256) as number;
+        this._tileHeight = defaultValue(options.tileHeight, 256) as number;
 
-        this._minimumLevel = defaultValue(options.minimumLevel, 0);
+        this._minimumLevel = defaultValue(options.minimumLevel, 0) as number;
         this._maximumLevel = options.maximumLevel;
 
         this._rectangle = defaultValue(
@@ -185,20 +218,20 @@ class WebMapTileServiceImageryProvider {
 
         const that = this;
         this._reload = undefined;
-        if (defined(options.times)) {
-            this._timeDynamicImagery = new TimeDynamicImagery({
-                clock: options.clock,
-                times: options.times,
-                requestImageFunction: function (x, y, level, request, interval) {
-                    return requestImage(that, x, y, level, request, interval);
-                },
-                reloadFunction: function () {
-                    if (defined(that._reload)) {
-                        that._reload();
-                    }
-                }
-            });
-        }
+        // if (defined(options.times)) {
+        //     this._timeDynamicImagery = new TimeDynamicImagery({
+        //         clock: options.clock,
+        //         times: options.times,
+        //         requestImageFunction: function (x, y, level, request, interval) {
+        //             return requestImage(that, x, y, level, request, interval);
+        //         },
+        //         reloadFunction: function () {
+        //             if (defined(that._reload)) {
+        //                 that._reload();
+        //             }
+        //         }
+        //     });
+        // }
 
         this._readyPromise = when.resolve(true);
 

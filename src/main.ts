@@ -1,5 +1,6 @@
 import { AxesHelper, DoubleSide, Mesh, MeshNormalMaterial, SphereGeometry } from 'three';
 import { CameraEventType } from './Core/CameraEventType';
+import { WebMapTileServiceImageryProvider } from './Map';
 import { Scene } from './Scene/Scene';
 import './Widgets/MapWidgets/CesiumWidget.css';
 import { MapWidgets } from './Widgets/MapWidgets/MapWidgets';

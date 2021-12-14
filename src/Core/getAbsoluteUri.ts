@@ -16,7 +16,7 @@ import { URI as Uri } from './../ThirdParty/Uri';
  * //absolute Uri will be "https://test.com/awesome.png";
  * var absoluteUri = Cesium.getAbsoluteUri('awesome.png', 'https://test.com');
  */
-function getAbsoluteUri (relative:string, base: string): string {
+function getAbsoluteUri (relative:string, base?: string): string {
     let documentObject;
     if (typeof document !== 'undefined') {
         documentObject = document;
@@ -25,7 +25,7 @@ function getAbsoluteUri (relative:string, base: string): string {
     return getAbsoluteUri._implementation(relative, base, documentObject);
 }
 
-getAbsoluteUri._implementation = function (relative: string, base: string, documentObject:any) {
+getAbsoluteUri._implementation = function (relative: string, base?: string, documentObject?:any) {
     // >>includeStart('debug', pragmas.debug);
     if (!defined(relative)) {
         throw new DeveloperError('relative uri is required.');
