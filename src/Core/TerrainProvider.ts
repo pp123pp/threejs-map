@@ -2,10 +2,11 @@ import { CesiumMath } from './CesiumMath';
 import { defined } from './defined';
 import { DeveloperError } from './DeveloperError';
 import { Ellipsoid } from './Ellipsoid';
+import { IndexDatatype } from './IndexDatatype';
 
 const regularGridIndicesCache: any[] = [];
 const regularGridAndEdgeIndicesCache = [];
-const regularGridAndSkirtAndEdgeIndicesCache = [];
+const regularGridAndSkirtAndEdgeIndicesCache: never[][] = [];
 
 function getEdgeIndices (width: number, height: number) {
     const westIndicesSouthToNorth = new Array(height);
@@ -32,7 +33,7 @@ function getEdgeIndices (width: number, height: number) {
     };
 }
 
-function addRegularGridIndices (width: number, height: number, indices: number, offset: number) {
+function addRegularGridIndices (width: number, height: number, indices: Uint16Array | Uint32Array, offset: number) {
     let index = 0;
     for (let j = 0; j < height - 1; ++j) {
         for (let i = 0; i < width - 1; ++i) {
@@ -208,15 +209,15 @@ class TerrainProvider {
     }
 
     /**
- * Gets a list of indices for a triangle mesh representing a regular grid.  Calling
- * this function multiple times with the same grid width and height returns the
- * same list of indices.  The total number of vertices must be less than or equal
- * to 65536.
- *
- * @param {Number} width The number of vertices in the regular grid in the horizontal direction.
- * @param {Number} height The number of vertices in the regular grid in the vertical direction.
- * @returns {Uint16Array|Uint32Array} The list of indices. Uint16Array gets returned for 64KB or less and Uint32Array for 4GB or less.
- */
+     * Gets a list of indices for a triangle mesh representing a regular grid.  Calling
+     * this function multiple times with the same grid width and height returns the
+     * same list of indices.  The total number of vertices must be less than or equal
+     * to 65536.
+     *
+     * @param {Number} width The number of vertices in the regular grid in the horizontal direction.
+     * @param {Number} height The number of vertices in the regular grid in the vertical direction.
+     * @returns {Uint16Array|Uint32Array} The list of indices. Uint16Array gets returned for 64KB or less and Uint32Array for 4GB or less.
+     */
     static getRegularGridIndices (width: number, height: number): any {
     // >>includeStart('debug', pragmas.debug);
         if (width * height >= CesiumMath.FOUR_GIGABYTES) {
@@ -246,6 +247,100 @@ class TerrainProvider {
         }
 
         return indices;
+    }
+
+    /**
+ * @private
+ */
+    static getRegularGridAndSkirtIndicesAndEdgeIndices (width: number, height: number): any {
+    // >>includeStart('debug', pragmas.debug);
+        if (width * height >= CesiumMath.FOUR_GIGABYTES) {
+            throw new DeveloperError(
+                'The total number of vertices (width * height) must be less than 4,294,967,296.'
+            );
+        }
+        // >>includeEnd('debug');
+
+        let byWidth = regularGridAndSkirtAndEdgeIndicesCache[width] as any;
+        if (!defined(byWidth)) {
+            regularGridAndSkirtAndEdgeIndicesCache[width] = byWidth = [];
+        }
+
+        let indicesAndEdges:any = byWidth[height];
+        if (!defined(indicesAndEdges)) {
+            const gridVertexCount = width * height;
+            const gridIndexCount: number = (width - 1) * (height - 1) * 6;
+            const edgeVertexCount = width * 2 + height * 2;
+            const edgeIndexCount = Math.max(0, edgeVertexCount - 4) * 6;
+            const vertexCount = gridVertexCount + edgeVertexCount;
+            const indexCount = gridIndexCount + edgeIndexCount;
+
+            const edgeIndices = getEdgeIndices(width, height);
+            const westIndicesSouthToNorth = edgeIndices.westIndicesSouthToNorth;
+            const southIndicesEastToWest = edgeIndices.southIndicesEastToWest;
+            const eastIndicesNorthToSouth = edgeIndices.eastIndicesNorthToSouth;
+            const northIndicesWestToEast = edgeIndices.northIndicesWestToEast;
+
+            const indices = IndexDatatype.createTypedArray(vertexCount, indexCount);
+            addRegularGridIndices(width, height, indices, 0);
+            TerrainProvider.addSkirtIndices(
+                westIndicesSouthToNorth,
+                southIndicesEastToWest,
+                eastIndicesNorthToSouth,
+                northIndicesWestToEast,
+                gridVertexCount,
+                indices,
+                gridIndexCount
+            );
+
+            indicesAndEdges = byWidth[height] = {
+                indices: indices,
+                westIndicesSouthToNorth: westIndicesSouthToNorth,
+                southIndicesEastToWest: southIndicesEastToWest,
+                eastIndicesNorthToSouth: eastIndicesNorthToSouth,
+                northIndicesWestToEast: northIndicesWestToEast,
+                indexCountWithoutSkirts: gridIndexCount
+            };
+        }
+
+        return indicesAndEdges;
+    }
+
+    /**
+ * @private
+ */
+    static addSkirtIndices (
+        westIndicesSouthToNorth: number[],
+        southIndicesEastToWest: number[],
+        eastIndicesNorthToSouth: number[],
+        northIndicesWestToEast: number[],
+        vertexCount: number,
+        indices:any,
+        offset: number
+    ): void {
+        let vertexIndex = vertexCount;
+        offset = addSkirtIndices(
+            westIndicesSouthToNorth,
+            vertexIndex,
+            indices,
+            offset
+        );
+        vertexIndex += westIndicesSouthToNorth.length;
+        offset = addSkirtIndices(
+            southIndicesEastToWest,
+            vertexIndex,
+            indices,
+            offset
+        );
+        vertexIndex += southIndicesEastToWest.length;
+        offset = addSkirtIndices(
+            eastIndicesNorthToSouth,
+            vertexIndex,
+            indices,
+            offset
+        );
+        vertexIndex += eastIndicesNorthToSouth.length;
+        addSkirtIndices(northIndicesWestToEast, vertexIndex, indices, offset);
     }
 }
 export { TerrainProvider };

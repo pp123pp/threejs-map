@@ -1,7 +1,7 @@
 
-import { defaultValue } from './../core/defaultValue';
-import { defined } from './../core/defined';
-import { DeveloperError } from './../core/DeveloperError';
+import { defaultValue } from './defaultValue';
+import { defined } from './defined';
+import { DeveloperError } from './DeveloperError';
 import { CesiumMath } from './CesiumMath';
 import { Ellipsoid } from './Ellipsoid';
 import { Cartesian3 } from './Cartesian3';

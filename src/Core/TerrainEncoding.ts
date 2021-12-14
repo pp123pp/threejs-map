@@ -60,7 +60,7 @@ class TerrainEncoding {
     maximumHeight: number | undefined;
     center: Cartesian3;
     toScaledENU: CesiumMatrix4;
-    fromScaledENU: CesiumMatrix4 | undefined;
+    fromScaledENU?: CesiumMatrix4;
     matrix: CesiumMatrix4;
     hasVertexNormals: boolean | undefined;
     hasWebMercatorT: boolean | undefined;
@@ -228,12 +228,12 @@ class TerrainEncoding {
     }
 
     encode (
-        vertexBuffer: number[],
+        vertexBuffer: any,
         bufferIndex: number,
         position: Cartesian3,
         uv:Cartesian2,
         height: number,
-        normalToPack: Cartesian2,
+        normalToPack: Cartesian2 | undefined,
         webMercatorT: number,
         geodeticSurfaceNormal:Cartesian3
     ): number {
@@ -297,7 +297,7 @@ class TerrainEncoding {
 
         if (this.hasVertexNormals) {
             vertexBuffer[bufferIndex++] = AttributeCompression.octPackFloat(
-                normalToPack
+                (normalToPack as Cartesian2)
             );
         }
 
@@ -595,6 +595,29 @@ class TerrainEncoding {
             return attributesIndicesNone;
         }
         return attributesIndicesBits12;
+    }
+
+    static clone (encoding:TerrainEncoding, result?:TerrainEncoding):TerrainEncoding | undefined {
+        if (!defined(result)) {
+            result = new TerrainEncoding();
+        }
+
+        (result as TerrainEncoding).quantization = encoding.quantization;
+        (result as TerrainEncoding).minimumHeight = encoding.minimumHeight;
+        (result as TerrainEncoding).maximumHeight = encoding.maximumHeight;
+        (result as TerrainEncoding).center = Cartesian3.clone(encoding.center);
+        (result as TerrainEncoding).toScaledENU = Matrix4.clone(encoding.toScaledENU);
+        (result as TerrainEncoding).fromScaledENU = Matrix4.clone(encoding.fromScaledENU as CesiumMatrix4);
+        (result as TerrainEncoding).matrix = Matrix4.clone(encoding.matrix);
+        (result as TerrainEncoding).hasVertexNormals = encoding.hasVertexNormals;
+        (result as TerrainEncoding).hasWebMercatorT = encoding.hasWebMercatorT;
+        (result as TerrainEncoding).hasGeodeticSurfaceNormals = encoding.hasGeodeticSurfaceNormals;
+        (result as TerrainEncoding).exaggeration = encoding.exaggeration;
+        (result as TerrainEncoding).exaggerationRelativeHeight = encoding.exaggerationRelativeHeight;
+
+        (result as TerrainEncoding)._calculateStrideAndOffsets();
+
+        return (result as TerrainEncoding);
     }
 
     // static clone (encoding, result) {

@@ -20,6 +20,7 @@ import { ComputeEngine } from '../Renderer/ComputeEngine';
 import { ComputeCommand } from '../Renderer/ComputeCommand';
 import { PrimitiveCollection } from './PrimitiveCollection';
 import { defined } from '@/Core/defined';
+import { ImageryLayerCollection } from './ImageryLayerCollection';
 
 interface SceneOptions {
     renderState?: RenderStateParameters;
@@ -311,6 +312,10 @@ class Scene extends THREE.Scene {
 
     get drawingBufferSize (): Vector2 {
         return this.renderer.drawingBufferSize;
+    }
+
+    get imageryLayers ():ImageryLayerCollection {
+        return this.globe.imageryLayers;
     }
 
     requestRender () :void{

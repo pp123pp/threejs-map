@@ -297,6 +297,18 @@ class ImageryLayerCollection {
             layers[i].queueReprojectionCommands(frameState);
         }
     }
+
+    /**
+     * Cancels re-projection commands queued for the next frame.
+     *
+     * @private
+     */
+    cancelReprojections (): void {
+        const layers = this._layers;
+        for (let i = 0, len = layers.length; i < len; ++i) {
+            layers[i].cancelReprojections();
+        }
+    }
 }
 
 export { ImageryLayerCollection };

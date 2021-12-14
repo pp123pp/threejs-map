@@ -32,7 +32,7 @@ class Globe extends Object3DCollection {
 
         this._surface = new QuadtreePrimitive({
             tileProvider: new GlobeSurfaceTileProvider({
-                terrainProvider: terrainProvider,
+                terrainProvider: new EllipsoidTerrainProvider(),
                 imageryLayers: imageryLayerCollection
                 // surfaceShaderSet: this._surfaceShaderSet
             })
@@ -65,6 +65,8 @@ class Globe extends Object3DCollection {
         this.showGroundAtmosphere = true;
 
         this._zoomedOutOceanSpecularIntensity = 0.4;
+
+        this.terrainProvider = new EllipsoidTerrainProvider();
     }
 
     get terrainProvider (): EllipsoidTerrainProvider {

@@ -702,7 +702,7 @@ class GlobeSurfaceTileProvider {
         }
     }
 
-    _onLayerRemoved (layer: ImageryLayer, index?: number) {
+    _onLayerRemoved (layer: ImageryLayer, index?: number): void {
         // destroy TileImagerys for this layer for all previously loaded tiles
         (this._quadtree as QuadtreePrimitive).forEachLoadedTile(function (tile: any) {
             const tileImageryCollection = tile.data.imagery;
@@ -770,9 +770,9 @@ class GlobeSurfaceTileProvider {
     }
 
     /**
- * Called at the beginning of each render frame, before {@link QuadtreeTileProvider#showTileThisFrame}
- * @param {FrameState} frameState The frame state.
- */
+     * Called at the beginning of each render frame, before {@link QuadtreeTileProvider#showTileThisFrame}
+     * @param {FrameState} frameState The frame state.
+     */
     initialize (frameState: FrameState): void {
         // update each layer for texture reprojection.
         this._imageryLayers.queueReprojectionCommands(frameState);
@@ -785,6 +785,13 @@ class GlobeSurfaceTileProvider {
                 tile.data.imagery.sort(sortTileImageryByLayerIndex);
             });
         }
+    }
+
+    /**
+     * Cancels any imagery re-projections in the queue.
+     */
+    cancelReprojections () {
+        this._imageryLayers.cancelReprojections();
     }
 }
 export { GlobeSurfaceTileProvider };

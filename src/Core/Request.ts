@@ -22,11 +22,11 @@ import { RequestState } from './RequestState';
 import { RequestType } from './RequestType';
 
 class Request {
-    url?: string;
+    url: string;
     rl?: string;
-    requestFunction?: (object?: any) => any;
-    cancelFunction?: (object?: any) => any;
-    priorityFunction?: (object?: any) => any;
+    requestFunction: (object?: any) => any;
+    cancelFunction: (object?: any) => any;
+    priorityFunction: (object?: any) => any;
     priority?: number;
     throttle?: boolean;
     throttleByServer?: boolean;
@@ -56,7 +56,7 @@ class Request {
          *
          * @type {String}
          */
-        this.url = options.url;
+        this.url = options.url as string;
 
         /**
          * The function that makes the actual data request.

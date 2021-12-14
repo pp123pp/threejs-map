@@ -1,7 +1,7 @@
 /* eslint-disable no-bitwise */
-import { defaultValue } from './../core/defaultValue';
-import { defined } from './../core/defined';
-import { DeveloperError } from './../core/DeveloperError';
+import { defaultValue } from './defaultValue';
+import { defined } from './defined';
+import { DeveloperError } from './DeveloperError';
 import { createVerticesFromHeightmap } from './createVerticesFromHeightmap';
 import { GeographicProjection } from './GeographicProjection';
 import { Rectangle } from './Rectangle';
@@ -10,6 +10,11 @@ import { TerrainMesh } from './TerrainMesh';
 import { TerrainProvider } from './TerrainProvider';
 import when from 'when';
 import { GeographicTilingScheme } from './GeographicTilingScheme';
+import { BoundingSphere } from './BoundingSphere';
+import { Cartesian3 } from './Cartesian3';
+import { OrientedBoundingBox } from './OrientedBoundingBox';
+import { HeightmapEncoding } from './HeightmapEncoding';
+import HeightmapTessellator from './HeightmapTessellator';
 
 class HeightmapTerrainData {
     _buffer: any;
@@ -20,13 +25,54 @@ class HeightmapTerrainData {
     _skirtHeight?: number
     _mesh?: any
     _structure?: any
+    _encoding: HeightmapEncoding;
+    _waterMask?: boolean;
+    _bufferType: any;
     constructor (options:any) {
         this._buffer = options.buffer;
         this._width = options.width;
         this._height = options.height;
         this._childTileMask = defaultValue(options.childTileMask, 15);
+        this._encoding = defaultValue(options.encoding, HeightmapEncoding.NONE);
 
+        const defaultStructure = HeightmapTessellator.DEFAULT_STRUCTURE;
+        let structure = options.structure;
+        if (!defined(structure)) {
+            structure = defaultStructure;
+        } else if (structure !== defaultStructure) {
+            structure.heightScale = defaultValue(
+                structure.heightScale,
+                defaultStructure.heightScale
+            );
+            structure.heightOffset = defaultValue(
+                structure.heightOffset,
+                defaultStructure.heightOffset
+            );
+            structure.elementsPerHeight = defaultValue(
+                structure.elementsPerHeight,
+                defaultStructure.elementsPerHeight
+            );
+            structure.stride = defaultValue(structure.stride, defaultStructure.stride);
+            structure.elementMultiplier = defaultValue(
+                structure.elementMultiplier,
+                defaultStructure.elementMultiplier
+            );
+            structure.isBigEndian = defaultValue(
+                structure.isBigEndian,
+                defaultStructure.isBigEndian
+            );
+        }
+
+        this._structure = structure;
         this._createdByUpsampling = defaultValue(options.createdByUpsampling, false);
+        this._waterMask = options.waterMask;
+
+        this._skirtHeight = undefined;
+        this._bufferType =
+          this._encoding === HeightmapEncoding.LERC
+              ? Float32Array
+              : this._buffer.constructor;
+        this._mesh = undefined;
     }
 
     /**
@@ -43,57 +89,59 @@ class HeightmapTerrainData {
      *          asynchronous mesh creations are already in progress and the operation should
      *          be retried later.
      */
-    createMesh (tilingScheme:GeographicTilingScheme, x: number, y: number, level: number, exaggeration = 1.0): when.Promise<TerrainMesh | undefined> {
-        // >>includeStart('debug', pragmas.debug);
-        if (!defined(tilingScheme)) {
-            throw new DeveloperError('tilingScheme is required.');
-        }
-        if (!defined(x)) {
-            throw new DeveloperError('x is required.');
-        }
-        if (!defined(y)) {
-            throw new DeveloperError('y is required.');
-        }
-        if (!defined(level)) {
-            throw new DeveloperError('level is required.');
-        }
-        // >>includeEnd('debug');
+    createMesh (options: any): when.Promise<TerrainMesh | undefined> | undefined {
+        options = defaultValue(options, defaultValue.EMPTY_OBJECT);
+
+        const tilingScheme = options.tilingScheme;
+        const x = options.x;
+        const y = options.y;
+        const level = options.level;
+        const exaggeration = defaultValue(options.exaggeration, 1.0);
+        const exaggerationRelativeHeight = defaultValue(
+            options.exaggerationRelativeHeight,
+            0.0
+        );
+        const throttle = defaultValue(options.throttle, true);
 
         const ellipsoid = tilingScheme.ellipsoid;
-        // 计算矩形区域
         const nativeRectangle = tilingScheme.tileXYToNativeRectangle(x, y, level);
         const rectangle = tilingScheme.tileXYToRectangle(x, y, level);
-        exaggeration = defaultValue(exaggeration, 1.0);
 
         // Compute the center of the tile for RTC rendering.
-        // 计算矩形区域的中心点坐标
         const center = ellipsoid.cartographicToCartesian(Rectangle.center(rectangle));
 
         const structure = this._structure;
 
-        // 计算第0级别的最大几何误差
-        const levelZeroMaxError = TerrainProvider.getEstimatedLevelZeroGeometricErrorForAHeightmap(ellipsoid, this._width, tilingScheme.getNumberOfXTilesAtLevel(0));
-        // 当前级别的集合误差
+        const levelZeroMaxError = TerrainProvider.getEstimatedLevelZeroGeometricErrorForAHeightmap(
+            ellipsoid,
+            this._width,
+            tilingScheme.getNumberOfXTilesAtLevel(0)
+        );
         const thisLevelMaxError = levelZeroMaxError / (1 << level);
-        // 裙边
         this._skirtHeight = Math.min(thisLevelMaxError * 4.0, 1000.0);
 
-        // var verticesPromise = taskProcessor.scheduleTask({
-        //     heightmap : this._buffer,
-        //     structure : structure,
-        //     includeWebMercatorT : true,
-        //     width : this._width,
-        //     height : this._height,
-        //     nativeRectangle : nativeRectangle,
-        //     rectangle : rectangle,
-        //     relativeToCenter : center,
-        //     ellipsoid : ellipsoid,
-        //     skirtHeight : this._skirtHeight,
-        //     isGeographic : tilingScheme.projection instanceof GeographicProjection,
-        //     exaggeration : exaggeration
-        // });
+        // const createMeshTaskProcessor = throttle
+        //     ? createMeshTaskProcessorThrottle
+        //     : createMeshTaskProcessorNoThrottle;
 
-        const verticesPromise = createVerticesFromHeightmap({
+        //   var verticesPromise = createMeshTaskProcessor.scheduleTask({
+        //     heightmap: this._buffer,
+        //     structure: structure,
+        //     includeWebMercatorT: true,
+        //     width: this._width,
+        //     height: this._height,
+        //     nativeRectangle: nativeRectangle,
+        //     rectangle: rectangle,
+        //     relativeToCenter: center,
+        //     ellipsoid: ellipsoid,
+        //     skirtHeight: this._skirtHeight,
+        //     isGeographic: tilingScheme.projection instanceof GeographicProjection,
+        //     exaggeration: exaggeration,
+        //     exaggerationRelativeHeight: exaggerationRelativeHeight,
+        //     encoding: this._encoding,
+        //   });
+
+        const verticesPromise = when(createVerticesFromHeightmap({
             heightmap: this._buffer,
             structure: structure,
             includeWebMercatorT: true,
@@ -105,8 +153,10 @@ class HeightmapTerrainData {
             ellipsoid: ellipsoid,
             skirtHeight: this._skirtHeight,
             isGeographic: tilingScheme.projection instanceof GeographicProjection,
-            exaggeration: exaggeration
-        });
+            exaggeration: exaggeration,
+            exaggerationRelativeHeight: exaggerationRelativeHeight,
+            encoding: this._encoding
+        }, []));
 
         if (!defined(verticesPromise)) {
             // Postponed
@@ -115,21 +165,42 @@ class HeightmapTerrainData {
 
         const that = this;
         return when(verticesPromise, function (result) {
+            let indicesAndEdges : any;
+            if (that._skirtHeight as number > 0.0) {
+                indicesAndEdges = TerrainProvider.getRegularGridAndSkirtIndicesAndEdgeIndices(
+                    result.gridWidth,
+                    result.gridHeight
+                );
+            } else {
+                // indicesAndEdges = TerrainProvider.getRegularGridIndicesAndEdgeIndices(
+                //     result.gridWidth,
+                //     result.gridHeight
+                // );
+            }
+
+            const vertexCountWithoutSkirts = result.gridWidth * result.gridHeight;
+
+            // Clone complex result objects because the transfer from the web worker
+            // has stripped them down to JSON-style objects.
             that._mesh = new TerrainMesh(
                 center,
                 new Float32Array(result.vertices),
-                TerrainProvider.getRegularGridIndices(result.gridWidth, result.gridHeight),
+                indicesAndEdges.indices,
+                indicesAndEdges.indexCountWithoutSkirts,
+                vertexCountWithoutSkirts,
                 result.minimumHeight,
                 result.maximumHeight,
-                result.boundingSphere3D,
-                result.occludeePointInScaledSpace,
+                BoundingSphere.clone(result.boundingSphere3D) as BoundingSphere,
+                Cartesian3.clone(result.occludeePointInScaledSpace),
                 result.numberOfAttributes,
-                result.orientedBoundingBox,
+                OrientedBoundingBox.clone(result.orientedBoundingBox),
                 TerrainEncoding.clone(result.encoding),
-                exaggeration
+                indicesAndEdges.westIndicesSouthToNorth,
+                indicesAndEdges.southIndicesEastToWest,
+                indicesAndEdges.eastIndicesNorthToSouth,
+                indicesAndEdges.northIndicesWestToEast
             );
 
-            that._mesh.levelId = `${level}/${x}/${y}`;
             // Free memory received from server after mesh is created.
             that._buffer = undefined;
             return that._mesh;
@@ -144,7 +215,7 @@ class HeightmapTerrainData {
      *
      * @returns {Boolean} True if this instance was created by upsampling; otherwise, false.
      */
-    wasCreatedByUpsampling () {
+    wasCreatedByUpsampling (): boolean {
         return this._createdByUpsampling;
     }
 
@@ -160,7 +231,7 @@ class HeightmapTerrainData {
      * @param {Number} childY The tile Y coordinate of the child tile to check for availability.
      * @returns {Boolean} True if the child tile is available; otherwise, false.
      */
-    isChildAvailable (thisX, thisY, childX, childY) {
+    isChildAvailable (thisX: number, thisY: number, childX: number, childY: number): boolean {
         // >>includeStart('debug', pragmas.debug);
         if (!defined(thisX)) {
             throw new DeveloperError('thisX is required.');
