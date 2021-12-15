@@ -430,32 +430,32 @@ class CesiumMatrix4 {
     }
 
     /**
- * Retrieves a copy of the matrix column at the provided index as a Cartesian4 instance.
- *
- * @param {Matrix4} matrix The matrix to use.
- * @param {Number} index The zero-based index of the column to retrieve.
- * @param {Cartesian4} result The object onto which to store the result.
- * @returns {Cartesian4} The modified result parameter.
- *
- * @exception {DeveloperError} index must be 0, 1, 2, or 3.
- *
- * @example
- * //returns a Cartesian4 instance with values from the specified column
- * // m = [10.0, 11.0, 12.0, 13.0]
- * //     [14.0, 15.0, 16.0, 17.0]
- * //     [18.0, 19.0, 20.0, 21.0]
- * //     [22.0, 23.0, 24.0, 25.0]
- *
- * //Example 1: Creates an instance of Cartesian
- * var a = Cesium.Matrix4.getColumn(m, 2, new Cesium.Cartesian4());
- *
- * @example
- * //Example 2: Sets values for Cartesian instance
- * var a = new Cesium.Cartesian4();
- * Cesium.Matrix4.getColumn(m, 2, a);
- *
- * // a.x = 12.0; a.y = 16.0; a.z = 20.0; a.w = 24.0;
- */
+     * Retrieves a copy of the matrix column at the provided index as a Cartesian4 instance.
+     *
+     * @param {Matrix4} matrix The matrix to use.
+     * @param {Number} index The zero-based index of the column to retrieve.
+     * @param {Cartesian4} result The object onto which to store the result.
+     * @returns {Cartesian4} The modified result parameter.
+     *
+     * @exception {DeveloperError} index must be 0, 1, 2, or 3.
+     *
+     * @example
+     * //returns a Cartesian4 instance with values from the specified column
+     * // m = [10.0, 11.0, 12.0, 13.0]
+     * //     [14.0, 15.0, 16.0, 17.0]
+     * //     [18.0, 19.0, 20.0, 21.0]
+     * //     [22.0, 23.0, 24.0, 25.0]
+     *
+     * //Example 1: Creates an instance of Cartesian
+     * var a = Cesium.Matrix4.getColumn(m, 2, new Cesium.Cartesian4());
+     *
+     * @example
+     * //Example 2: Sets values for Cartesian instance
+     * var a = new Cesium.Cartesian4();
+     * Cesium.Matrix4.getColumn(m, 2, a);
+     *
+     * // a.x = 12.0; a.y = 16.0; a.z = 20.0; a.w = 24.0;
+     */
     static getColumn (matrix: CesiumMatrix4, index: number, result: Cartesian4):Cartesian4 {
         const startIndex = index * 4;
         const x = matrix[startIndex];
@@ -467,6 +467,20 @@ class CesiumMatrix4 {
         result.y = y;
         result.z = z;
         result.w = w;
+        return result;
+    }
+
+    /**
+     * Gets the translation portion of the provided matrix, assuming the matrix is an affine transformation matrix.
+     *
+     * @param {Matrix4} matrix The matrix to use.
+     * @param {Cartesian3} result The object onto which to store the result.
+     * @returns {Cartesian3} The modified result parameter.
+     */
+    static getTranslation (matrix: CesiumMatrix4, result:Cartesian3):Cartesian3 {
+        result.x = matrix[12];
+        result.y = matrix[13];
+        result.z = matrix[14];
         return result;
     }
 }

@@ -4,7 +4,9 @@ import { WebMapTileServiceImageryProvider } from './Map';
 import { Scene } from './Scene/Scene';
 import './Widgets/MapWidgets/CesiumWidget.css';
 import { MapWidgets } from './Widgets/MapWidgets/MapWidgets';
+import when from 'when';
 
+console.log(when());
 // const a = document.querySelector('#app');
 // console.log(a);
 
@@ -14,7 +16,10 @@ console.log(widget);
 const scene: Scene = widget.scene;
 const camera = scene.activeCamera;
 
-camera.position.set(6378137 * 2, 6378137 * 2, 6378137 * 2);
+// camera.position.set(6378137 * 2, 6378137 * 2, 6378137 * 2);
+// camera.position.set(2033992.677662228, -15449708.24660572, 10948396.652844096);
+
+camera.position.set(-15449708.24660572, 10948396.652844096, 2033992.677662228);
 
 const geometry = new SphereGeometry(6378137, 64, 64);
 const material = new MeshNormalMaterial({ side: DoubleSide });

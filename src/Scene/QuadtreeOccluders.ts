@@ -9,6 +9,10 @@ class QuadtreeOccluders {
     }) {
         this._ellipsoid = new EllipsoidalOccluder(options.ellipsoid, Cartesian3.ZERO);
     }
+
+    get ellipsoid (): EllipsoidalOccluder {
+        return this._ellipsoid;
+    }
 }
 
 export { QuadtreeOccluders };

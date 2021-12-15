@@ -25,12 +25,14 @@
  */
 
 import { Cartesian3 } from './Cartesian3';
+import { Cartesian4 } from './Cartesian4';
 import { CesiumMath } from './CesiumMath';
 import { defined } from './defined';
 import { DeveloperError } from './DeveloperError';
 
 const scratchCartesian = new Cartesian3();
 
+const scratchNormal = new Cartesian3();
 class Plane {
     normal: Cartesian3;
     distance: number;
@@ -126,6 +128,39 @@ class Plane {
         );
 
         return Cartesian3.subtract(point, scaledNormal, (result as Cartesian3));
+    }
+
+    /**
+     * Creates a plane from the general equation
+     *
+     * @param {Cartesian4} coefficients The plane's normal (normalized).
+     * @param {Plane} [result] The object onto which to store the result.
+     * @returns {Plane} A new plane instance or the modified result parameter.
+     *
+     * @exception {DeveloperError} Normal must be normalized
+     */
+    static fromCartesian4 (coefficients:Cartesian4, result?: Plane): Plane {
+        const normal = Cartesian3.fromCartesian4(coefficients, scratchNormal);
+        const distance = coefficients.w;
+
+        // >>includeStart('debug', pragmas.debug);
+        if (
+            !CesiumMath.equalsEpsilon(
+                Cartesian3.magnitude(normal),
+                1.0,
+                CesiumMath.EPSILON6
+            )
+        ) {
+            throw new DeveloperError('normal must be normalized.');
+        }
+        // >>includeEnd('debug');
+
+        if (!defined(result)) {
+            return new Plane(normal, distance);
+        }
+        Cartesian3.clone(normal, (result as Plane).normal);
+        (result as Plane).distance = distance;
+        return (result as Plane);
     }
 }
 

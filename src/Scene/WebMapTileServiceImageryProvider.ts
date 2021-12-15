@@ -272,6 +272,84 @@ class WebMapTileServiceImageryProvider {
             this._subdomains = ['a', 'b', 'c'];
         }
     }
+
+    /**
+     * Gets the URL of the service hosting the imagery.
+     * @memberof WebMapTileServiceImageryProvider.prototype
+     * @type {String}
+     * @readonly
+     */
+    get url (): string {
+        return this._resource.url;
+    }
+
+    /**
+     * Gets the proxy used by this provider.
+     * @memberof WebMapTileServiceImageryProvider.prototype
+     * @type {Proxy}
+     * @readonly
+     */
+    get proxy (): any {
+        return this._resource.proxy;
+    }
+
+    /**
+     * Gets the width of each tile, in pixels. This function should
+     * not be called before {@link WebMapTileServiceImageryProvider#ready} returns true.
+     * @memberof WebMapTileServiceImageryProvider.prototype
+     * @type {Number}
+     * @readonly
+     */
+    get tileWidth (): number {
+        return this._tileWidth;
+    }
+
+    /**
+     * Gets the height of each tile, in pixels.  This function should
+     * not be called before {@link WebMapTileServiceImageryProvider#ready} returns true.
+     * @memberof WebMapTileServiceImageryProvider.prototype
+     * @type {Number}
+     * @readonly
+     */
+    get tileHeight (): number {
+        return this._tileHeight;
+    }
+
+    get maximumLevel (): number {
+        return this._minimumLevel;
+    }
+
+    get minimumLevel (): number {
+        return this._tileHeight;
+    }
+
+    get tilingScheme (): WebMercatorTilingScheme {
+        return this._tilingScheme;
+    }
+
+    get rectangle (): Rectangle {
+        return this._rectangle;
+    }
+
+    get errorEvent (): Event {
+        return this._errorEvent;
+    }
+
+    get format (): string {
+        return this._format;
+    }
+
+    get ready (): boolean {
+        return true;
+    }
+
+    get readyPromise (): when.Promise<boolean> {
+        return this._readyPromise;
+    }
+
+    get dimensions ():Cartesian2 {
+        return this._dimensions as Cartesian2;
+    }
 }
 
 export { WebMapTileServiceImageryProvider };

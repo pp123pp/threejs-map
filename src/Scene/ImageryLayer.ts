@@ -21,6 +21,8 @@ import { RequestType } from '@/Core/RequestType';
 import { ImagerySplitDirection } from '@/Core/ImagerySplitDirection';
 import { ComputeCommand } from '@/Renderer/ComputeCommand';
 import { Request } from '@/Core/Request';
+import { WebMercatorTilingScheme } from './WebMercatorTilingScheme';
+import { WebMapTileServiceImageryProvider } from './WebMapTileServiceImageryProvider';
 
 const imageryBoundsScratch = new Rectangle();
 const tileImageryBoundsScratch = new Rectangle();
@@ -252,7 +254,7 @@ class ImageryLayer {
         this._reprojectComputeCommands = [];
     }
 
-    get imageryProvider (): any {
+    get imageryProvider (): WebMapTileServiceImageryProvider {
         return this._imageryProvider;
     }
 
@@ -672,7 +674,9 @@ class ImageryLayer {
             }
 
             // when临时
-            when(imagePromise, success);
+            // when(imagePromise, success);
+
+            (when as any)(imagePromise, success, failure);
 
         // imagePromise.then(texture => {
         //     success(texture);

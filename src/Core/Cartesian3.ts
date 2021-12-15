@@ -1,4 +1,5 @@
 /* eslint-disable no-useless-constructor */
+import { Cartesian4 } from './Cartesian4';
 import { CesiumMath } from './CesiumMath';
 import { defaultValue } from './defaultValue';
 import { defined } from './defined';
@@ -122,7 +123,7 @@ class Cartesian3 {
      * @param {Cartesian3} [result] The object onto which to store the result.
      * @returns {Cartesian3} The modified result parameter or a new Cartesian3 instance if one was not provided. (Returns undefined if cartesian is undefined)
      */
-    static clone (cartesian: Cartesian3, result?: Cartesian3): Cartesian3 {
+    static clone (cartesian: Cartesian3 | Cartesian4, result?: Cartesian3): Cartesian3 {
         if (!defined(result)) {
             return new Cartesian3(cartesian.x, cartesian.y, cartesian.z);
         }

@@ -16,6 +16,10 @@ class Context {
 
         this.drawingBufferHeight = new Cartesian2();
     }
+
+    get id (): string {
+        return this._id;
+    }
 }
 
 export { Context };

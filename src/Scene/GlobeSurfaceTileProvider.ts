@@ -3,74 +3,300 @@
 import { BoundingSphere } from '@/Core/BoundingSphere';
 import { Cartesian3 } from '@/Core/Cartesian3';
 import { Cartesian4 } from '@/Core/Cartesian4';
+import { Cartographic } from '@/Core/Cartographic';
 import { CesiumColor } from '@/Core/CesiumColor';
+import { CesiumMath } from '@/Core/CesiumMath';
 import { defaultValue } from '@/Core/defaultValue';
 import { defined } from '@/Core/defined';
 import { DeveloperError } from '@/Core/DeveloperError';
 import { EllipsoidTerrainProvider } from '@/Core/EllipsoidTerrainProvider';
 import { Event } from '@/Core/Event';
 import { GeographicTilingScheme } from '@/Core/GeographicTilingScheme';
+import { Intersect } from '@/Core/Intersect';
 import { OrientedBoundingBox } from '@/Core/OrientedBoundingBox';
 import { Rectangle } from '@/Core/Rectangle';
 import { SceneMode } from '@/Core/SceneMode';
+import { TerrainExaggeration } from '@/Core/TerrainExaggeration';
 import { TerrainQuantization } from '@/Core/TerrainQuantization';
+import { Visibility } from '@/Core/Visibility';
 import { TileMaterial } from '@/Material/TileMaterial';
 import { DrawMeshCommand } from '@/Renderer/DrawMeshCommand';
 import { Vector4, Vector3 } from 'three';
 import { TerrainProvider } from './../Core/TerrainProvider';
 import { FrameState } from './FrameState';
+import { GlobeSurfaceTile } from './GlobeSurfaceTile';
 import { ImageryLayer } from './ImageryLayer';
 import { ImageryLayerCollection } from './ImageryLayerCollection';
+import { ImageryState } from './ImageryState';
+import { QuadtreeOccluders } from './QuadtreeOccluders';
 import { QuadtreePrimitive } from './QuadtreePrimitive';
+import { QuadtreeTile } from './QuadtreeTile';
 import { QuadtreeTileLoadState } from './QuadtreeTileLoadState';
+import { TerrainState } from './TerrainState';
+import { TileBoundingRegion } from './TileBoundingRegion';
 import TileSelectionResult from './TileSelectionResult';
 
-// function getTileReadyCallback (tileImageriesToFree, layer, terrainProvider) {
-//     return function (tile) {
-//         let tileImagery;
-//         let imagery;
-//         let startIndex = -1;
-//         const tileImageryCollection = tile.data.imagery;
-//         const length = tileImageryCollection.length;
-//         let i;
-//         for (i = 0; i < length; ++i) {
-//             tileImagery = tileImageryCollection[i];
-//             imagery = defaultValue(
-//                 tileImagery.readyImagery,
-//                 tileImagery.loadingImagery
-//             );
-//             if (imagery.imageryLayer === layer) {
-//                 startIndex = i;
-//                 break;
-//             }
-//         }
+const readyImageryScratch: any[] = [];
+const canRenderTraversalStack: any[] = [];
 
-//         if (startIndex !== -1) {
-//             const endIndex = startIndex + tileImageriesToFree;
-//             tileImagery = tileImageryCollection[endIndex];
-//             imagery = defined(tileImagery)
-//                 ? defaultValue(tileImagery.readyImagery, tileImagery.loadingImagery)
-//                 : undefined;
-//             if (!defined(imagery) || imagery.imageryLayer !== layer) {
-//                 // Return false to keep the callback if we have to wait on the skeletons
-//                 // Return true to remove the callback if something went wrong
-//                 return !layer._createTileImagerySkeletons(
-//                     tile,
-//                     terrainProvider,
-//                     endIndex
-//                 );
-//             }
+const cornerPositionsScratch = [
+    new Cartesian3(),
+    new Cartesian3(),
+    new Cartesian3(),
+    new Cartesian3()
+];
 
-//             for (i = startIndex; i < endIndex; ++i) {
-//                 tileImageryCollection[i].freeResources();
-//             }
+const tileDirectionScratch = new Cartesian3();
 
-//             tileImageryCollection.splice(startIndex, tileImageriesToFree);
-//         }
+function computeOccludeePoint (
+    tileProvider:GlobeSurfaceTileProvider,
+    center:Cartesian3,
+    rectangle:Rectangle,
+    minimumHeight: number,
+    maximumHeight: number,
+    result: Cartesian3
+) {
+    const ellipsoidalOccluder = tileProvider.quadtree._occluders.ellipsoid;
+    const ellipsoid = ellipsoidalOccluder.ellipsoid;
 
-//         return true; // Everything is done, so remove the callback
-//     };
-// }
+    const cornerPositions = cornerPositionsScratch;
+    Cartesian3.fromRadians(
+        rectangle.west,
+        rectangle.south,
+        maximumHeight,
+        ellipsoid,
+        cornerPositions[0]
+    );
+    Cartesian3.fromRadians(
+        rectangle.east,
+        rectangle.south,
+        maximumHeight,
+        ellipsoid,
+        cornerPositions[1]
+    );
+    Cartesian3.fromRadians(
+        rectangle.west,
+        rectangle.north,
+        maximumHeight,
+        ellipsoid,
+        cornerPositions[2]
+    );
+    Cartesian3.fromRadians(
+        rectangle.east,
+        rectangle.north,
+        maximumHeight,
+        ellipsoid,
+        cornerPositions[3]
+    );
+
+    return ellipsoidalOccluder.computeHorizonCullingPointPossiblyUnderEllipsoid(
+        center,
+        cornerPositions,
+        minimumHeight,
+        result
+    );
+}
+
+function updateTileBoundingRegion (tile: any, tileProvider:GlobeSurfaceTileProvider, frameState:FrameState) {
+    let surfaceTile = tile.data;
+    if (surfaceTile === undefined) {
+        surfaceTile = tile.data = new GlobeSurfaceTile();
+    }
+
+    const ellipsoid = tile.tilingScheme.ellipsoid;
+    if (surfaceTile.tileBoundingRegion === undefined) {
+        surfaceTile.tileBoundingRegion = new TileBoundingRegion({
+            computeBoundingVolumes: false,
+            rectangle: tile.rectangle,
+            ellipsoid: ellipsoid,
+            minimumHeight: 0.0,
+            maximumHeight: 0.0
+        });
+    }
+
+    const tileBoundingRegion = surfaceTile.tileBoundingRegion;
+    const oldMinimumHeight = tileBoundingRegion.minimumHeight;
+    const oldMaximumHeight = tileBoundingRegion.maximumHeight;
+    let hasBoundingVolumesFromMesh = false;
+    let sourceTile = tile;
+
+    // Get min and max heights from the mesh.
+    // If the mesh is not available, get them from the terrain data.
+    // If the terrain data is not available either, get them from an ancestor.
+    // If none of the ancestors are available, then there are no min and max heights for this tile at this time.
+    const mesh = surfaceTile.mesh;
+    const terrainData = surfaceTile.terrainData;
+    if (
+        mesh !== undefined &&
+      mesh.minimumHeight !== undefined &&
+      mesh.maximumHeight !== undefined
+    ) {
+        tileBoundingRegion.minimumHeight = mesh.minimumHeight;
+        tileBoundingRegion.maximumHeight = mesh.maximumHeight;
+        hasBoundingVolumesFromMesh = true;
+    } else if (
+        terrainData !== undefined &&
+      terrainData._minimumHeight !== undefined &&
+      terrainData._maximumHeight !== undefined
+    ) {
+        tileBoundingRegion.minimumHeight = terrainData._minimumHeight;
+        tileBoundingRegion.maximumHeight = terrainData._maximumHeight;
+    } else {
+        // No accurate min/max heights available, so we're stuck with min/max heights from an ancestor tile.
+        tileBoundingRegion.minimumHeight = Number.NaN;
+        tileBoundingRegion.maximumHeight = Number.NaN;
+
+        let ancestorTile = tile.parent;
+        while (ancestorTile !== undefined) {
+            const ancestorSurfaceTile = ancestorTile.data;
+            if (ancestorSurfaceTile !== undefined) {
+                const ancestorMesh = ancestorSurfaceTile.mesh;
+                const ancestorTerrainData = ancestorSurfaceTile.terrainData;
+                if (
+                    ancestorMesh !== undefined &&
+            ancestorMesh.minimumHeight !== undefined &&
+            ancestorMesh.maximumHeight !== undefined
+                ) {
+                    tileBoundingRegion.minimumHeight = ancestorMesh.minimumHeight;
+                    tileBoundingRegion.maximumHeight = ancestorMesh.maximumHeight;
+                    break;
+                } else if (
+                    ancestorTerrainData !== undefined &&
+            ancestorTerrainData._minimumHeight !== undefined &&
+            ancestorTerrainData._maximumHeight !== undefined
+                ) {
+                    tileBoundingRegion.minimumHeight = ancestorTerrainData._minimumHeight;
+                    tileBoundingRegion.maximumHeight = ancestorTerrainData._maximumHeight;
+                    break;
+                }
+            }
+            ancestorTile = ancestorTile.parent;
+        }
+        sourceTile = ancestorTile;
+    }
+
+    // Update bounding regions from the min and max heights
+    if (sourceTile !== undefined) {
+        const exaggeration = frameState.terrainExaggeration;
+        const exaggerationRelativeHeight =
+        frameState.terrainExaggerationRelativeHeight;
+        const hasExaggeration = exaggeration !== 1.0;
+        if (hasExaggeration) {
+            hasBoundingVolumesFromMesh = false;
+            tileBoundingRegion.minimumHeight = TerrainExaggeration.getHeight(
+                tileBoundingRegion.minimumHeight,
+                exaggeration,
+                exaggerationRelativeHeight
+            );
+            tileBoundingRegion.maximumHeight = TerrainExaggeration.getHeight(
+                tileBoundingRegion.maximumHeight,
+                exaggeration,
+                exaggerationRelativeHeight
+            );
+        }
+
+        if (hasBoundingVolumesFromMesh) {
+            if (!surfaceTile.boundingVolumeIsFromMesh) {
+                tileBoundingRegion._orientedBoundingBox = OrientedBoundingBox.clone(
+                    mesh.orientedBoundingBox,
+                    tileBoundingRegion._orientedBoundingBox
+                );
+                tileBoundingRegion._boundingSphere = BoundingSphere.clone(
+                    mesh.boundingSphere3D,
+                    tileBoundingRegion._boundingSphere
+                );
+                surfaceTile.occludeePointInScaledSpace = Cartesian3.clone(
+                    mesh.occludeePointInScaledSpace,
+                    surfaceTile.occludeePointInScaledSpace
+                );
+
+                // If the occludee point is not defined, fallback to calculating it from the OBB
+                if (!defined(surfaceTile.occludeePointInScaledSpace)) {
+                    surfaceTile.occludeePointInScaledSpace = computeOccludeePoint(
+                        tileProvider,
+                        tileBoundingRegion._orientedBoundingBox.center,
+                        tile.rectangle,
+                        tileBoundingRegion.minimumHeight,
+                        tileBoundingRegion.maximumHeight,
+                        surfaceTile.occludeePointInScaledSpace
+                    );
+                }
+            }
+        } else {
+            const needsBounds =
+          tileBoundingRegion._orientedBoundingBox === undefined ||
+          tileBoundingRegion._boundingSphere === undefined;
+            const heightChanged =
+          tileBoundingRegion.minimumHeight !== oldMinimumHeight ||
+          tileBoundingRegion.maximumHeight !== oldMaximumHeight;
+            if (heightChanged || needsBounds) {
+                // Bounding volumes need to be recomputed in some circumstances
+                tileBoundingRegion.computeBoundingVolumes(ellipsoid);
+                surfaceTile.occludeePointInScaledSpace = computeOccludeePoint(
+                    tileProvider,
+                    tileBoundingRegion._orientedBoundingBox.center,
+                    tile.rectangle,
+                    tileBoundingRegion.minimumHeight,
+                    tileBoundingRegion.maximumHeight,
+                    surfaceTile.occludeePointInScaledSpace
+                );
+            }
+        }
+        surfaceTile.boundingVolumeSourceTile = sourceTile;
+        surfaceTile.boundingVolumeIsFromMesh = hasBoundingVolumesFromMesh;
+    } else {
+        surfaceTile.boundingVolumeSourceTile = undefined;
+        surfaceTile.boundingVolumeIsFromMesh = false;
+    }
+}
+
+const boundingSphereScratch = new BoundingSphere();
+const rectangleIntersectionScratch = new Rectangle();
+const splitCartographicLimitRectangleScratch = new Rectangle();
+const rectangleCenterScratch = new Cartographic();
+
+// cartographicLimitRectangle may span the IDL, but tiles never will.
+function clipRectangleAntimeridian (tileRectangle:Rectangle, cartographicLimitRectangle:Rectangle):Rectangle {
+    if (cartographicLimitRectangle.west < cartographicLimitRectangle.east) {
+        return cartographicLimitRectangle;
+    }
+    const splitRectangle = Rectangle.clone(
+        cartographicLimitRectangle,
+        splitCartographicLimitRectangleScratch
+    ) as Rectangle;
+    const tileCenter = Rectangle.center(tileRectangle, rectangleCenterScratch);
+    if (tileCenter.longitude > 0.0) {
+        splitRectangle.east = CesiumMath.PI;
+    } else {
+        splitRectangle.west = -CesiumMath.PI;
+    }
+    return splitRectangle;
+}
+
+function isUndergroundVisible (tileProvider:GlobeSurfaceTileProvider, frameState: FrameState): boolean {
+    // if (frameState.cameraUnderground) {
+    //     return true;
+    // }
+
+    // if (frameState.globeTranslucencyState.translucent) {
+    //     return true;
+    // }
+
+    // if (tileProvider.backFaceCulling) {
+    //     return false;
+    // }
+
+    // const clippingPlanes = tileProvider._clippingPlanes;
+    // if (defined(clippingPlanes) && clippingPlanes.enabled) {
+    //     return true;
+    // }
+
+    if (!Rectangle.equals(tileProvider.cartographicLimitRectangle, Rectangle.MAX_VALUE)) {
+        return true;
+    }
+
+    return false;
+}
 
 const otherPassesInitialColor = new Vector4(0.0, 0.0, 0.0, 0.0);
 const tileRectangleScratch = new Vector4();
@@ -120,6 +346,24 @@ const createTileUniformMap = (frameState: FrameState, tileProvider: any, surface
     material.defines.INCLUDE_WEB_MERCATOR_Y = '';
     return material;
 };
+
+// function updateCredits (surface: GlobeSurfaceTileProvider, frameState: FrameState) {
+//     const creditDisplay = frameState.creditDisplay;
+//     if (
+//         surface._terrainProvider.ready &&
+//       defined(surface._terrainProvider.credit)
+//     ) {
+//         creditDisplay.addCredit(surface._terrainProvider.credit);
+//     }
+
+//     const imageryLayers = surface._imageryLayers;
+//     for (let i = 0, len = imageryLayers.length; i < len; ++i) {
+//         const imageryProvider = imageryLayers.get(i).imageryProvider;
+//         if (imageryProvider.ready && defined(imageryProvider.credit)) {
+//             creditDisplay.addCredit(imageryProvider.credit);
+//         }
+//     }
+// }
 
 const addDrawCommandsForTile = (tileProvider: any, tile: any, frameState: FrameState) => {
     const surfaceTile = tile.data;
@@ -310,7 +554,9 @@ class GlobeSurfaceTileProvider {
 
     _debug: {
         wireframe: boolean,
-        boundingSphereTile: BoundingSphere | undefined
+        boundingSphereTile: BoundingSphere | undefined,
+        tilesRendered?: any,
+        texturesRendered?: any
     }
 
     _baseColor: CesiumColor | undefined;
@@ -391,8 +637,8 @@ class GlobeSurfaceTileProvider {
         this._quadtree = value;
     }
 
-    get tilingScheme (): GeographicTilingScheme | void{
-        return this._terrainProvider.tilingScheme;
+    get tilingScheme (): GeographicTilingScheme {
+        return this._terrainProvider.tilingScheme as GeographicTilingScheme;
     }
 
     get terrainProvider (): EllipsoidTerrainProvider | TerrainProvider {
@@ -421,12 +667,33 @@ class GlobeSurfaceTileProvider {
         return this._imageryLayersUpdatedEvent;
     }
 
-    get ready (): boolean {
+    get ready (): any {
         return (
             this._terrainProvider.ready &&
             (this._imageryLayers.length === 0 ||
               this._imageryLayers.get(0).imageryProvider.ready)
         );
+    }
+
+    /**
+     * Determines if the given tile can be refined
+     * @param {QuadtreeTile} tile The tile to check.
+     * @returns {boolean} True if the tile can be refined, false if it cannot.
+     */
+    anRefine (tile: QuadtreeTile): boolean {
+    // Only allow refinement it we know whether or not the children of this tile exist.
+    // For a tileset with `availability`, we'll always be able to refine.
+    // We can ask for availability of _any_ child tile because we only need to confirm
+    // that we get a yes or no answer, it doesn't matter what the answer is.
+        if (defined(tile.data.terrainData)) {
+            return true;
+        }
+        const childAvailable = this.terrainProvider.getTileDataAvailable(
+            tile.x * 2,
+            tile.y * 2,
+            tile.level + 1
+        );
+        return childAvailable !== undefined;
     }
 
     /**
@@ -785,13 +1052,519 @@ class GlobeSurfaceTileProvider {
                 tile.data.imagery.sort(sortTileImageryByLayerIndex);
             });
         }
+
+        // Add credits for terrain and imagery providers.
+        // updateCredits(this, frameState);
+
+        const vertexArraysToDestroy = this._vertexArraysToDestroy;
+        const length = vertexArraysToDestroy.length;
+        for (let j = 0; j < length; ++j) {
+            GlobeSurfaceTile._freeVertexArray(vertexArraysToDestroy[j]);
+        }
+        vertexArraysToDestroy.length = 0;
     }
 
     /**
      * Cancels any imagery re-projections in the queue.
      */
-    cancelReprojections () {
+    cancelReprojections (): void {
         this._imageryLayers.cancelReprojections();
+    }
+
+    /**
+     * Gets the distance from the camera to the closest point on the tile.  This is used for level-of-detail selection.
+     *
+     * @param {QuadtreeTile} tile The tile instance.
+     * @param {FrameState} frameState The state information of the current rendering frame.
+     *
+     * @returns {Number} The distance from the camera to the closest point on the tile, in meters.
+     */
+    computeDistanceToTile (
+        tile:QuadtreeTile,
+        frameState:FrameState
+    ): number {
+    // The distance should be:
+    // 1. the actual distance to the tight-fitting bounding volume, or
+    // 2. a distance that is equal to or greater than the actual distance to the tight-fitting bounding volume.
+    //
+    // When we don't know the min/max heights for a tile, but we do know the min/max of an ancestor tile, we can
+    // build a tight-fitting bounding volume horizontally, but not vertically. The min/max heights from the
+    // ancestor will likely form a volume that is much bigger than it needs to be. This means that the volume may
+    // be deemed to be much closer to the camera than it really is, causing us to select tiles that are too detailed.
+    // Loading too-detailed tiles is super expensive, so we don't want to do that. We don't know where the child
+    // tile really lies within the parent range of heights, but we _do_ know the child tile can't be any closer than
+    // the ancestor height surface (min or max) that is _farthest away_ from the camera. So if we compute distance
+    // based on that conservative metric, we may end up loading tiles that are not detailed enough, but that's much
+    // better (faster) than loading tiles that are too detailed.
+
+        updateTileBoundingRegion(tile, this, frameState);
+
+        const surfaceTile = tile.data;
+        const boundingVolumeSourceTile = surfaceTile.boundingVolumeSourceTile;
+        if (boundingVolumeSourceTile === undefined) {
+            // Can't find any min/max heights anywhere? Ok, let's just say the
+            // tile is really far away so we'll load and render it rather than
+            // refining.
+            return 9999999999.0;
+        }
+
+        const tileBoundingRegion = surfaceTile.tileBoundingRegion;
+        const min = tileBoundingRegion.minimumHeight;
+        const max = tileBoundingRegion.maximumHeight;
+
+        if (surfaceTile.boundingVolumeSourceTile !== tile) {
+            const cameraHeight = frameState.camera.positionCartographic.height;
+            const distanceToMin = Math.abs(cameraHeight - min);
+            const distanceToMax = Math.abs(cameraHeight - max);
+            if (distanceToMin > distanceToMax) {
+                tileBoundingRegion.minimumHeight = min;
+                tileBoundingRegion.maximumHeight = min;
+            } else {
+                tileBoundingRegion.minimumHeight = max;
+                tileBoundingRegion.maximumHeight = max;
+            }
+        }
+
+        const result = tileBoundingRegion.distanceToCamera(frameState);
+
+        tileBoundingRegion.minimumHeight = min;
+        tileBoundingRegion.maximumHeight = max;
+
+        return result;
+    }
+
+    /**
+     * Determines the visibility of a given tile.  The tile may be fully visible, partially visible, or not
+     * visible at all.  Tiles that are renderable and are at least partially visible will be shown by a call
+     * to {@link GlobeSurfaceTileProvider#showTileThisFrame}.
+     *
+     * @param {QuadtreeTile} tile The tile instance.
+     * @param {FrameState} frameState The state information about the current frame.
+     * @param {QuadtreeOccluders} occluders The objects that may occlude this tile.
+     *
+     * @returns {Visibility} Visibility.NONE if the tile is not visible,
+     *                       Visibility.PARTIAL if the tile is partially visible, or
+     *                       Visibility.FULL if the tile is fully visible.
+     */
+    computeTileVisibility (
+        tile:QuadtreeTile,
+        frameState:FrameState,
+        occluders?: QuadtreeOccluders
+    ):Visibility {
+        const distance = this.computeDistanceToTile(tile, frameState);
+        tile._distance = distance;
+
+        const undergroundVisible = isUndergroundVisible(this, frameState);
+
+        // if (frameState.fog.enabled && !undergroundVisible) {
+        //     if (CesiumMath.fog(distance, frameState.fog.density) >= 1.0) {
+        //         // Tile is completely in fog so return that it is not visible.
+        //         return Visibility.NONE;
+        //     }
+        // }
+
+        const surfaceTile = tile.data;
+        const tileBoundingRegion = surfaceTile.tileBoundingRegion;
+
+        if (surfaceTile.boundingVolumeSourceTile === undefined) {
+            // We have no idea where this tile is, so let's just call it partially visible.
+            return Visibility.PARTIAL;
+        }
+
+        const cullingVolume = frameState.cullingVolume;
+        let boundingVolume = tileBoundingRegion.boundingVolume;
+
+        if (!defined(boundingVolume)) {
+            boundingVolume = tileBoundingRegion.boundingSphere;
+        }
+
+        // Check if the tile is outside the limit area in cartographic space
+        surfaceTile.clippedByBoundaries = false;
+        const clippedCartographicLimitRectangle = clipRectangleAntimeridian(
+            tile.rectangle,
+            this.cartographicLimitRectangle
+        );
+        const areaLimitIntersection = Rectangle.simpleIntersection(
+            clippedCartographicLimitRectangle,
+            tile.rectangle,
+            rectangleIntersectionScratch
+        );
+        if (!defined(areaLimitIntersection)) {
+            return Visibility.NONE;
+        }
+        if (!Rectangle.equals(areaLimitIntersection, tile.rectangle)) {
+            surfaceTile.clippedByBoundaries = true;
+        }
+
+        if (frameState.mode !== SceneMode.SCENE3D) {
+            boundingVolume = boundingSphereScratch;
+            BoundingSphere.fromRectangleWithHeights2D(
+                tile.rectangle,
+                frameState.mapProjection,
+                tileBoundingRegion.minimumHeight,
+                tileBoundingRegion.maximumHeight,
+                boundingVolume
+            );
+            Cartesian3.fromElements(
+                boundingVolume.center.z,
+                boundingVolume.center.x,
+                boundingVolume.center.y,
+                boundingVolume.center
+            );
+
+            if (
+                frameState.mode === SceneMode.MORPHING &&
+        defined(surfaceTile.renderedMesh)
+            ) {
+                boundingVolume = BoundingSphere.union(
+                    tileBoundingRegion.boundingSphere,
+                    boundingVolume,
+                    boundingVolume
+                );
+            }
+        }
+
+        if (!defined(boundingVolume)) {
+            return Visibility.PARTIAL;
+        }
+
+        // const clippingPlanes = this._clippingPlanes;
+        // if (defined(clippingPlanes) && clippingPlanes.enabled) {
+        //     const planeIntersection = clippingPlanes.computeIntersectionWithBoundingVolume(
+        //         boundingVolume
+        //     );
+        //     tile.isClipped = planeIntersection !== Intersect.INSIDE;
+        //     if (planeIntersection === Intersect.OUTSIDE) {
+        //         return Visibility.NONE;
+        //     }
+        // }
+
+        let visibility;
+        const intersection = cullingVolume.computeVisibility(boundingVolume);
+
+        if (intersection === Intersect.OUTSIDE) {
+            visibility = Visibility.NONE;
+        } else if (intersection === Intersect.INTERSECTING) {
+            visibility = Visibility.PARTIAL;
+        } else if (intersection === Intersect.INSIDE) {
+            visibility = Visibility.FULL;
+        }
+
+        if (visibility === Visibility.NONE) {
+            return visibility;
+        }
+
+        //     const ortho3D =
+        //   frameState.mode === SceneMode.SCENE3D &&
+        //   frameState.camera.frustum instanceof OrthographicFrustum;
+        const ortho3D = false;
+        if (frameState.mode === SceneMode.SCENE3D &&
+            !ortho3D &&
+            defined(occluders) &&
+            !undergroundVisible
+        ) {
+            const occludeePointInScaledSpace = surfaceTile.occludeePointInScaledSpace;
+            if (!defined(occludeePointInScaledSpace)) {
+                return visibility as Visibility;
+            }
+
+            if (
+                (occluders as QuadtreeOccluders).ellipsoid.isScaledSpacePointVisiblePossiblyUnderEllipsoid(
+                    occludeePointInScaledSpace,
+                    tileBoundingRegion.minimumHeight
+                )
+            ) {
+                return visibility as Visibility;
+            }
+
+            return Visibility.NONE;
+        }
+
+        return visibility as Visibility;
+    }
+
+    /**
+ * Determines the priority for loading this tile. Lower priority values load sooner.
+ * @param {QuadtreeTile} tile The tile.
+ * @param {FrameState} frameState The frame state.
+ * @returns {Number} The load priority value.
+ */
+    computeTileLoadPriority (
+        tile: QuadtreeTile,
+        frameState: FrameState
+    ): number {
+        const surfaceTile = tile.data;
+        if (surfaceTile === undefined) {
+            return 0.0;
+        }
+
+        const obb = surfaceTile.tileBoundingRegion.boundingVolume;
+        if (obb === undefined) {
+            return 0.0;
+        }
+
+        const cameraPosition = frameState.camera.positionWC;
+        const cameraDirection = frameState.camera.directionWC;
+        const tileDirection = Cartesian3.subtract(
+            obb.center,
+            cameraPosition,
+            tileDirectionScratch
+        );
+        const magnitude = Cartesian3.magnitude(tileDirection);
+        if (magnitude < CesiumMath.EPSILON5) {
+            return 0.0;
+        }
+        Cartesian3.divideByScalar(tileDirection, magnitude, tileDirection);
+        return (
+            (1.0 - Cartesian3.dot(tileDirection, cameraDirection)) * tile._distance
+        );
+    }
+
+    /**
+     * Determines if the given tile can be refined
+     * @param {QuadtreeTile} tile The tile to check.
+     * @returns {boolean} True if the tile can be refined, false if it cannot.
+     */
+    canRefine (tile: QuadtreeTile): boolean {
+        // Only allow refinement it we know whether or not the children of this tile exist.
+        // For a tileset with `availability`, we'll always be able to refine.
+        // We can ask for availability of _any_ child tile because we only need to confirm
+        // that we get a yes or no answer, it doesn't matter what the answer is.
+        if (defined(tile.data.terrainData)) {
+            return true;
+        }
+        const childAvailable = this.terrainProvider.getTileDataAvailable(
+            tile.x * 2,
+            tile.y * 2,
+            tile.level + 1
+        );
+        return childAvailable !== undefined;
+    }
+
+    /**
+ * Determines if the given not-fully-loaded tile can be rendered without losing detail that
+ * was present last frame as a result of rendering descendant tiles. This method will only be
+ * called if this tile's descendants were rendered last frame. If the tile is fully loaded,
+ * it is assumed that this method will return true and it will not be called.
+ * @param {QuadtreeTile} tile The tile to check.
+ * @returns {boolean} True if the tile can be rendered without losing detail.
+ */
+    canRenderWithoutLosingDetail (
+        tile: QuadtreeTile
+    ): boolean {
+        const surfaceTile = tile.data;
+
+        const readyImagery = readyImageryScratch;
+        readyImagery.length = this._imageryLayers.length;
+
+        let terrainReady = false;
+        let initialImageryState = false;
+        let imagery;
+
+        if (defined(surfaceTile)) {
+            // We can render even with non-ready terrain as long as all our rendered descendants
+            // are missing terrain geometry too. i.e. if we rendered fills for more detailed tiles
+            // last frame, it's ok to render a fill for this tile this frame.
+            terrainReady = surfaceTile.terrainState === TerrainState.READY;
+
+            // Initially assume all imagery layers are ready, unless imagery hasn't been initialized at all.
+            initialImageryState = true;
+
+            imagery = surfaceTile.imagery;
+        }
+
+        let i;
+        let len;
+
+        for (i = 0, len = readyImagery.length; i < len; ++i) {
+            readyImagery[i] = initialImageryState;
+        }
+
+        if (defined(imagery)) {
+            for (i = 0, len = imagery.length; i < len; ++i) {
+                const tileImagery = imagery[i];
+                const loadingImagery = tileImagery.loadingImagery;
+                const isReady =
+          !defined(loadingImagery) ||
+          loadingImagery.state === ImageryState.FAILED ||
+          loadingImagery.state === ImageryState.INVALID;
+                const layerIndex = (tileImagery.loadingImagery || tileImagery.readyImagery)
+                    .imageryLayer._layerIndex;
+
+                // For a layer to be ready, all tiles belonging to that layer must be ready.
+                readyImagery[layerIndex] = isReady && readyImagery[layerIndex];
+            }
+        }
+
+        const lastFrame = this.quadtree._lastSelectionFrameNumber;
+
+        // Traverse the descendants looking for one with terrain or imagery that is not loaded on this tile.
+        const stack = canRenderTraversalStack;
+        stack.length = 0;
+        stack.push(
+            tile.southwestChild,
+            tile.southeastChild,
+            tile.northwestChild,
+            tile.northeastChild
+        );
+
+        while (stack.length > 0) {
+            const descendant = stack.pop();
+            const lastFrameSelectionResult =
+        descendant._lastSelectionResultFrame === lastFrame
+            ? descendant._lastSelectionResult
+            : TileSelectionResult.NONE;
+
+            if (lastFrameSelectionResult === TileSelectionResult.RENDERED) {
+                const descendantSurface = descendant.data;
+
+                if (!defined(descendantSurface)) {
+                    // Descendant has no data, so it can't block rendering.
+                    continue;
+                }
+
+                if (
+                    !terrainReady &&
+          descendant.data.terrainState === TerrainState.READY
+                ) {
+                    // Rendered descendant has real terrain, but we don't. Rendering is blocked.
+                    return false;
+                }
+
+                const descendantImagery = descendant.data.imagery;
+                for (i = 0, len = descendantImagery.length; i < len; ++i) {
+                    const descendantTileImagery = descendantImagery[i];
+                    const descendantLoadingImagery = descendantTileImagery.loadingImagery;
+                    const descendantIsReady =
+            !defined(descendantLoadingImagery) ||
+            descendantLoadingImagery.state === ImageryState.FAILED ||
+            descendantLoadingImagery.state === ImageryState.INVALID;
+                    const descendantLayerIndex = (
+                        descendantTileImagery.loadingImagery ||
+            descendantTileImagery.readyImagery
+                    ).imageryLayer._layerIndex;
+
+                    // If this imagery tile of a descendant is ready but the layer isn't ready in this tile,
+                    // then rendering is blocked.
+                    if (descendantIsReady && !readyImagery[descendantLayerIndex]) {
+                        return false;
+                    }
+                }
+            } else if (lastFrameSelectionResult === TileSelectionResult.REFINED) {
+                stack.push(
+                    descendant.southwestChild,
+                    descendant.southeastChild,
+                    descendant.northwestChild,
+                    descendant.northeastChild
+                );
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Shows a specified tile in this frame.  The provider can cause the tile to be shown by adding
+     * render commands to the commandList, or use any other method as appropriate.  The tile is not
+     * expected to be visible next frame as well, unless this method is called next frame, too.
+     *
+     * @param {QuadtreeTile} tile The tile instance.
+     * @param {FrameState} frameState The state information of the current rendering frame.
+     */
+    showTileThisFrame (
+        tile: QuadtreeTile,
+        frameState?: FrameState
+    ): void {
+        let readyTextureCount = 0;
+        const tileImageryCollection = tile.data.imagery;
+        for (let i = 0, len = tileImageryCollection.length; i < len; ++i) {
+            const tileImagery = tileImageryCollection[i];
+            if (
+                defined(tileImagery.readyImagery) &&
+        tileImagery.readyImagery.imageryLayer.alpha !== 0.0
+            ) {
+                ++readyTextureCount;
+            }
+        }
+
+        let tileSet = this._tilesToRenderByTextureCount[readyTextureCount];
+        if (!defined(tileSet)) {
+            tileSet = [];
+            this._tilesToRenderByTextureCount[readyTextureCount] = tileSet;
+        }
+
+        tileSet.push(tile);
+
+        const surfaceTile = tile.data;
+        if (!defined(surfaceTile.vertexArray)) {
+            this._hasFillTilesThisFrame = true;
+        } else {
+            this._hasLoadedTilesThisFrame = true;
+        }
+
+        const debug = this._debug;
+        ++debug.tilesRendered;
+        debug.texturesRendered += readyTextureCount;
+    }
+
+    /**
+     * Loads, or continues loading, a given tile.  This function will continue to be called
+     * until {@link QuadtreeTile#state} is no longer {@link QuadtreeTileLoadState#LOADING}.  This function should
+     * not be called before {@link GlobeSurfaceTileProvider#ready} returns true.
+     *
+     * @param {FrameState} frameState The frame state.
+     * @param {QuadtreeTile} tile The tile to load.
+     *
+     * @exception {DeveloperError} <code>loadTile</code> must not be called before the tile provider is ready.
+     */
+    loadTile (frameState: FrameState, tile: QuadtreeTile) {
+        // We don't want to load imagery until we're certain that the terrain tiles are actually visible.
+        // So if our bounding volume isn't accurate because it came from another tile, load terrain only
+        // initially. If we load some terrain and suddenly have a more accurate bounding volume and the
+        // tile is _still_ visible, give the tile a chance to load imagery immediately rather than
+        // waiting for next frame.
+
+        let surfaceTile = tile.data;
+        let terrainOnly = true;
+        let terrainStateBefore;
+        if (defined(surfaceTile)) {
+            terrainOnly =
+      surfaceTile.boundingVolumeSourceTile !== tile ||
+      tile._lastSelectionResult === TileSelectionResult.CULLED_BUT_NEEDED;
+            terrainStateBefore = surfaceTile.terrainState;
+        }
+
+        GlobeSurfaceTile.processStateMachine(
+            tile,
+            frameState,
+            this.terrainProvider as EllipsoidTerrainProvider,
+            this._imageryLayers,
+            this._vertexArraysToDestroy,
+            terrainOnly
+        );
+
+        surfaceTile = tile.data;
+        if (terrainOnly && terrainStateBefore !== tile.data.terrainState) {
+            // Terrain state changed. If:
+            // a) The tile is visible, and
+            // b) The bounding volume is accurate (updated as a side effect of computing visibility)
+            // Then we'll load imagery, too.
+            if (
+                this.computeTileVisibility(tile, frameState, this.quadtree.occluders) !==
+                Visibility.NONE &&
+                surfaceTile.boundingVolumeSourceTile === tile
+            ) {
+                terrainOnly = false;
+                GlobeSurfaceTile.processStateMachine(
+                    tile,
+                    frameState,
+                    this.terrainProvider as EllipsoidTerrainProvider,
+                    this._imageryLayers,
+                    this._vertexArraysToDestroy,
+                    terrainOnly
+                );
+            }
+        }
     }
 }
 export { GlobeSurfaceTileProvider };

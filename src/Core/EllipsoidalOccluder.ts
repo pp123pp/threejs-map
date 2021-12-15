@@ -31,6 +31,34 @@ const scratchEllipsoidShrunkRadii = new Cartesian3();
 
 const scratchEllipsoidShrunk = Ellipsoid.clone(Ellipsoid.UNIT_SPHERE);
 
+const scratchCameraPositionInScaledSpaceShrunk = new Cartesian3();
+
+const scratchCartesian = new Cartesian3();
+function isScaledSpacePointVisible (
+    occludeeScaledSpacePosition: Cartesian3,
+    cameraPositionInScaledSpace: Cartesian3,
+    distanceToLimbInScaledSpaceSquared: number
+) {
+    // See https://cesium.com/blog/2013/04/25/Horizon-culling/
+    const cv = cameraPositionInScaledSpace;
+    const vhMagnitudeSquared = distanceToLimbInScaledSpaceSquared;
+    const vt = Cartesian3.subtract(
+        occludeeScaledSpacePosition,
+        cv,
+        scratchCartesian
+    );
+    const vtDotVc = -Cartesian3.dot(vt, cv);
+    // If vhMagnitudeSquared < 0 then we are below the surface of the ellipsoid and
+    // in this case, set the culling plane to be on V.
+    const isOccluded =
+      vhMagnitudeSquared < 0
+          ? vtDotVc > 0
+          : vtDotVc > vhMagnitudeSquared &&
+          (vtDotVc * vtDotVc) / Cartesian3.magnitudeSquared(vt) >
+            vhMagnitudeSquared;
+    return !isOccluded;
+}
+
 function getPossiblyShrunkEllipsoid (ellipsoid: any, minimumHeight: any, result: any) {
     if (
         defined(minimumHeight) &&
@@ -164,6 +192,10 @@ class EllipsoidalOccluder {
         }
     }
 
+    get ellipsoid ():Ellipsoid {
+        return this._ellipsoid;
+    }
+
     get cameraPosition ():Cartesian3 {
         return this._cameraPosition;
     }
@@ -183,22 +215,22 @@ class EllipsoidalOccluder {
     }
 
     /**
- * Similar to {@link EllipsoidalOccluder#computeHorizonCullingPoint} except computes the culling
- * point relative to an ellipsoid that has been shrunk by the minimum height when the minimum height is below
- * the ellipsoid. The returned point is expressed in the possibly-shrunk ellipsoid-scaled space and is suitable
- * for use with {@link EllipsoidalOccluder#isScaledSpacePointVisiblePossiblyUnderEllipsoid}.
- *
- * @param {Cartesian3} directionToPoint The direction that the computed point will lie along.
- *                     A reasonable direction to use is the direction from the center of the ellipsoid to
- *                     the center of the bounding sphere computed from the positions.  The direction need not
- *                     be normalized.
- * @param {Cartesian3[]} positions The positions from which to compute the horizon culling point.  The positions
- *                       must be expressed in a reference frame centered at the ellipsoid and aligned with the
- *                       ellipsoid's axes.
- * @param {Number} [minimumHeight] The minimum height of all positions. If this value is undefined, all positions are assumed to be above the ellipsoid.
- * @param {Cartesian3} [result] The instance on which to store the result instead of allocating a new instance.
- * @returns {Cartesian3} The computed horizon culling point, expressed in the possibly-shrunk ellipsoid-scaled space.
- */
+     * Similar to {@link EllipsoidalOccluder#computeHorizonCullingPoint} except computes the culling
+     * point relative to an ellipsoid that has been shrunk by the minimum height when the minimum height is below
+     * the ellipsoid. The returned point is expressed in the possibly-shrunk ellipsoid-scaled space and is suitable
+     * for use with {@link EllipsoidalOccluder#isScaledSpacePointVisiblePossiblyUnderEllipsoid}.
+     *
+     * @param {Cartesian3} directionToPoint The direction that the computed point will lie along.
+     *                     A reasonable direction to use is the direction from the center of the ellipsoid to
+     *                     the center of the bounding sphere computed from the positions.  The direction need not
+     *                     be normalized.
+     * @param {Cartesian3[]} positions The positions from which to compute the horizon culling point.  The positions
+     *                       must be expressed in a reference frame centered at the ellipsoid and aligned with the
+     *                       ellipsoid's axes.
+     * @param {Number} [minimumHeight] The minimum height of all positions. If this value is undefined, all positions are assumed to be above the ellipsoid.
+     * @param {Cartesian3} [result] The instance on which to store the result instead of allocating a new instance.
+     * @returns {Cartesian3} The computed horizon culling point, expressed in the possibly-shrunk ellipsoid-scaled space.
+     */
     computeHorizonCullingPointPossiblyUnderEllipsoid (
         directionToPoint:Cartesian3,
         positions:Cartesian3[],
@@ -215,6 +247,47 @@ class EllipsoidalOccluder {
             directionToPoint,
             positions,
             result
+        );
+    }
+
+    /**
+     * Similar to {@link EllipsoidalOccluder#isScaledSpacePointVisible} except tests against an
+     * ellipsoid that has been shrunk by the minimum height when the minimum height is below
+     * the ellipsoid. This is intended to be used with points generated by
+     * {@link EllipsoidalOccluder#computeHorizonCullingPointPossiblyUnderEllipsoid} or
+     * {@link EllipsoidalOccluder#computeHorizonCullingPointFromVerticesPossiblyUnderEllipsoid}.
+     *
+     * @param {Cartesian3} occludeeScaledSpacePosition The point to test for visibility, represented in the scaled space of the possibly-shrunk ellipsoid.
+     * @returns {Boolean} <code>true</code> if the occludee is visible; otherwise <code>false</code>.
+     */
+    isScaledSpacePointVisiblePossiblyUnderEllipsoid (
+        occludeeScaledSpacePosition:Cartesian3,
+        minimumHeight: number
+    ) : boolean {
+        const ellipsoid = this._ellipsoid as Ellipsoid;
+        let vhMagnitudeSquared;
+        let cv;
+
+        if (
+            defined(minimumHeight) &&
+            minimumHeight < 0.0 &&
+            ellipsoid.minimumRadius > -minimumHeight
+        ) {
+            // This code is similar to the cameraPosition setter, but unrolled for performance because it will be called a lot.
+            cv = scratchCameraPositionInScaledSpaceShrunk;
+            cv.x = this._cameraPosition.x / (ellipsoid.radii.x + minimumHeight);
+            cv.y = this._cameraPosition.y / (ellipsoid.radii.y + minimumHeight);
+            cv.z = this._cameraPosition.z / (ellipsoid.radii.z + minimumHeight);
+            vhMagnitudeSquared = cv.x * cv.x + cv.y * cv.y + cv.z * cv.z - 1.0;
+        } else {
+            cv = this._cameraPositionInScaledSpace;
+            vhMagnitudeSquared = this._distanceToLimbInScaledSpaceSquared;
+        }
+
+        return isScaledSpacePointVisible(
+            occludeeScaledSpacePosition,
+            cv,
+            vhMagnitudeSquared
         );
     }
 }

@@ -150,8 +150,8 @@ class Ellipsoid {
      * @type {Number}
      * @readonly
      */
-    get minimumRadius (): number | undefined {
-        return this._minimumRadius;
+    get minimumRadius (): number {
+        return this._minimumRadius as number;
     }
 
     /**

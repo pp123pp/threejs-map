@@ -2,6 +2,7 @@ import { Cartesian3 } from './Cartesian3';
 import { defaultValue } from './defaultValue';
 import { defined } from './defined';
 import { DeveloperError } from './DeveloperError';
+import { Intersect } from './Intersect';
 import { Plane } from './Plane';
 
 const faces = [new Cartesian3(), new Cartesian3(), new Cartesian3()];
@@ -24,6 +25,35 @@ class CullingVolume {
          * @default []
          */
         this.planes = defaultValue(planes, []) as Plane[];
+    }
+
+    /**
+     * Determines whether a bounding volume intersects the culling volume.
+     *
+     * @param {Object} boundingVolume The bounding volume whose intersection with the culling volume is to be tested.
+     * @returns {Intersect}  Intersect.OUTSIDE, Intersect.INTERSECTING, or Intersect.INSIDE.
+     */
+    computeVisibility (boundingVolume: any): Intersect {
+    // >>includeStart('debug', pragmas.debug);
+        if (!defined(boundingVolume)) {
+            throw new DeveloperError('boundingVolume is required.');
+        }
+        // >>includeEnd('debug');
+
+        const planes: any = this.planes;
+        let intersecting = false;
+        for (let k = 0, len = planes.length; k < len; ++k) {
+            const result = boundingVolume.intersectPlane(
+                Plane.fromCartesian4(planes[k], scratchPlane)
+            );
+            if (result === Intersect.OUTSIDE) {
+                return Intersect.OUTSIDE;
+            } else if (result === Intersect.INTERSECTING) {
+                intersecting = true;
+            }
+        }
+
+        return intersecting ? Intersect.INTERSECTING : Intersect.INSIDE;
     }
 }
 

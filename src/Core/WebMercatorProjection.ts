@@ -1,3 +1,4 @@
+import { Cartesian2 } from './Cartesian2';
 import { Cartesian3 } from './Cartesian3';
 import { Cartographic } from './Cartographic';
 import { CesiumMath } from './CesiumMath';
@@ -116,7 +117,7 @@ class WebMercatorProjection {
    *        new instance should be created.
    * @returns {Cartographic} The equivalent cartographic coordinates.
    */
-    unproject (cartesian: Cartesian3, result?: Cartographic): Cartographic {
+    unproject (cartesian: Cartesian3 | Cartesian2, result?: Cartographic): Cartographic {
         // >>includeStart('debug', pragmas.debug);
         if (!defined(cartesian)) {
             throw new DeveloperError('cartesian is required');
@@ -128,7 +129,7 @@ class WebMercatorProjection {
         const latitude = WebMercatorProjection.mercatorAngleToGeodeticLatitude(
             cartesian.y * oneOverEarthSemimajorAxis
         );
-        const height = cartesian.z;
+        const height = (cartesian as any).z;
 
         if (!defined(result)) {
             return new Cartographic(longitude, latitude, height);

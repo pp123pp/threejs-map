@@ -1,6 +1,11 @@
+import { Cartesian3 } from '@/Core/Cartesian3';
 import { Cartographic } from '@/Core/Cartographic';
 import { Frustum, Matrix4, PerspectiveCamera, Vector3 } from 'three';
 import { Scene } from './Scene';
+
+const worldDirectionCartesian = new Cartesian3();
+
+const worldDirection = new Vector3();
 
 export interface PerspectiveFrustumCameraParameters {
     fov?: number;
@@ -36,6 +41,14 @@ class PerspectiveFrustumCamera extends PerspectiveCamera {
 
         this._positionWC = new Vector3();
         this.sseDenominator = 0;
+    }
+
+    get directionWC (): Cartesian3 {
+        this.getWorldDirection(worldDirection);
+        worldDirectionCartesian.x = worldDirection.x;
+        worldDirectionCartesian.y = worldDirection.y;
+        worldDirectionCartesian.z = worldDirection.z;
+        return worldDirectionCartesian;
     }
 
     get frustum (): Frustum {

@@ -111,7 +111,7 @@ function render (scene:Scene) {
     scene.updateAndExecuteCommands(scene.backgroundColor);
 
     if (defined(scene.globe)) {
-        // scene.globe.endFrame(frameState);
+        scene.globe.endFrame(frameState);
 
         if (!scene.globe.tilesLoaded) {
             scene._renderRequested = true;
