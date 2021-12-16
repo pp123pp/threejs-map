@@ -21,6 +21,7 @@ import { ComputeCommand } from '../Renderer/ComputeCommand';
 import { PrimitiveCollection } from './PrimitiveCollection';
 import { defined } from '@/Core/defined';
 import { ImageryLayerCollection } from './ImageryLayerCollection';
+import { RenderCollection } from './RenderCollection';
 
 interface SceneOptions {
     renderState?: RenderStateParameters;
@@ -132,6 +133,10 @@ function updateAndRenderPrimitives (scene: Scene) {
     if (scene._globe) {
         scene._globe.render(frameState);
     }
+
+    for (const command of frameState.commandList) {
+        scene._renderCollection.add(command);
+    }
 }
 
 /**
@@ -199,6 +204,7 @@ class Scene extends THREE.Scene {
     _computeEngine: ComputeEngine;
     _removeGlobeCallbacks: any[];
     _computeCommandList: ComputeCommand[];
+    _renderCollection: RenderCollection
     constructor (options: SceneOptions) {
         super();
 
@@ -263,6 +269,10 @@ class Scene extends THREE.Scene {
         this.backgroundColor = new CesiumColor(1.0, 0.0, 0.0, 1.0);
 
         this._computeCommandList = [];
+
+        this._renderCollection = new RenderCollection();
+
+        this.addObject(this._renderCollection);
     }
 
     get pixelRatio (): number {
@@ -402,7 +412,7 @@ class Scene extends THREE.Scene {
         frameState.shadowMaps.length = 0;
         frameState.mapProjection = this.mapProjection;
         frameState.mode = this._mode;
-
+        this._renderCollection.children = [];
         // frameState.cullingVolume = camera.computeCullingVolume();
 
         this.clearPasses(frameState.passes);

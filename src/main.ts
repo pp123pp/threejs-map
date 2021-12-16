@@ -26,7 +26,7 @@ camera.lookAt(0, 0, 0);
 const geometry = new SphereGeometry(6378137, 64, 64);
 const material = new MeshNormalMaterial({ side: DoubleSide, wireframe: true });
 const cube = new Mesh(geometry, material);
-scene.add(cube);
+// scene.add(cube);
 
 const axesHelper = new AxesHelper(50000000);
 scene.add(axesHelper);

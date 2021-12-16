@@ -108,9 +108,9 @@ void main(){
     vec3 transformed = vec3(position);
     vec4 mvPosition = vec4( transformed, 1.0 );
 
-    gl_Position = getPosition(transformed, height, textureCoordinates);
+    // gl_Position = getPosition(transformed, height, textureCoordinates);
 
-    // gl_Position = projectionMatrix * modelViewMatrix *  vec4( transformed, 1.0 );
+    gl_Position = projectionMatrix * modelViewMatrix *  vec4( transformed, 1.0 );
     
     v_textureCoordinates = vec3(textureCoordinates, webMercatorT);
     
@@ -237,9 +237,9 @@ void main(void){
     #include <logdepthbuf_fragment>
 
 
-    gl_FragColor = computeDayColor(u_initialColor, clamp(v_textureCoordinates, 0.0, 1.0));
+    // gl_FragColor = computeDayColor(u_initialColor, clamp(v_textureCoordinates, 0.0, 1.0));
 
-    // gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+    gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
 }
 `;
 

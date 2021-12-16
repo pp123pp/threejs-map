@@ -21,7 +21,7 @@ import { TerrainQuantization } from '@/Core/TerrainQuantization';
 import { Visibility } from '@/Core/Visibility';
 import { TileMaterial } from '@/Material/TileMaterial';
 import { DrawMeshCommand } from '@/Renderer/DrawMeshCommand';
-import { Vector4, Vector3 } from 'three';
+import { Vector4, Vector3, DoubleSide } from 'three';
 import { TerrainProvider } from './../Core/TerrainProvider';
 import { FrameState } from './FrameState';
 import { GlobeSurfaceTile } from './GlobeSurfaceTile';
@@ -333,7 +333,7 @@ function sortTileImageryByLayerIndex (a: any, b: any) {
 
 const createTileUniformMap = (frameState: FrameState, tileProvider: any, surfaceShaderSetOptions: any, quantization: TerrainQuantization) => {
     const material = new TileMaterial({
-        // side: DoubleSide,
+        side: DoubleSide
         // wireframe: true
         // depthTest: false
     }, surfaceShaderSetOptions);
@@ -508,7 +508,7 @@ const addDrawCommandsForTile = (tileProvider: any, tile: any, frameState: FrameS
 
         uniformMap.scaleAndBias = encoding.threeMatrix4;
 
-        command.geometry = surfaceTile.geometry;
+        command.geometry = mesh.geometry;
         command.material = uniformMap;
 
         let boundingVolume = command.boundingVolume;
