@@ -24,9 +24,9 @@ import { RequestType } from './RequestType';
 class Request {
     url: string;
     rl?: string;
-    requestFunction: (object?: any) => any;
-    cancelFunction: (object?: any) => any;
-    priorityFunction: (object?: any) => any;
+    requestFunction?: (object?: any) => any;
+    cancelFunction?: (object?: any) => any;
+    priorityFunction?: (object?: any) => any;
     priority?: number;
     throttle?: boolean;
     throttleByServer?: boolean;

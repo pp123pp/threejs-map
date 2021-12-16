@@ -15,7 +15,7 @@ class Ray {
     origin: Cartesian3;
     direction: Cartesian3;
     constructor (origin?: Cartesian3, direction?: Cartesian3) {
-        direction = Cartesian3.clone(defaultValue(direction, Cartesian3.ZERO) as Cartesian3);
+        direction = Cartesian3.clone(defaultValue(direction, Cartesian3.ZERO) as Cartesian3) as Cartesian3;
         if (!Cartesian3.equals(direction, Cartesian3.ZERO)) {
             Cartesian3.normalize(direction, direction);
         }
@@ -25,7 +25,7 @@ class Ray {
          * @type {Cartesian3}
          * @default {@link Cartesian3.ZERO}
          */
-        this.origin = Cartesian3.clone(defaultValue(origin, Cartesian3.ZERO) as Cartesian3);
+        this.origin = Cartesian3.clone(defaultValue(origin, Cartesian3.ZERO) as Cartesian3) as Cartesian3;
 
         /**
          * The direction of the ray.

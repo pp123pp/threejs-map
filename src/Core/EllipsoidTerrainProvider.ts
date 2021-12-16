@@ -4,7 +4,7 @@ import { Ellipsoid } from './Ellipsoid';
 import { Event } from './Event';
 import { GeographicTilingScheme } from './GeographicTilingScheme';
 
-import when from 'when';
+import { when } from '../ThirdParty/when';
 import { TerrainProvider } from './TerrainProvider';
 import { Request } from './Request';
 import { HeightmapTerrainData } from './HeightmapTerrainData';
@@ -35,7 +35,7 @@ class EllipsoidTerrainProvider {
     _tilingScheme: GeographicTilingScheme;
     _levelZeroMaximumGeometricError: number;
     _errorEvent: Event;
-    _readyPromise:When.Promise<boolean>
+    _readyPromise: any
     constructor (options?: any) {
         (options as any) = defaultValue(options, defaultValue.EMPTY_OBJECT) as any;
 
@@ -74,7 +74,7 @@ class EllipsoidTerrainProvider {
         return true;
     }
 
-    get readyPromise ():When.Promise<boolean> {
+    get readyPromise ():any {
         return this._readyPromise;
     }
 
@@ -104,7 +104,7 @@ class EllipsoidTerrainProvider {
  *          returns undefined instead of a promise, it is an indication that too many requests are already
  *          pending and the request will be retried later.
  */
-    requestTileGeometry (x: number, y: number, level: number, request: Request): when.Promise<any> {
+    requestTileGeometry (x: number, y: number, level: number, request: Request): any {
         const width = 16;
         const height = 16;
         return when.resolve(

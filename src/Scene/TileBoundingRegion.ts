@@ -8,6 +8,8 @@ import { OrientedBoundingBox } from '@/Core/OrientedBoundingBox';
 import { Plane } from '@/Core/Plane';
 import { Ray } from '@/Core/Ray';
 import { Rectangle } from '@/Core/Rectangle';
+import { SceneMode } from '@/Core/SceneMode';
+import { FrameState } from './FrameState';
 
 const cartesian3Scratch = new Cartesian3();
 const cartesian3Scratch2 = new Cartesian3();
@@ -18,6 +20,12 @@ const easternMidpointScratch = new Cartesian3();
 const cartographicScratch = new Cartographic();
 const planeScratch = new Plane(Cartesian3.UNIT_X, 0.0);
 const rayScratch = new Ray();
+
+const southwestCornerScratch = new Cartesian3();
+const northeastCornerScratch = new Cartesian3();
+const negativeUnitY = new Cartesian3(0.0, -1.0, 0.0);
+const negativeUnitZ = new Cartesian3(0.0, 0.0, -1.0);
+const vectorScratch = new Cartesian3();
 
 function computeBox (tileBB: TileBoundingRegion, rectangle:Rectangle, ellipsoid:Ellipsoid) {
     ellipsoid.cartographicToCartesian(
@@ -252,6 +260,112 @@ class TileBoundingRegion {
         this._boundingSphere = BoundingSphere.fromOrientedBoundingBox(
             this._orientedBoundingBox
         );
+    }
+
+    /**
+     * Gets the distance from the camera to the closest point on the tile.  This is used for level of detail selection.
+     *
+     * @param {FrameState} frameState The state information of the current rendering frame.
+     * @returns {Number} The distance from the camera to the closest point on the tile, in meters.
+     */
+    distanceToCamera (frameState: FrameState): number {
+        const camera = frameState.camera;
+        const cameraCartesianPosition = camera.positionWC;
+        const cameraCartographicPosition = camera.positionCartographic;
+
+        let result = 0.0;
+        if (!Rectangle.contains(this.rectangle, cameraCartographicPosition)) {
+            let southwestCornerCartesian = this.southwestCornerCartesian;
+            let northeastCornerCartesian = this.northeastCornerCartesian;
+            let westNormal = this.westNormal;
+            let southNormal = this.southNormal;
+            let eastNormal = this.eastNormal;
+            let northNormal = this.northNormal;
+
+            if (frameState.mode !== SceneMode.SCENE3D) {
+                southwestCornerCartesian = frameState.mapProjection.project(
+                    Rectangle.southwest(this.rectangle),
+                    southwestCornerScratch
+                );
+                southwestCornerCartesian.z = southwestCornerCartesian.y;
+                southwestCornerCartesian.y = southwestCornerCartesian.x;
+                southwestCornerCartesian.x = 0.0;
+                northeastCornerCartesian = frameState.mapProjection.project(
+                    Rectangle.northeast(this.rectangle),
+                    northeastCornerScratch
+                );
+                northeastCornerCartesian.z = northeastCornerCartesian.y;
+                northeastCornerCartesian.y = northeastCornerCartesian.x;
+                northeastCornerCartesian.x = 0.0;
+                westNormal = negativeUnitY;
+                eastNormal = Cartesian3.UNIT_Y;
+                southNormal = negativeUnitZ;
+                northNormal = Cartesian3.UNIT_Z;
+            }
+
+            const vectorFromSouthwestCorner = Cartesian3.subtract(
+                cameraCartesianPosition,
+                southwestCornerCartesian,
+                vectorScratch
+            );
+            const distanceToWestPlane = Cartesian3.dot(
+                vectorFromSouthwestCorner,
+                westNormal
+            );
+            const distanceToSouthPlane = Cartesian3.dot(
+                vectorFromSouthwestCorner,
+                southNormal
+            );
+
+            const vectorFromNortheastCorner = Cartesian3.subtract(
+                cameraCartesianPosition,
+                northeastCornerCartesian,
+                vectorScratch
+            );
+            const distanceToEastPlane = Cartesian3.dot(
+                vectorFromNortheastCorner,
+                eastNormal
+            );
+            const distanceToNorthPlane = Cartesian3.dot(
+                vectorFromNortheastCorner,
+                northNormal
+            );
+
+            if (distanceToWestPlane > 0.0) {
+                result += distanceToWestPlane * distanceToWestPlane;
+            } else if (distanceToEastPlane > 0.0) {
+                result += distanceToEastPlane * distanceToEastPlane;
+            }
+
+            if (distanceToSouthPlane > 0.0) {
+                result += distanceToSouthPlane * distanceToSouthPlane;
+            } else if (distanceToNorthPlane > 0.0) {
+                result += distanceToNorthPlane * distanceToNorthPlane;
+            }
+        }
+
+        let cameraHeight;
+        let minimumHeight;
+        let maximumHeight;
+        if (frameState.mode === SceneMode.SCENE3D) {
+            cameraHeight = cameraCartographicPosition.height;
+            minimumHeight = this.minimumHeight;
+            maximumHeight = this.maximumHeight;
+        } else {
+            cameraHeight = cameraCartesianPosition.x;
+            minimumHeight = 0.0;
+            maximumHeight = 0.0;
+        }
+
+        if (cameraHeight > maximumHeight) {
+            const distanceAboveTop = cameraHeight - maximumHeight;
+            result += distanceAboveTop * distanceAboveTop;
+        } else if (cameraHeight < minimumHeight) {
+            const distanceBelowBottom = minimumHeight - cameraHeight;
+            result += distanceBelowBottom * distanceBelowBottom;
+        }
+
+        return Math.sqrt(result);
     }
 }
 

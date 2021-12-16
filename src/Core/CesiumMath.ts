@@ -535,6 +535,65 @@ const lerp = function (p: number, q: number, time: number): number {
     return (1.0 - time) * p + time * q;
 };
 
+/**
+ * Determines if the left value is greater the right value. If the two values are within
+ * <code>absoluteEpsilon</code> of each other, they are considered equal and this function returns false.
+ *
+ * @param {Number} left The first number to compare.
+ * @param {Number} right The second number to compare.
+ * @param {Number} absoluteEpsilon The absolute epsilon to use in comparison.
+ * @returns {Boolean} <code>true</code> if <code>left</code> is greater than <code>right</code> by more than
+ *          <code>absoluteEpsilon<code>. <code>false</code> if <code>left</code> is less or if the two
+ *          values are nearly equal.
+ */
+const greaterThan = function (left: number, right: number, absoluteEpsilon: number): boolean {
+    return left - right > absoluteEpsilon;
+};
+
+/**
+ * Determines if the left value is greater than or equal to the right value. If the two values are within
+ * <code>absoluteEpsilon</code> of each other, they are considered equal and this function returns true.
+ *
+ * @param {Number} left The first number to compare.
+ * @param {Number} right The second number to compare.
+ * @param {Number} absoluteEpsilon The absolute epsilon to use in comparison.
+ * @returns {Boolean} <code>true</code> if <code>left</code> is greater than <code>right</code> or if the
+ *          the values are nearly equal.
+ */
+const greaterThanOrEquals = function (left: number, right: number, absoluteEpsilon: number): boolean {
+    return left - right > -absoluteEpsilon;
+};
+
+/**
+ * Determines if the left value is less than the right value. If the two values are within
+ * <code>absoluteEpsilon</code> of each other, they are considered equal and this function returns false.
+ *
+ * @param {Number} left The first number to compare.
+ * @param {Number} right The second number to compare.
+ * @param {Number} absoluteEpsilon The absolute epsilon to use in comparison.
+ * @returns {Boolean} <code>true</code> if <code>left</code> is less than <code>right</code> by more than
+ *          <code>absoluteEpsilon<code>. <code>false</code> if <code>left</code> is greater or if the two
+ *          values are nearly equal.
+ */
+const lessThan = function (left: number, right: number, absoluteEpsilon: number): boolean {
+    // >>includeEnd('debug');
+    return left - right < -absoluteEpsilon;
+};
+
+/**
+ * Determines if the left value is less than or equal to the right value. If the two values are within
+ * <code>absoluteEpsilon</code> of each other, they are considered equal and this function returns true.
+ *
+ * @param {Number} left The first number to compare.
+ * @param {Number} right The second number to compare.
+ * @param {Number} absoluteEpsilon The absolute epsilon to use in comparison.
+ * @returns {Boolean} <code>true</code> if <code>left</code> is less than <code>right</code> or if the
+ *          the values are nearly equal.
+ */
+const lessThanOrEquals = function (left: number, right: number, absoluteEpsilon: number): boolean {
+    return left - right < absoluteEpsilon;
+};
+
 const CesiumMath = {
     EPSILON1,
     EPSILON2,
@@ -580,6 +639,10 @@ const CesiumMath = {
     acosClamped,
     toDegrees,
     lerp,
+    greaterThan,
+    greaterThanOrEquals,
+    lessThan,
+    lessThanOrEquals,
     SIXTY_FOUR_KILOBYTES,
     /**
      * Returns the sign of the value; 1 if the value is positive, -1 if the value is

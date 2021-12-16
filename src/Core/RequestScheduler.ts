@@ -1,15 +1,15 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 /* eslint-disable no-useless-constructor */
 
-import { defaultValue } from './../core/defaultValue';
-import { defined } from './../core/defined';
+import { defaultValue } from './defaultValue';
+import { defined } from './defined';
 import { Event } from './Event';
 import { Heap } from './Heap';
 import { isBlobUri } from './isBlobUri';
 import { isDataUri } from './isDataUri';
 import { RequestState } from './RequestState';
-import { URI as Uri } from './Uri';
-import when from 'when';
+import { URI as Uri } from '../ThirdParty/Uri';
+import { when } from '../ThirdParty/when';
 import { Request } from './Request';
 
 function sortRequests (a:any, b: any) {
@@ -329,7 +329,7 @@ static requestHeap = requestHeap;
 
 function updatePriority (request: Request) {
     if (defined(request.priorityFunction)) {
-        request.priority = request.priorityFunction();
+        request.priority = (request.cancelFunction as any)();
     }
 }
 
@@ -382,7 +382,8 @@ function startRequest (request: Request) {
     ++statistics.numberOfActiveRequests;
     ++statistics.numberOfActiveRequestsEver;
     ++numberOfActiveRequestsByServer[request.serverKey as string];
-    request.requestFunction().then(getRequestReceivedFunction(request))
+    (request.requestFunction as any)()
+        .then(getRequestReceivedFunction(request))
         .otherwise(getRequestFailedFunction(request));
     return promise;
 }
@@ -400,7 +401,7 @@ function cancelRequest (request: Request) {
     }
 
     if (defined(request.cancelFunction)) {
-        request.cancelFunction();
+        (request.cancelFunction as any)();
     }
 }
 

@@ -1,11 +1,11 @@
-import { URI as Uri } from './Uri';
+import { URI as Uri } from './../ThirdParty/Uri';
 import { defined } from './defined';
 import { DeveloperError } from './DeveloperError';
 
 interface TrustedServersInterFace {
     add?(host: string, port: number): void
     remove?(host: string, port: number): void
-    contains?(url: string): boolean
+    contains(url: string): boolean
     clear?(): void
 }
 
@@ -17,7 +17,7 @@ interface TrustedServersInterFace {
  *
  * @see {@link http://www.w3.org/TR/cors/|Cross-Origin Resource Sharing}
  */
-const TrustedServers: TrustedServersInterFace = {};
+const TrustedServers: any = {};
 let _servers = {};
 
 /**
@@ -30,7 +30,7 @@ let _servers = {};
  * // Add a trusted server
  * TrustedServers.add('my.server.com', 80);
  */
-TrustedServers.add = function (host, port) {
+TrustedServers.add = function (host: string, port: number) {
     // >>includeStart('debug', pragmas.debug);
     if (!defined(host)) {
         throw new DeveloperError('host is required.');
@@ -56,7 +56,7 @@ TrustedServers.add = function (host, port) {
  * // Remove a trusted server
  * TrustedServers.remove('my.server.com', 80);
  */
-TrustedServers.remove = function (host, port) {
+TrustedServers.remove = function (host: string, port: number) {
     // >>includeStart('debug', pragmas.debug);
     if (!defined(host)) {
         throw new DeveloperError('host is required.');
@@ -125,7 +125,7 @@ function getAuthority (url: string): string | undefined {
  *     // my.server.com isn't trusted
  * }
  */
-TrustedServers.contains = function (url) {
+TrustedServers.contains = function (url: string): boolean {
     // >>includeStart('debug', pragmas.debug);
     if (!defined(url)) {
         throw new DeveloperError('url is required.');

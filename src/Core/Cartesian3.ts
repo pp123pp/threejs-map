@@ -123,7 +123,10 @@ class Cartesian3 {
      * @param {Cartesian3} [result] The object onto which to store the result.
      * @returns {Cartesian3} The modified result parameter or a new Cartesian3 instance if one was not provided. (Returns undefined if cartesian is undefined)
      */
-    static clone (cartesian: Cartesian3 | Cartesian4, result?: Cartesian3): Cartesian3 {
+    static clone (cartesian: Cartesian3 | Cartesian4, result?: Cartesian3): Cartesian3 | any {
+        if (!defined(cartesian)) {
+            return undefined;
+        }
         if (!defined(result)) {
             return new Cartesian3(cartesian.x, cartesian.y, cartesian.z);
         }
@@ -396,14 +399,14 @@ class Cartesian3 {
 
         if (f.x <= f.y) {
             if (f.x <= f.z) {
-                result = Cartesian3.clone(Cartesian3.UNIT_X, result);
+                result = Cartesian3.clone(Cartesian3.UNIT_X, result) as Cartesian3;
             } else {
-                result = Cartesian3.clone(Cartesian3.UNIT_Z, result);
+                result = Cartesian3.clone(Cartesian3.UNIT_Z, result) as Cartesian3;
             }
         } else if (f.y <= f.z) {
-            result = Cartesian3.clone(Cartesian3.UNIT_Y, result);
+            result = Cartesian3.clone(Cartesian3.UNIT_Y, result) as Cartesian3;
         } else {
-            result = Cartesian3.clone(Cartesian3.UNIT_Z, result);
+            result = Cartesian3.clone(Cartesian3.UNIT_Z, result) as Cartesian3;
         }
 
         return result;
@@ -532,6 +535,21 @@ class Cartesian3 {
      * @returns {Cartesian3} The modified result parameter or a new Cartesian3 instance if one was not provided.
      */
     static fromCartesian4 = Cartesian3.clone;
+
+    /**
+     * Computes the linear interpolation or extrapolation at t using the provided cartesians.
+     *
+     * @param {Cartesian3} start The value corresponding to t at 0.0.
+     * @param {Cartesian3} end The value corresponding to t at 1.0.
+     * @param {Number} t The point along t at which to interpolate.
+     * @param {Cartesian3} result The object onto which to store the result.
+     * @returns {Cartesian3} The modified result parameter.
+     */
+    static lerp (start: Cartesian3, end: Cartesian3, t: number, result: Cartesian3): Cartesian3 {
+        Cartesian3.multiplyByScalar(end, t, lerpScratch);
+        result = Cartesian3.multiplyByScalar(start, 1.0 - t, result);
+        return Cartesian3.add(lerpScratch, result, result);
+    }
 }
 const distanceScratch = new Cartesian3();
 const mostOrthogonalAxisScratch = new Cartesian3();
@@ -543,5 +561,7 @@ const wgs84RadiiSquared = new Cartesian3(
     6378137.0 * 6378137.0,
     6356752.3142451793 * 6356752.3142451793
 );
+
+const lerpScratch = new Cartesian3();
 
 export { Cartesian3 };

@@ -13,12 +13,14 @@ import { ImageryLayerCollection } from './ImageryLayerCollection';
 import { QuadtreeTile } from './QuadtreeTile';
 import { QuadtreeTileLoadState } from './QuadtreeTileLoadState';
 import { TerrainState } from './TerrainState';
-import when from 'when';
+import { when } from '../ThirdParty/when';
 import { TerrainProvider } from '@/Core/TerrainProvider';
 import { RequestState } from '@/Core/RequestState';
 import { TileProviderError } from '@/Core/TileProviderError';
 import { RequestType } from '@/Core/RequestType';
 import { Request } from '@/Core/Request';
+import { TileBoundingRegion } from './TileBoundingRegion';
+import { ImageryState } from './ImageryState';
 function disposeArray () {
 
     // this.array = null;
@@ -224,7 +226,7 @@ function upsample (surfaceTile: any, tile: any, frameState: any, terrainProvider
 
     when(
         terrainDataPromise,
-        function (terrainData) {
+        function (terrainData: any) {
             surfaceTile.terrainData = terrainData;
             surfaceTile.terrainState = TerrainState.RECEIVED;
         }
@@ -347,7 +349,7 @@ class GlobeSurfaceTile {
     imagery: any[];
     terrainData?: any;
     vertexArray?: any;
-    tileBoundingRegion?: undefined;
+    tileBoundingRegion?: TileBoundingRegion;
     occludeePointInScaledSpace: Cartesian3;
     boundingVolumeSourceTile?: any;
     boundingVolumeIsFromMesh: boolean;
@@ -394,6 +396,15 @@ class GlobeSurfaceTile {
         this.isClipped = true;
 
         this.clippedByBoundaries = false;
+    }
+
+    get renderedMesh (): any {
+        if (defined(this.vertexArray)) {
+            return this.mesh;
+        } else if (defined(this.fill)) {
+            return this.fill.mesh;
+        }
+        return undefined;
     }
 
     freeVertexArray (): void {
@@ -450,7 +461,7 @@ class GlobeSurfaceTile {
     ): void {
         GlobeSurfaceTile.initialize(tile, (terrainProvider as EllipsoidTerrainProvider), imageryLayerCollection);
 
-        const surfaceTile = tile.data;
+        const surfaceTile: GlobeSurfaceTile = tile.data;
 
         if (tile.state === QuadtreeTileLoadState.LOADING) {
             processTerrainStateMachine(
@@ -515,7 +526,7 @@ class GlobeSurfaceTile {
         }
     }
 
-    static _createVertexArrayForMesh (context: Context, mesh: TerrainMesh): void {
+    static _createVertexArrayForMesh (context: Context, mesh: TerrainMesh): any {
         const geometry = new BufferGeometry();
 
         const indexBuffers = (mesh.indices as any).indexBuffers || {};
@@ -549,6 +560,73 @@ class GlobeSurfaceTile {
 
         // tileTerrain.vertexArray = mesh.vertices;
         (mesh as any).geometry = geometry;
+
+        return geometry;
+    }
+
+    processImagery (
+        tile: QuadtreeTile,
+        terrainProvider: EllipsoidTerrainProvider,
+        frameState: FrameState,
+        skipLoading?: any
+    ) {
+        const surfaceTile = tile.data;
+        let isUpsampledOnly = tile.upsampledFromParent;
+        let isAnyTileLoaded = false;
+        let isDoneLoading = true;
+
+        // Transition imagery states
+        const tileImageryCollection = surfaceTile.imagery;
+        let i, len;
+        for (i = 0, len = tileImageryCollection.length; i < len; ++i) {
+            const tileImagery = tileImageryCollection[i];
+            if (!defined(tileImagery.loadingImagery)) {
+                isUpsampledOnly = false;
+                continue;
+            }
+
+            if (tileImagery.loadingImagery.state === ImageryState.PLACEHOLDER) {
+                const imageryLayer = tileImagery.loadingImagery.imageryLayer;
+                if (imageryLayer.imageryProvider.ready) {
+                    // Remove the placeholder and add the actual skeletons (if any)
+                    // at the same position.  Then continue the loop at the same index.
+                    tileImagery.freeResources();
+                    tileImageryCollection.splice(i, 1);
+                    imageryLayer._createTileImagerySkeletons(tile, terrainProvider, i);
+                    --i;
+                    len = tileImageryCollection.length;
+                    continue;
+                } else {
+                    isUpsampledOnly = false;
+                }
+            }
+
+            const thisTileDoneLoading = tileImagery.processStateMachine(
+                tile,
+                frameState,
+                skipLoading
+            );
+            isDoneLoading = isDoneLoading && thisTileDoneLoading;
+
+            // The imagery is renderable as soon as we have any renderable imagery for this region.
+            isAnyTileLoaded =
+            isAnyTileLoaded ||
+            thisTileDoneLoading ||
+            defined(tileImagery.readyImagery);
+
+            isUpsampledOnly =
+            isUpsampledOnly &&
+            defined(tileImagery.loadingImagery) &&
+            (tileImagery.loadingImagery.state === ImageryState.FAILED ||
+              tileImagery.loadingImagery.state === ImageryState.INVALID);
+        }
+
+        tile.upsampledFromParent = isUpsampledOnly;
+
+        // Allow rendering if any available layers are loaded
+        tile.renderable = tile.renderable && (isAnyTileLoaded || isDoneLoading);
+
+        return isDoneLoading;
     }
 }
 

@@ -16,7 +16,7 @@ import { FrameState } from './FrameState';
 import { Imagery } from './Imagery';
 import { ImageryState } from './ImageryState';
 import { TileImagery } from './TileImagery';
-import when from 'when';
+import { when } from '../ThirdParty/when';
 import { RequestType } from '@/Core/RequestType';
 import { ImagerySplitDirection } from '@/Core/ImagerySplitDirection';
 import { ComputeCommand } from '@/Renderer/ComputeCommand';
@@ -592,41 +592,12 @@ class ImageryLayer {
      * @param {Imagery} imagery The imagery to request.
      * @param {Function} [priorityFunction] The priority function used for sorting the imagery request.
      */
-    _requestImagery (imagery: any, priorityFunction: unknown): void {
+    _requestImagery (imagery: any): void {
         const imageryProvider = this._imageryProvider;
 
         const that = this;
 
-        const success = (image:any) => {
-            if (!defined(image)) {
-            // return failure();
-            }
-
-            if (image instanceof Image) {
-                const tex = new Texture();
-                tex.image = image;
-                tex.needsUpdate = true;
-
-                image = tex;
-            }
-
-            image.levelId = `${imagery.level}/${imagery.x}/${imagery.y}`;
-
-            // image.flipY = false;
-
-            imagery.image = image;
-            imagery.image.width = image.image.width;
-            imagery.image.height = image.image.height;
-
-            imagery.state = ImageryState.RECEIVED;
-            imagery.request = undefined;
-
-            TileProviderError.handleSuccess(that._requestImageError);
-
-            return undefined;
-        };
-
-        const failure = (e:Error) => {
+        function failure (e?: any) {
             if (imagery.request.state === RequestState.CANCELLED) {
             // Cancelled due to low priority - try again later.
                 imagery.state = ImageryState.UNLOADED;
@@ -639,28 +610,53 @@ class ImageryLayer {
             imagery.state = ImageryState.FAILED;
             imagery.request = undefined;
 
-            const message = 'Failed to obtain image tile X: ' + imagery.x + ' Y: ' + imagery.y + ' Level: ' + imagery.level + '.';
+            const message =
+            'Failed to obtain image tile X: ' +
+            imagery.x +
+            ' Y: ' +
+            imagery.y +
+            ' Level: ' +
+            imagery.level +
+            '.';
             that._requestImageError = TileProviderError.handleError(
                 that._requestImageError,
                 imageryProvider,
                 imageryProvider.errorEvent,
                 message,
-                imagery.x, imagery.y, imagery.level,
+                imagery.x,
+                imagery.y,
+                imagery.level,
                 doRequest,
                 e
             );
-        };
+        }
 
-        const doRequest = () => {
+        function success (image: any) {
+            if (!defined(image)) {
+                return failure();
+            }
+
+            imagery.image = image;
+            imagery.state = ImageryState.RECEIVED;
+            imagery.request = undefined;
+
+            TileProviderError.handleSuccess(that._requestImageError);
+        }
+
+        function doRequest () {
             const request = new Request({
-                throttle: true,
+                throttle: false,
                 throttleByServer: true,
-                type: RequestType.IMAGERY,
-                priorityFunction: priorityFunction
+                type: RequestType.IMAGERY
             });
             imagery.request = request;
             imagery.state = ImageryState.TRANSITIONING;
-            const imagePromise = imageryProvider.requestImage(imagery.x, imagery.y, imagery.level, request);
+            const imagePromise = imageryProvider.requestImage(
+                imagery.x,
+                imagery.y,
+                imagery.level,
+                request
+            );
 
             if (!defined(imagePromise)) {
             // Too many parallel requests, so postpone loading tile.
@@ -670,20 +666,15 @@ class ImageryLayer {
             }
 
             if (defined(imageryProvider.getTileCredits)) {
-                imagery.credits = imageryProvider.getTileCredits(imagery.x, imagery.y, imagery.level);
+                imagery.credits = imageryProvider.getTileCredits(
+                    imagery.x,
+                    imagery.y,
+                    imagery.level
+                );
             }
 
-            // when临时
-            // when(imagePromise, success);
-
-            (when as any)(imagePromise, success, failure);
-
-        // imagePromise.then(texture => {
-        //     success(texture);
-        // }).catch(e => {
-        //     failure(e);
-        // });
-        };
+            when(imagePromise, success, failure);
+        }
 
         doRequest();
     }

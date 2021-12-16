@@ -68,6 +68,7 @@ function tryAndCatchError (scene:Scene, functionToExecute: any) {
     try {
         functionToExecute(scene);
     } catch (error) {
+        console.log(error);
         scene.renderError.raiseEvent(scene, error);
 
         if (scene.rethrowRenderErrors) {
@@ -183,7 +184,7 @@ class Scene extends THREE.Scene {
     _renderRequested: boolean;
     protected _shaderFrameCount: number;
     protected _context: Context;
-    protected _mode: number;
+    protected _mode: SceneMode;
     readonly _camera: Camera;
     requestRenderMode: boolean;
     readonly renderError: Event;
@@ -201,6 +202,11 @@ class Scene extends THREE.Scene {
     constructor (options: SceneOptions) {
         super();
 
+        this._mode = SceneMode.SCENE3D;
+
+        // 地图的投影方式
+        this._mapProjection = defaultValue(options.mapProjection, new GeographicProjection()) as GeographicProjection;
+
         this._primitives = new PrimitiveCollection();
 
         this.renderError = new Event();
@@ -216,8 +222,6 @@ class Scene extends THREE.Scene {
         this.activeCamera.lookAt(0, 0, 0);
 
         this.renderer = new MapRenderer(options.renderState);
-
-        this._frameState = new FrameState(this);
 
         /**
          * When <code>true</code>, rendering a frame will only occur when needed as determined by changes within the scene.
@@ -235,10 +239,6 @@ class Scene extends THREE.Scene {
         this.requestRenderMode = defaultValue(options.requestRenderMode, false) as boolean;
         this._renderRequested = true;
         this._shaderFrameCount = 0;
-        this._mode = SceneMode.SCENE3D;
-
-        // 地图的投影方式
-        this._mapProjection = defaultValue(options.mapProjection, new GeographicProjection()) as GeographicProjection;
 
         this._canvas = options.canvas as HTMLCanvasElement;
         this._context = new Context(this);
@@ -246,6 +246,7 @@ class Scene extends THREE.Scene {
 
         this.screenSpaceCameraController = new OrbitControls(this.activeCamera, this.renderer.domElement);
 
+        this._frameState = new FrameState(this);
         this._removeGlobeCallbacks = [];
 
         /**
@@ -399,7 +400,7 @@ class Scene extends THREE.Scene {
         const frameState = this._frameState;
         frameState.commandList.length = 0;
         frameState.shadowMaps.length = 0;
-
+        frameState.mapProjection = this.mapProjection;
         frameState.mode = this._mode;
 
         // frameState.cullingVolume = camera.computeCullingVolume();

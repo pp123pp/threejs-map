@@ -46,7 +46,7 @@ class Plane {
          *
          * @type {Cartesian3}
          */
-        this.normal = Cartesian3.clone(normal);
+        this.normal = Cartesian3.clone(normal) as Cartesian3;
 
         /**
          * The shortest distance from the origin to the plane.  The sign of
@@ -140,7 +140,7 @@ class Plane {
      * @exception {DeveloperError} Normal must be normalized
      */
     static fromCartesian4 (coefficients:Cartesian4, result?: Plane): Plane {
-        const normal = Cartesian3.fromCartesian4(coefficients, scratchNormal);
+        const normal = Cartesian3.fromCartesian4(coefficients, scratchNormal) as Cartesian3;
         const distance = coefficients.w;
 
         // >>includeStart('debug', pragmas.debug);

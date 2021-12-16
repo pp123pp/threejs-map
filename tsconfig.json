@@ -12,6 +12,7 @@
     "allowSyntheticDefaultImports": true,
     "suppressImplicitAnyIndexErrors":true,
     "sourceMap": true,
+    "noImplicitThis": false,
     "baseUrl": ".",
     "types": [
       "webpack-env"
@@ -34,7 +35,7 @@
     "src/**/*.vue",
     "tests/**/*.ts",
     "tests/**/*.tsx"
-  ],
+, "src/ThirdParty/when.ts"  ],
   "exclude": [
     "node_modules"
   ]

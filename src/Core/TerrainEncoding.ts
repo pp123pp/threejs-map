@@ -1,9 +1,10 @@
+import { Matrix4 } from 'three';
 import { AttributeCompression } from './AttributeCompression';
 import { AxisAlignedBoundingBox } from './AxisAlignedBoundingBox';
 import { Cartesian2 } from './Cartesian2';
 import { Cartesian3 } from './Cartesian3';
 import { CesiumMath } from './CesiumMath';
-import { CesiumMatrix4, CesiumMatrix4 as Matrix4 } from './CesiumMatrix4';
+import { CesiumMatrix4 } from './CesiumMatrix4';
 import { ComponentDatatype } from './ComponentDatatype';
 import { defaultValue } from './defaultValue';
 import { defined } from './defined';
@@ -14,8 +15,8 @@ import { TerrainQuantization } from './TerrainQuantization';
 const cartesian3Scratch = new Cartesian3();
 const cartesian3DimScratch = new Cartesian3();
 const cartesian2Scratch = new Cartesian2();
-const matrix4Scratch = new Matrix4();
-const matrix4Scratch2 = new Matrix4();
+const matrix4Scratch = new CesiumMatrix4();
+const matrix4Scratch2 = new CesiumMatrix4();
 
 const SHIFT_LEFT_12 = Math.pow(2.0, 12.0);
 
@@ -44,7 +45,7 @@ const attributesIndicesBits12 = {
  * @param {AxisAlignedBoundingBox} axisAlignedBoundingBox The bounds of the tile in the east-north-up coordinates at the tiles center.
  * @param {Number} minimumHeight The minimum height.
  * @param {Number} maximumHeight The maximum height.
- * @param {Matrix4} fromENU The east-north-up to fixed frame matrix at the center of the terrain mesh.
+ * @param {CesiumMatrix4} fromENU The east-north-up to fixed frame matrix at the center of the terrain mesh.
  * @param {Boolean} hasVertexNormals If the mesh has vertex normals.
  * @param {Boolean} [hasWebMercatorT=false] true if the terrain data includes a Web Mercator texture coordinate; otherwise, false.
  * @param {Boolean} [hasGeodeticSurfaceNormals=false] true if the terrain data includes geodetic surface normals; otherwise, false.
@@ -53,6 +54,8 @@ const attributesIndicesBits12 = {
  *
  * @private
  */
+
+const threeMatrix4 = new Matrix4();
 
 class TerrainEncoding {
     quantization: TerrainQuantization;
@@ -108,11 +111,11 @@ class TerrainEncoding {
                 quantization = TerrainQuantization.NONE;
             }
 
-            toENU = Matrix4.inverseTransformation((fromENU as CesiumMatrix4), new Matrix4());
+            toENU = CesiumMatrix4.inverseTransformation((fromENU as CesiumMatrix4), new CesiumMatrix4());
 
             const translation = Cartesian3.negate(minimum, cartesian3Scratch);
-            Matrix4.multiply(
-                Matrix4.fromTranslation(translation, matrix4Scratch),
+            CesiumMatrix4.multiply(
+                CesiumMatrix4.fromTranslation(translation, matrix4Scratch),
                 toENU,
                 toENU
             );
@@ -121,19 +124,19 @@ class TerrainEncoding {
             scale.x = 1.0 / dimensions.x;
             scale.y = 1.0 / dimensions.y;
             scale.z = 1.0 / dimensions.z;
-            Matrix4.multiply(Matrix4.fromScale(scale, matrix4Scratch), toENU, toENU);
+            CesiumMatrix4.multiply(CesiumMatrix4.fromScale(scale, matrix4Scratch), toENU, toENU);
 
-            matrix = Matrix4.clone((fromENU as CesiumMatrix4));
-            Matrix4.setTranslation(matrix, Cartesian3.ZERO, matrix);
+            matrix = CesiumMatrix4.clone((fromENU as CesiumMatrix4));
+            CesiumMatrix4.setTranslation(matrix, Cartesian3.ZERO, matrix);
 
-            fromENU = Matrix4.clone((fromENU as CesiumMatrix4), new Matrix4());
+            fromENU = CesiumMatrix4.clone((fromENU as CesiumMatrix4), new CesiumMatrix4());
 
-            const translationMatrix = Matrix4.fromTranslation(minimum, matrix4Scratch);
-            const scaleMatrix = Matrix4.fromScale(dimensions, matrix4Scratch2);
-            const st = Matrix4.multiply(translationMatrix, scaleMatrix, matrix4Scratch);
+            const translationMatrix = CesiumMatrix4.fromTranslation(minimum, matrix4Scratch);
+            const scaleMatrix = CesiumMatrix4.fromScale(dimensions, matrix4Scratch2);
+            const st = CesiumMatrix4.multiply(translationMatrix, scaleMatrix, matrix4Scratch);
 
-            Matrix4.multiply(fromENU, st, fromENU);
-            Matrix4.multiply(matrix, st, matrix);
+            CesiumMatrix4.multiply(fromENU, st, fromENU);
+            CesiumMatrix4.multiply(matrix, st, matrix);
         }
 
         /**
@@ -158,24 +161,24 @@ class TerrainEncoding {
          * The center of the tile.
          * @type {Cartesian3}
          */
-        this.center = Cartesian3.clone(center);
+        this.center = Cartesian3.clone(center) as Cartesian3;
 
         /**
          * A matrix that takes a vertex from the tile, transforms it to east-north-up at the center and scales
          * it so each component is in the [0, 1] range.
-         * @type {Matrix4}
+         * @type {CesiumMatrix4}
          */
         this.toScaledENU = (toENU as CesiumMatrix4);
 
         /**
          * A matrix that restores a vertex transformed with toScaledENU back to the earth fixed reference frame
-         * @type {Matrix4}
+         * @type {CesiumMatrix4}
          */
         this.fromScaledENU = fromENU;
 
         /**
          * The matrix used to decompress the terrain vertices in the shader for RTE rendering.
-         * @type {Matrix4}
+         * @type {CesiumMatrix4}
          */
         this.matrix = (matrix as CesiumMatrix4);
 
@@ -227,6 +230,10 @@ class TerrainEncoding {
         this._calculateStrideAndOffsets();
     }
 
+    get threeMatrix4 (): Matrix4 {
+        return CesiumMatrix4.copyThreeMatrix4(this.matrix, threeMatrix4);
+    }
+
     encode (
         vertexBuffer: any,
         bufferIndex: number,
@@ -241,7 +248,7 @@ class TerrainEncoding {
         const v = uv.y;
 
         if (this.quantization === TerrainQuantization.BITS12) {
-            position = Matrix4.multiplyByPoint(
+            position = CesiumMatrix4.multiplyByPoint(
                 this.toScaledENU,
                 position,
                 cartesian3Scratch
@@ -388,7 +395,7 @@ class TerrainEncoding {
             );
             result.z = zh.x;
 
-            return Matrix4.multiplyByPoint((this.fromScaledENU as CesiumMatrix4), result, result);
+            return CesiumMatrix4.multiplyByPoint((this.fromScaledENU as CesiumMatrix4), result, result);
         }
 
         result.x = buffer[index];
@@ -605,10 +612,10 @@ class TerrainEncoding {
         (result as TerrainEncoding).quantization = encoding.quantization;
         (result as TerrainEncoding).minimumHeight = encoding.minimumHeight;
         (result as TerrainEncoding).maximumHeight = encoding.maximumHeight;
-        (result as TerrainEncoding).center = Cartesian3.clone(encoding.center);
-        (result as TerrainEncoding).toScaledENU = Matrix4.clone(encoding.toScaledENU);
-        (result as TerrainEncoding).fromScaledENU = Matrix4.clone(encoding.fromScaledENU as CesiumMatrix4);
-        (result as TerrainEncoding).matrix = Matrix4.clone(encoding.matrix);
+        (result as TerrainEncoding).center = Cartesian3.clone(encoding.center) as Cartesian3;
+        (result as TerrainEncoding).toScaledENU = CesiumMatrix4.clone(encoding.toScaledENU);
+        (result as TerrainEncoding).fromScaledENU = CesiumMatrix4.clone(encoding.fromScaledENU as CesiumMatrix4);
+        (result as TerrainEncoding).matrix = CesiumMatrix4.clone(encoding.matrix);
         (result as TerrainEncoding).hasVertexNormals = encoding.hasVertexNormals;
         (result as TerrainEncoding).hasWebMercatorT = encoding.hasWebMercatorT;
         (result as TerrainEncoding).hasGeodeticSurfaceNormals = encoding.hasGeodeticSurfaceNormals;
@@ -632,9 +639,9 @@ class TerrainEncoding {
     //     result.minimumHeight = encoding.minimumHeight;
     //     result.maximumHeight = encoding.maximumHeight;
     //     result.center = Cartesian3.clone(encoding.center);
-    //     result.toScaledENU = Matrix4.clone(encoding.toScaledENU);
-    //     result.fromScaledENU = Matrix4.clone(encoding.fromScaledENU);
-    //     result.matrix = Matrix4.clone(encoding.matrix);
+    //     result.toScaledENU = CesiumMatrix4.clone(encoding.toScaledENU);
+    //     result.fromScaledENU = CesiumMatrix4.clone(encoding.fromScaledENU);
+    //     result.matrix = CesiumMatrix4.clone(encoding.matrix);
     //     result.hasVertexNormals = encoding.hasVertexNormals;
     //     result.hasWebMercatorT = encoding.hasWebMercatorT;
     //     result.hasGeodeticSurfaceNormals = encoding.hasGeodeticSurfaceNormals;

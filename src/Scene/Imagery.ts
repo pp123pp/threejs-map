@@ -92,10 +92,10 @@ class Imagery {
         return this.referenceCount;
     }
 
-    processStateMachine (frameState:FrameState, needGeographicProjection:boolean, priorityFunction:any): void {
-        if (this.state === ImageryState.UNLOADED) {
+    processStateMachine (frameState:FrameState, needGeographicProjection:boolean, skipLoading:any): void {
+        if (this.state === ImageryState.UNLOADED && !skipLoading) {
             this.state = ImageryState.TRANSITIONING;
-            this.imageryLayer._requestImagery(this, priorityFunction);
+            this.imageryLayer._requestImagery(this);
         }
 
         if (this.state === ImageryState.RECEIVED) {
@@ -106,11 +106,18 @@ class Imagery {
         // If the imagery is already ready, but we need a geographic version and don't have it yet,
         // we still need to do the reprojection step. This can happen if the Web Mercator version
         // is fine initially, but the geographic one is needed later.
-        const needsReprojection = this.state === ImageryState.READY && needGeographicProjection && !this.texture;
+        const needsReprojection =
+            this.state === ImageryState.READY &&
+            needGeographicProjection &&
+            !this.texture;
 
         if (this.state === ImageryState.TEXTURE_LOADED || needsReprojection) {
             this.state = ImageryState.TRANSITIONING;
-            this.imageryLayer._reprojectTexture(frameState, this, needGeographicProjection);
+            this.imageryLayer._reprojectTexture(
+                frameState,
+                this,
+                needGeographicProjection
+            );
         }
     }
 

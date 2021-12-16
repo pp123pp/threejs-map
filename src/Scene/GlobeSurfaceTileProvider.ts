@@ -32,6 +32,7 @@ import { QuadtreeOccluders } from './QuadtreeOccluders';
 import { QuadtreePrimitive } from './QuadtreePrimitive';
 import { QuadtreeTile } from './QuadtreeTile';
 import { QuadtreeTileLoadState } from './QuadtreeTileLoadState';
+import { TerrainFillMesh } from './TerrainFillMesh';
 import { TerrainState } from './TerrainState';
 import { TileBoundingRegion } from './TileBoundingRegion';
 import TileSelectionResult from './TileSelectionResult';
@@ -368,8 +369,19 @@ const createTileUniformMap = (frameState: FrameState, tileProvider: any, surface
 const addDrawCommandsForTile = (tileProvider: any, tile: any, frameState: FrameState) => {
     const surfaceTile = tile.data;
 
-    let rtc = surfaceTile.center;
-    const encoding = surfaceTile.pickTerrain.mesh.encoding;
+    if (!defined(surfaceTile.vertexArray)) {
+        if (surfaceTile.fill === undefined) {
+            // No fill was created for this tile, probably because this tile is not connected to
+            // any renderable tiles. So create a simple tile in the middle of the tile's possible
+            // height range.
+            surfaceTile.fill = new (TerrainFillMesh as any)(tile);
+        }
+        surfaceTile.fill.update(tileProvider, frameState);
+    }
+
+    const mesh = surfaceTile.renderedMesh;
+    let rtc = mesh.center;
+    const encoding = mesh.encoding;
 
     // Not used in 3D.
     const tileRectangle = tileRectangleScratch;
@@ -403,7 +415,7 @@ const addDrawCommandsForTile = (tileProvider: any, tile: any, frameState: FrameS
     surfaceShaderSetOptions.frameState = frameState;
     surfaceShaderSetOptions.surfaceTile = surfaceTile;
 
-    const quantization = surfaceTile.pickTerrain.mesh.encoding.quantization;
+    const quantization = encoding.quantization;
     surfaceShaderSetOptions.enableLighting = tileProvider.enableLighting;
     surfaceShaderSetOptions.useWebMercatorProjection = useWebMercatorProjection;
 
@@ -494,7 +506,7 @@ const addDrawCommandsForTile = (tileProvider: any, tile: any, frameState: FrameS
         uniformMap.minMaxHeight.x = encoding.minimumHeight;
         uniformMap.minMaxHeight.y = encoding.maximumHeight;
 
-        uniformMap.scaleAndBias = encoding.matrix;
+        uniformMap.scaleAndBias = encoding.threeMatrix4;
 
         command.geometry = surfaceTile.geometry;
         command.material = uniformMap;
@@ -1099,7 +1111,7 @@ class GlobeSurfaceTileProvider {
 
         updateTileBoundingRegion(tile, this, frameState);
 
-        const surfaceTile = tile.data;
+        const surfaceTile: GlobeSurfaceTile = tile.data;
         const boundingVolumeSourceTile = surfaceTile.boundingVolumeSourceTile;
         if (boundingVolumeSourceTile === undefined) {
             // Can't find any min/max heights anywhere? Ok, let's just say the
@@ -1108,7 +1120,7 @@ class GlobeSurfaceTileProvider {
             return 9999999999.0;
         }
 
-        const tileBoundingRegion = surfaceTile.tileBoundingRegion;
+        const tileBoundingRegion = surfaceTile.tileBoundingRegion as TileBoundingRegion;
         const min = tileBoundingRegion.minimumHeight;
         const max = tileBoundingRegion.maximumHeight;
 
@@ -1565,6 +1577,17 @@ class GlobeSurfaceTileProvider {
                 );
             }
         }
+    }
+
+    /**
+ * Gets the maximum geometric error allowed in a tile at a given level, in meters.  This function should not be
+ * called before {@link GlobeSurfaceTileProvider#ready} returns true.
+ *
+ * @param {Number} level The tile level for which to get the maximum geometric error.
+ * @returns {Number} The maximum geometric error in meters.
+ */
+    getLevelMaximumGeometricError (level: number): number {
+        return this._terrainProvider.getLevelMaximumGeometricError(level) as number;
     }
 }
 export { GlobeSurfaceTileProvider };

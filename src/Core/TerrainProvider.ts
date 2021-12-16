@@ -5,7 +5,7 @@ import { Ellipsoid } from './Ellipsoid';
 import { IndexDatatype } from './IndexDatatype';
 
 const regularGridIndicesCache: any[] = [];
-const regularGridAndEdgeIndicesCache = [];
+const regularGridAndEdgeIndicesCache: any[] = [];
 const regularGridAndSkirtAndEdgeIndicesCache: never[][] = [];
 
 function getEdgeIndices (width: number, height: number) {
@@ -341,6 +341,45 @@ class TerrainProvider {
         );
         vertexIndex += eastIndicesNorthToSouth.length;
         addSkirtIndices(northIndicesWestToEast, vertexIndex, indices, offset);
+    }
+
+    /**
+     * @private
+     */
+    static getRegularGridIndicesAndEdgeIndices (width: number, height: number): any {
+    // >>includeStart('debug', pragmas.debug);
+        if (width * height >= CesiumMath.FOUR_GIGABYTES) {
+            throw new DeveloperError(
+                'The total number of vertices (width * height) must be less than 4,294,967,296.'
+            );
+        }
+        // >>includeEnd('debug');
+
+        let byWidth = regularGridAndEdgeIndicesCache[width];
+        if (!defined(byWidth)) {
+            regularGridAndEdgeIndicesCache[width] = byWidth = [];
+        }
+
+        let indicesAndEdges = byWidth[height];
+        if (!defined(indicesAndEdges)) {
+            const indices = TerrainProvider.getRegularGridIndices(width, height);
+
+            const edgeIndices = getEdgeIndices(width, height);
+            const westIndicesSouthToNorth = edgeIndices.westIndicesSouthToNorth;
+            const southIndicesEastToWest = edgeIndices.southIndicesEastToWest;
+            const eastIndicesNorthToSouth = edgeIndices.eastIndicesNorthToSouth;
+            const northIndicesWestToEast = edgeIndices.northIndicesWestToEast;
+
+            indicesAndEdges = byWidth[height] = {
+                indices: indices,
+                westIndicesSouthToNorth: westIndicesSouthToNorth,
+                southIndicesEastToWest: southIndicesEastToWest,
+                eastIndicesNorthToSouth: eastIndicesNorthToSouth,
+                northIndicesWestToEast: northIndicesWestToEast
+            };
+        }
+
+        return indicesAndEdges;
     }
 }
 export { TerrainProvider };

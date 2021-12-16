@@ -8,7 +8,7 @@ import { Rectangle } from './Rectangle';
 import { TerrainEncoding } from './TerrainEncoding';
 import { TerrainMesh } from './TerrainMesh';
 import { TerrainProvider } from './TerrainProvider';
-import when from 'when';
+import { when } from '../ThirdParty/when';
 import { GeographicTilingScheme } from './GeographicTilingScheme';
 import { BoundingSphere } from './BoundingSphere';
 import { Cartesian3 } from './Cartesian3';
@@ -89,7 +89,7 @@ class HeightmapTerrainData {
      *          asynchronous mesh creations are already in progress and the operation should
      *          be retried later.
      */
-    createMesh (options: any): when.Promise<TerrainMesh | undefined> | undefined {
+    createMesh (options: any): any {
         options = defaultValue(options, defaultValue.EMPTY_OBJECT);
 
         const tilingScheme = options.tilingScheme;
@@ -164,7 +164,7 @@ class HeightmapTerrainData {
         }
 
         const that = this;
-        return when(verticesPromise, function (result) {
+        return when(verticesPromise, function (result: any) {
             let indicesAndEdges : any;
             if (that._skirtHeight as number > 0.0) {
                 indicesAndEdges = TerrainProvider.getRegularGridAndSkirtIndicesAndEdgeIndices(
@@ -205,6 +205,103 @@ class HeightmapTerrainData {
             that._buffer = undefined;
             return that._mesh;
         });
+    }
+
+    /**
+ * @param {Object} options Object with the following properties:
+ * @param {TilingScheme} options.tilingScheme The tiling scheme to which this tile belongs.
+ * @param {Number} options.x The X coordinate of the tile for which to create the terrain data.
+ * @param {Number} options.y The Y coordinate of the tile for which to create the terrain data.
+ * @param {Number} options.level The level of the tile for which to create the terrain data.
+ * @param {Number} [options.exaggeration=1.0] The scale used to exaggerate the terrain.
+ * @param {Number} [options.exaggerationRelativeHeight=0.0] The height relative to which terrain is exaggerated.
+ *
+ * @private
+ */
+    _createMeshSync (options?: any) {
+        const tilingScheme = options.tilingScheme;
+        const x = options.x;
+        const y = options.y;
+        const level = options.level;
+        const exaggeration = defaultValue(options.exaggeration, 1.0);
+        const exaggerationRelativeHeight = defaultValue(
+            options.exaggerationRelativeHeight,
+            0.0
+        );
+
+        const ellipsoid = tilingScheme.ellipsoid;
+        const nativeRectangle = tilingScheme.tileXYToNativeRectangle(x, y, level);
+        const rectangle = tilingScheme.tileXYToRectangle(x, y, level);
+
+        // Compute the center of the tile for RTC rendering.
+        const center = ellipsoid.cartographicToCartesian(Rectangle.center(rectangle));
+
+        const structure = this._structure;
+
+        const levelZeroMaxError = TerrainProvider.getEstimatedLevelZeroGeometricErrorForAHeightmap(
+            ellipsoid,
+            this._width,
+            tilingScheme.getNumberOfXTilesAtLevel(0)
+        );
+        const thisLevelMaxError = levelZeroMaxError / (1 << level);
+        this._skirtHeight = Math.min(thisLevelMaxError * 4.0, 1000.0);
+
+        const result = HeightmapTessellator.computeVertices({
+            heightmap: this._buffer,
+            structure: structure,
+            includeWebMercatorT: true,
+            width: this._width,
+            height: this._height,
+            nativeRectangle: nativeRectangle,
+            rectangle: rectangle,
+            relativeToCenter: center,
+            ellipsoid: ellipsoid,
+            skirtHeight: this._skirtHeight,
+            isGeographic: tilingScheme.projection instanceof GeographicProjection,
+            exaggeration: exaggeration,
+            exaggerationRelativeHeight: exaggerationRelativeHeight
+        });
+
+        // Free memory received from server after mesh is created.
+        this._buffer = undefined;
+
+        let indicesAndEdges;
+        if (this._skirtHeight > 0.0) {
+            indicesAndEdges = TerrainProvider.getRegularGridAndSkirtIndicesAndEdgeIndices(
+                this._width,
+                this._height
+            );
+        } else {
+            indicesAndEdges = TerrainProvider.getRegularGridIndicesAndEdgeIndices(
+                this._width,
+                this._height
+            );
+        }
+
+        const vertexCountWithoutSkirts = result.gridWidth * result.gridHeight;
+
+        // No need to clone here (as we do in the async version) because the result
+        // is not coming from a web worker.
+        this._mesh = new TerrainMesh(
+            center,
+            result.vertices,
+            indicesAndEdges.indices,
+            indicesAndEdges.indexCountWithoutSkirts,
+            vertexCountWithoutSkirts,
+            result.minimumHeight,
+            result.maximumHeight,
+            result.boundingSphere3D,
+            result.occludeePointInScaledSpace,
+            result.encoding.stride,
+            result.orientedBoundingBox,
+            result.encoding,
+            indicesAndEdges.westIndicesSouthToNorth,
+            indicesAndEdges.southIndicesEastToWest,
+            indicesAndEdges.eastIndicesNorthToSouth,
+            indicesAndEdges.northIndicesWestToEast
+        );
+
+        return this._mesh;
     }
 
     /**
