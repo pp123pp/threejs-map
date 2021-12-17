@@ -38,6 +38,7 @@ function startRenderLoop (widget: MapWidgets) {
                     requestAnimationFrame(render);
                 }
             } catch (error) {
+                console.log(error);
                 widget._useDefaultRenderLoop = false;
                 widget._renderLoopRunning = false;
             //     if (widget._showRenderLoopErrors) {

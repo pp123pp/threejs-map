@@ -1,4 +1,5 @@
 import { Cartesian3 } from './Cartesian3';
+import { Cartesian4 } from './Cartesian4';
 import { defaultValue } from './defaultValue';
 import { defined } from './defined';
 import { DeveloperError } from './DeveloperError';
@@ -15,7 +16,7 @@ const scratchPlaneNormal = new Cartesian3();
 const scratchPlane = new Plane(new Cartesian3(1.0, 0.0, 0.0), 0.0);
 
 class CullingVolume {
-    planes:Plane[]
+    planes:Cartesian4[]
     constructor (planes?: Plane[]) {
         /**
          * Each plane is represented by a Cartesian4 object, where the x, y, and z components
@@ -24,7 +25,7 @@ class CullingVolume {
          * @type {Cartesian4[]}
          * @default []
          */
-        this.planes = defaultValue(planes, []) as Plane[];
+        this.planes = defaultValue(planes, []) as unknown as Cartesian4[];
     }
 
     /**

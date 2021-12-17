@@ -2,6 +2,7 @@ import { Cartesian3 } from './Cartesian3';
 import { CesiumMath } from './CesiumMath';
 import { defaultValue } from './defaultValue';
 import { defined } from './defined';
+import { DeveloperError } from './DeveloperError';
 
 class Cartesian2 {
     x: number;
@@ -97,16 +98,16 @@ class Cartesian2 {
     static lerp: (start: Cartesian2, end: Cartesian2, t: number, result: Cartesian2) => Cartesian2
 
     /**
- * Compares the provided Cartesians componentwise and returns
- * <code>true</code> if they pass an absolute or relative tolerance test,
- * <code>false</code> otherwise.
- *
- * @param {Cartesian2} [left] The first Cartesian.
- * @param {Cartesian2} [right] The second Cartesian.
- * @param {Number} [relativeEpsilon=0] The relative epsilon tolerance to use for equality testing.
- * @param {Number} [absoluteEpsilon=relativeEpsilon] The absolute epsilon tolerance to use for equality testing.
- * @returns {Boolean} <code>true</code> if left and right are within the provided epsilon, <code>false</code> otherwise.
- */
+     * Compares the provided Cartesians componentwise and returns
+     * <code>true</code> if they pass an absolute or relative tolerance test,
+     * <code>false</code> otherwise.
+     *
+     * @param {Cartesian2} [left] The first Cartesian.
+     * @param {Cartesian2} [right] The second Cartesian.
+     * @param {Number} [relativeEpsilon=0] The relative epsilon tolerance to use for equality testing.
+     * @param {Number} [absoluteEpsilon=relativeEpsilon] The absolute epsilon tolerance to use for equality testing.
+     * @returns {Boolean} <code>true</code> if left and right are within the provided epsilon, <code>false</code> otherwise.
+     */
     static equalsEpsilon (
         left?:Cartesian2,
         right?:Cartesian2,
@@ -216,6 +217,28 @@ class Cartesian2 {
         (result as Cartesian2).x = x;
         (result as Cartesian2).y = y;
         return (result as Cartesian2);
+    }
+
+    /**
+ * Computes the normalized form of the supplied Cartesian.
+ *
+ * @param {Cartesian2} cartesian The Cartesian to be normalized.
+ * @param {Cartesian2} result The object onto which to store the result.
+ * @returns {Cartesian2} The modified result parameter.
+ */
+    static normalize (cartesian: Cartesian2, result: Cartesian2): Cartesian2 {
+        const magnitude = Cartesian2.magnitude(cartesian);
+
+        result.x = cartesian.x / magnitude;
+        result.y = cartesian.y / magnitude;
+
+        // >>includeStart('debug', pragmas.debug);
+        if (isNaN(result.x) || isNaN(result.y)) {
+            throw new DeveloperError('normalized result is not a number');
+        }
+        // >>includeEnd('debug');
+
+        return result;
     }
 }
 

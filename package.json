@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@types/three": "^0.135.0",
+    "@types/tweenjs": "^1.0.4",
     "core-js": "^3.6.5",
     "three": "^0.135.0",
     "vue": "^3.0.0",

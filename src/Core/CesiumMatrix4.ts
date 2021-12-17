@@ -44,6 +44,33 @@ class CesiumMatrix4 {
     }
 
     /**
+     * An immutable Matrix4 instance initialized to the identity matrix.
+     *
+     * @type {Matrix4}
+     * @constant
+     */
+    static IDENTITY = Object.freeze(
+        new CesiumMatrix4(
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+        )
+    );
+
+    /**
      * Computes the inverse of the provided matrix assuming it is a proper rigid matrix,
      * where the upper left 3x3 elements are a rotation matrix,
      * and the upper three elements in the fourth column are the translation.
@@ -57,11 +84,11 @@ class CesiumMatrix4 {
      * @returns {Matrix4} The modified result parameter.
      */
     static inverseTransformation (matrix:CesiumMatrix4, result:CesiumMatrix4):CesiumMatrix4 {
-        // This function is an optimized version of the below 4 lines.
-        // var rT = Matrix3.transpose(Matrix4.getMatrix3(matrix));
-        // var rTN = Matrix3.negate(rT);
-        // var rTT = Matrix3.multiplyByVector(rTN, Matrix4.getTranslation(matrix));
-        // return Matrix4.fromRotationTranslation(rT, rTT, result);
+    // This function is an optimized version of the below 4 lines.
+    // var rT = Matrix3.transpose(Matrix4.getMatrix3(matrix));
+    // var rTN = Matrix3.negate(rT);
+    // var rTT = Matrix3.multiplyByVector(rTN, Matrix4.getTranslation(matrix));
+    // return Matrix4.fromRotationTranslation(rT, rTT, result);
 
         const matrix0 = matrix[0];
         const matrix1 = matrix[1];
@@ -360,9 +387,9 @@ class CesiumMatrix4 {
  * @returns {Matrix4} The modified result parameter or a new Matrix4 instance if one was not provided. (Returns undefined if matrix is undefined)
  */
     static clone (matrix:CesiumMatrix4, result?:CesiumMatrix4):CesiumMatrix4 {
-        // if (!defined(matrix)) {
-        //     return undefined;
-        // }
+    // if (!defined(matrix)) {
+    //     return undefined;
+    // }
         if (!defined(result)) {
             return new CesiumMatrix4(
                 matrix[0],
@@ -504,6 +531,190 @@ class CesiumMatrix4 {
         threeMatrix.elements[15] = matrix[15];
 
         return threeMatrix;
+    }
+
+    /**
+     * Compares the provided matrices componentwise and returns
+     * <code>true</code> if they are equal, <code>false</code> otherwise.
+     *
+     * @param {Matrix4} [left] The first matrix.
+     * @param {Matrix4} [right] The second matrix.
+     * @returns {Boolean} <code>true</code> if left and right are equal, <code>false</code> otherwise.
+     *
+     * @example
+     * //compares two Matrix4 instances
+     *
+     * // a = [10.0, 14.0, 18.0, 22.0]
+     * //     [11.0, 15.0, 19.0, 23.0]
+     * //     [12.0, 16.0, 20.0, 24.0]
+     * //     [13.0, 17.0, 21.0, 25.0]
+     *
+     * // b = [10.0, 14.0, 18.0, 22.0]
+     * //     [11.0, 15.0, 19.0, 23.0]
+     * //     [12.0, 16.0, 20.0, 24.0]
+     * //     [13.0, 17.0, 21.0, 25.0]
+     *
+     * if(Cesium.Matrix4.equals(a,b)) {
+     *      console.log("Both matrices are equal");
+     * } else {
+     *      console.log("They are not equal");
+     * }
+     *
+     * //Prints "Both matrices are equal" on the console
+     */
+    static equals (left: CesiumMatrix4, right: CesiumMatrix4): boolean {
+    // Given that most matrices will be transformation matrices, the elements
+    // are tested in order such that the test is likely to fail as early
+    // as possible.  I _think_ this is just as friendly to the L1 cache
+    // as testing in index order.  It is certainty faster in practice.
+        return (
+            left === right ||
+      (defined(left) &&
+        defined(right) &&
+        // Translation
+        left[12] === right[12] &&
+        left[13] === right[13] &&
+        left[14] === right[14] &&
+        // Rotation/scale
+        left[0] === right[0] &&
+        left[1] === right[1] &&
+        left[2] === right[2] &&
+        left[4] === right[4] &&
+        left[5] === right[5] &&
+        left[6] === right[6] &&
+        left[8] === right[8] &&
+        left[9] === right[9] &&
+        left[10] === right[10] &&
+        // Bottom row
+        left[3] === right[3] &&
+        left[7] === right[7] &&
+        left[11] === right[11] &&
+        left[15] === right[15])
+        );
+    }
+
+    /**
+     * Computes a Matrix4 instance that transforms from world space to view space.
+     *
+     * @param {Cartesian3} position The position of the camera.
+     * @param {Cartesian3} direction The forward direction.
+     * @param {Cartesian3} up The up direction.
+     * @param {Cartesian3} right The right direction.
+     * @param {Matrix4} result The object in which the result will be stored.
+     * @returns {Matrix4} The modified result parameter.
+     */
+    static computeView (position: Cartesian3, direction: Cartesian3, up: Cartesian3, right: Cartesian3, result: CesiumMatrix4): CesiumMatrix4 {
+        result[0] = right.x;
+        result[1] = up.x;
+        result[2] = -direction.x;
+        result[3] = 0.0;
+        result[4] = right.y;
+        result[5] = up.y;
+        result[6] = -direction.y;
+        result[7] = 0.0;
+        result[8] = right.z;
+        result[9] = up.z;
+        result[10] = -direction.z;
+        result[11] = 0.0;
+        result[12] = -Cartesian3.dot(right, position);
+        result[13] = -Cartesian3.dot(up, position);
+        result[14] = Cartesian3.dot(direction, position);
+        result[15] = 1.0;
+        return result;
+    }
+
+    /**
+     * Computes a Matrix4 instance representing an off center perspective transformation.
+     *
+     * @param {Number} left The number of meters to the left of the camera that will be in view.
+     * @param {Number} right The number of meters to the right of the camera that will be in view.
+     * @param {Number} bottom The number of meters below of the camera that will be in view.
+     * @param {Number} top The number of meters above of the camera that will be in view.
+     * @param {Number} near The distance to the near plane in meters.
+     * @param {Number} far The distance to the far plane in meters.
+     * @param {Matrix4} result The object in which the result will be stored.
+     * @returns {Matrix4} The modified result parameter.
+     */
+    static computePerspectiveOffCenter (
+        left: number,
+        right: number,
+        bottom: number,
+        top: number,
+        near: number,
+        far: number,
+        result: CesiumMatrix4
+    ): CesiumMatrix4 {
+        const column0Row0 = (2.0 * near) / (right - left);
+        const column1Row1 = (2.0 * near) / (top - bottom);
+        const column2Row0 = (right + left) / (right - left);
+        const column2Row1 = (top + bottom) / (top - bottom);
+        const column2Row2 = -(far + near) / (far - near);
+        const column2Row3 = -1.0;
+        const column3Row2 = (-2.0 * far * near) / (far - near);
+
+        result[0] = column0Row0;
+        result[1] = 0.0;
+        result[2] = 0.0;
+        result[3] = 0.0;
+        result[4] = 0.0;
+        result[5] = column1Row1;
+        result[6] = 0.0;
+        result[7] = 0.0;
+        result[8] = column2Row0;
+        result[9] = column2Row1;
+        result[10] = column2Row2;
+        result[11] = column2Row3;
+        result[12] = 0.0;
+        result[13] = 0.0;
+        result[14] = column3Row2;
+        result[15] = 0.0;
+        return result;
+    }
+
+    /**
+ * Computes a Matrix4 instance representing an infinite off center perspective transformation.
+ *
+ * @param {Number} left The number of meters to the left of the camera that will be in view.
+ * @param {Number} right The number of meters to the right of the camera that will be in view.
+ * @param {Number} bottom The number of meters below of the camera that will be in view.
+ * @param {Number} top The number of meters above of the camera that will be in view.
+ * @param {Number} near The distance to the near plane in meters.
+ * @param {Matrix4} result The object in which the result will be stored.
+ * @returns {Matrix4} The modified result parameter.
+ */
+    static computeInfinitePerspectiveOffCenter (
+        left: number,
+        right: number,
+        bottom: number,
+        top: number,
+        near: number,
+        result: CesiumMatrix4
+    ): CesiumMatrix4 {
+        const column0Row0 = (2.0 * near) / (right - left);
+        const column1Row1 = (2.0 * near) / (top - bottom);
+        const column2Row0 = (right + left) / (right - left);
+        const column2Row1 = (top + bottom) / (top - bottom);
+        const column2Row2 = -1.0;
+        const column2Row3 = -1.0;
+        const column3Row2 = -2.0 * near;
+
+        result[0] = column0Row0;
+        result[1] = 0.0;
+        result[2] = 0.0;
+        result[3] = 0.0;
+        result[4] = 0.0;
+        result[5] = column1Row1;
+        result[6] = 0.0;
+        result[7] = 0.0;
+        result[8] = column2Row0;
+        result[9] = column2Row1;
+        result[10] = column2Row2;
+        result[11] = column2Row3;
+        result[12] = 0.0;
+        result[13] = 0.0;
+        result[14] = column3Row2;
+        result[15] = 0.0;
+        return result;
     }
 }
 

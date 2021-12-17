@@ -25,6 +25,7 @@ import { Vector4, Vector3, DoubleSide } from 'three';
 import { TerrainProvider } from './../Core/TerrainProvider';
 import { FrameState } from './FrameState';
 import { GlobeSurfaceTile } from './GlobeSurfaceTile';
+import { Imagery } from './Imagery';
 import { ImageryLayer } from './ImageryLayer';
 import { ImageryLayerCollection } from './ImageryLayerCollection';
 import { ImageryState } from './ImageryState';
@@ -35,6 +36,7 @@ import { QuadtreeTileLoadState } from './QuadtreeTileLoadState';
 import { TerrainFillMesh } from './TerrainFillMesh';
 import { TerrainState } from './TerrainState';
 import { TileBoundingRegion } from './TileBoundingRegion';
+import { TileImagery } from './TileImagery';
 import TileSelectionResult from './TileSelectionResult';
 
 const readyImageryScratch: any[] = [];
@@ -98,7 +100,7 @@ function computeOccludeePoint (
     );
 }
 
-function updateTileBoundingRegion (tile: any, tileProvider:GlobeSurfaceTileProvider, frameState:FrameState) {
+function updateTileBoundingRegion (tile: QuadtreeTile, tileProvider:GlobeSurfaceTileProvider, frameState:FrameState) {
     let surfaceTile = tile.data;
     if (surfaceTile === undefined) {
         surfaceTile = tile.data = new GlobeSurfaceTile();
@@ -201,7 +203,7 @@ function updateTileBoundingRegion (tile: any, tileProvider:GlobeSurfaceTileProvi
                 tileBoundingRegion._orientedBoundingBox = OrientedBoundingBox.clone(
                     mesh.orientedBoundingBox,
                     tileBoundingRegion._orientedBoundingBox
-                );
+                ) as OrientedBoundingBox;
                 tileBoundingRegion._boundingSphere = BoundingSphere.clone(
                     mesh.boundingSphere3D,
                     tileBoundingRegion._boundingSphere
@@ -220,7 +222,7 @@ function updateTileBoundingRegion (tile: any, tileProvider:GlobeSurfaceTileProvi
                         tileBoundingRegion.minimumHeight,
                         tileBoundingRegion.maximumHeight,
                         surfaceTile.occludeePointInScaledSpace
-                    );
+                    ) as Cartesian3;
                 }
             }
         } else {
@@ -235,12 +237,12 @@ function updateTileBoundingRegion (tile: any, tileProvider:GlobeSurfaceTileProvi
                 tileBoundingRegion.computeBoundingVolumes(ellipsoid);
                 surfaceTile.occludeePointInScaledSpace = computeOccludeePoint(
                     tileProvider,
-                    tileBoundingRegion._orientedBoundingBox.center,
+                    (tileBoundingRegion._orientedBoundingBox as OrientedBoundingBox).center,
                     tile.rectangle,
                     tileBoundingRegion.minimumHeight,
                     tileBoundingRegion.maximumHeight,
                     surfaceTile.occludeePointInScaledSpace
-                );
+                ) as Cartesian3;
             }
         }
         surfaceTile.boundingVolumeSourceTile = sourceTile;
@@ -697,7 +699,7 @@ class GlobeSurfaceTileProvider {
     // For a tileset with `availability`, we'll always be able to refine.
     // We can ask for availability of _any_ child tile because we only need to confirm
     // that we get a yes or no answer, it doesn't matter what the answer is.
-        if (defined(tile.data.terrainData)) {
+        if (defined((tile.data as GlobeSurfaceTile).terrainData)) {
             return true;
         }
         const childAvailable = this.terrainProvider.getTileDataAvailable(
@@ -1111,7 +1113,7 @@ class GlobeSurfaceTileProvider {
 
         updateTileBoundingRegion(tile, this, frameState);
 
-        const surfaceTile: GlobeSurfaceTile = tile.data;
+        const surfaceTile = tile.data as GlobeSurfaceTile;
         const boundingVolumeSourceTile = surfaceTile.boundingVolumeSourceTile;
         if (boundingVolumeSourceTile === undefined) {
             // Can't find any min/max heights anywhere? Ok, let's just say the
@@ -1175,8 +1177,8 @@ class GlobeSurfaceTileProvider {
         //     }
         // }
 
-        const surfaceTile = tile.data;
-        const tileBoundingRegion = surfaceTile.tileBoundingRegion;
+        const surfaceTile = tile.data as GlobeSurfaceTile;
+        const tileBoundingRegion = surfaceTile.tileBoundingRegion as TileBoundingRegion;
 
         if (surfaceTile.boundingVolumeSourceTile === undefined) {
             // We have no idea where this tile is, so let's just call it partially visible.
@@ -1184,7 +1186,7 @@ class GlobeSurfaceTileProvider {
         }
 
         const cullingVolume = frameState.cullingVolume;
-        let boundingVolume = tileBoundingRegion.boundingVolume;
+        let boundingVolume: OrientedBoundingBox | BoundingSphere = tileBoundingRegion.boundingVolume;
 
         if (!defined(boundingVolume)) {
             boundingVolume = tileBoundingRegion.boundingSphere;
@@ -1305,12 +1307,12 @@ class GlobeSurfaceTileProvider {
         tile: QuadtreeTile,
         frameState: FrameState
     ): number {
-        const surfaceTile = tile.data;
+        const surfaceTile = tile.data as any;
         if (surfaceTile === undefined) {
             return 0.0;
         }
 
-        const obb = surfaceTile.tileBoundingRegion.boundingVolume;
+        const obb = (surfaceTile.tileBoundingRegion as TileBoundingRegion).boundingVolume;
         if (obb === undefined) {
             return 0.0;
         }
@@ -1342,7 +1344,7 @@ class GlobeSurfaceTileProvider {
         // For a tileset with `availability`, we'll always be able to refine.
         // We can ask for availability of _any_ child tile because we only need to confirm
         // that we get a yes or no answer, it doesn't matter what the answer is.
-        if (defined(tile.data.terrainData)) {
+        if (defined((tile.data as GlobeSurfaceTile).terrainData)) {
             return true;
         }
         const childAvailable = this.terrainProvider.getTileDataAvailable(
@@ -1364,14 +1366,14 @@ class GlobeSurfaceTileProvider {
     canRenderWithoutLosingDetail (
         tile: QuadtreeTile
     ): boolean {
-        const surfaceTile = tile.data;
+        const surfaceTile = tile.data as GlobeSurfaceTile;
 
         const readyImagery = readyImageryScratch;
         readyImagery.length = this._imageryLayers.length;
 
         let terrainReady = false;
         let initialImageryState = false;
-        let imagery;
+        let imagery: TileImagery[] | undefined;
 
         if (defined(surfaceTile)) {
             // We can render even with non-ready terrain as long as all our rendered descendants
@@ -1386,20 +1388,20 @@ class GlobeSurfaceTileProvider {
         }
 
         let i;
-        let len;
+        let len: number;
 
         for (i = 0, len = readyImagery.length; i < len; ++i) {
             readyImagery[i] = initialImageryState;
         }
 
         if (defined(imagery)) {
-            for (i = 0, len = imagery.length; i < len; ++i) {
-                const tileImagery = imagery[i];
+            for (i = 0, len = (imagery as TileImagery[]).length; i < len; ++i) {
+                const tileImagery = (imagery as TileImagery[])[i] as any;
                 const loadingImagery = tileImagery.loadingImagery;
                 const isReady =
           !defined(loadingImagery) ||
-          loadingImagery.state === ImageryState.FAILED ||
-          loadingImagery.state === ImageryState.INVALID;
+          (loadingImagery as Imagery).state === ImageryState.FAILED ||
+          (loadingImagery as Imagery).state === ImageryState.INVALID;
                 const layerIndex = (tileImagery.loadingImagery || tileImagery.readyImagery)
                     .imageryLayer._layerIndex;
 
@@ -1488,7 +1490,7 @@ class GlobeSurfaceTileProvider {
         frameState?: FrameState
     ): void {
         let readyTextureCount = 0;
-        const tileImageryCollection = tile.data.imagery;
+        const tileImageryCollection = (tile.data as GlobeSurfaceTile).imagery;
         for (let i = 0, len = tileImageryCollection.length; i < len; ++i) {
             const tileImagery = tileImageryCollection[i];
             if (
@@ -1507,7 +1509,7 @@ class GlobeSurfaceTileProvider {
 
         tileSet.push(tile);
 
-        const surfaceTile = tile.data;
+        const surfaceTile = tile.data as GlobeSurfaceTile;
         if (!defined(surfaceTile.vertexArray)) {
             this._hasFillTilesThisFrame = true;
         } else {
@@ -1536,7 +1538,7 @@ class GlobeSurfaceTileProvider {
         // tile is _still_ visible, give the tile a chance to load imagery immediately rather than
         // waiting for next frame.
 
-        let surfaceTile = tile.data;
+        let surfaceTile = tile.data as any;
         let terrainOnly = true;
         let terrainStateBefore;
         if (defined(surfaceTile)) {
@@ -1556,7 +1558,7 @@ class GlobeSurfaceTileProvider {
         );
 
         surfaceTile = tile.data;
-        if (terrainOnly && terrainStateBefore !== tile.data.terrainState) {
+        if (terrainOnly && terrainStateBefore !== surfaceTile.terrainState) {
             // Terrain state changed. If:
             // a) The tile is visible, and
             // b) The bounding volume is accurate (updated as a side effect of computing visibility)

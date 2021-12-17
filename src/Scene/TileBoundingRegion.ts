@@ -248,6 +248,14 @@ class TileBoundingRegion {
         }
     }
 
+    get boundingVolume (): OrientedBoundingBox {
+        return this._orientedBoundingBox as OrientedBoundingBox;
+    }
+
+    get boundingSphere (): BoundingSphere {
+        return this._boundingSphere as BoundingSphere;
+    }
+
     computeBoundingVolumes (ellipsoid: Ellipsoid): void {
         // An oriented bounding box that encloses this tile's region.  This is used to calculate tile visibility.
         this._orientedBoundingBox = OrientedBoundingBox.fromRectangle(

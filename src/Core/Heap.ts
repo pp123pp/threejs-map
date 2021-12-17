@@ -20,7 +20,7 @@ class Heap {
     }
 
     get length (): number {
-        return this.length;
+        return this._length;
     }
 
     get internalArray (): any[] {

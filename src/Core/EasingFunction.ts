@@ -1,4 +1,4 @@
-import * as Tween from '@tweenjs/tween';
+import * as Tween from '@tweenjs/tween.js';
 
 /**
  * Easing functions for use with TweenCollection.  These function are from

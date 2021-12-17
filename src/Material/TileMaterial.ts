@@ -119,136 +119,14 @@ void main(){
 
 `;
 
-const fragmentShader = `
-#include <common>
-#include <packing>
-#include <logdepthbuf_pars_fragment>
-
-varying vec3 v_textureCoordinates;
-uniform vec4 u_initialColor;
-uniform vec4 diffuse;
-
-
-#if TEXTURE_UNITS > 0
-    uniform sampler2D u_dayTextures[TEXTURE_UNITS];
-    uniform vec4 u_dayTextureTranslationAndScale[TEXTURE_UNITS];
-    uniform bool u_dayTextureUseWebMercatorT[TEXTURE_UNITS];
-    uniform vec4 u_dayTextureTexCoordsRectangle[TEXTURE_UNITS];
-#endif
-
-
-vec4 sampleAndBlend(
-    vec4 previousColor,
-    sampler2D textureToSample,
-    vec2 tileTextureCoordinates,
-    vec4 textureCoordinateRectangle,
-    vec4 textureCoordinateTranslationAndScale,
-    float textureAlpha,
-    float textureBrightness,
-    float textureContrast,
-    float textureHue,
-    float textureSaturation,
-    float textureOneOverGamma,
-    float split)
-{
-    
-    
-    vec2 alphaMultiplier = step(textureCoordinateRectangle.st, tileTextureCoordinates);
-    textureAlpha = textureAlpha * alphaMultiplier.x * alphaMultiplier.y;
-
-    alphaMultiplier = step(vec2(0.0), textureCoordinateRectangle.pq - tileTextureCoordinates);
-    textureAlpha = textureAlpha * alphaMultiplier.x * alphaMultiplier.y;
-
-    vec2 translation = textureCoordinateTranslationAndScale.xy;
-    vec2 scale = textureCoordinateTranslationAndScale.zw;
-    vec2 textureCoordinates = tileTextureCoordinates * scale + translation;
-    vec4 value = texture2D(textureToSample, textureCoordinates);
-    vec3 color = value.rgb;
-    float alpha = value.a;
-
-#ifdef APPLY_SPLIT
-    float splitPosition = czm_imagerySplitPosition;
-    
-    if (split < 0.0 && gl_FragCoord.x > splitPosition) {
-       alpha = 0.0;
-    }
-    
-    else if (split > 0.0 && gl_FragCoord.x < splitPosition) {
-       alpha = 0.0;
-    }
-#endif
-
-#ifdef APPLY_BRIGHTNESS
-    color = mix(vec3(0.0), color, textureBrightness);
-#endif
-
-#ifdef APPLY_CONTRAST
-    color = mix(vec3(0.5), color, textureContrast);
-#endif
-
-#ifdef APPLY_HUE
-    color = czm_hue(color, textureHue);
-#endif
-
-#ifdef APPLY_SATURATION
-    color = czm_saturation(color, textureSaturation);
-#endif
-
-#ifdef APPLY_GAMMA
-    color = pow(color, vec3(textureOneOverGamma));
-#endif
-
-    float sourceAlpha = alpha * textureAlpha;
-    float outAlpha = mix(previousColor.a, 1.0, sourceAlpha);
-    vec3 outColor = mix(previousColor.rgb * previousColor.a, color, sourceAlpha) / outAlpha;
-    return vec4(outColor, outAlpha);
-}
-
-
-vec4 computeDayColor(vec4 initialColor, vec3 textureCoordinates)
-{
-    vec4 color = initialColor;
-
-    #pragma unroll_loop_start
-    for ( int i = 0; i < TEXTURE_UNITS; i ++ ) {
-
-        color = sampleAndBlend(
-            color,
-            u_dayTextures[ i ],
-            u_dayTextureUseWebMercatorT[ i ] ? textureCoordinates.xz : textureCoordinates.xy,
-            u_dayTextureTexCoordsRectangle[ i ],
-            u_dayTextureTranslationAndScale[ i ],
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0
-        );
-
-    }
-    #pragma unroll_loop_end
-
-    return color;
-}
-
-void main(void){
-    #include <logdepthbuf_fragment>
-
-
-    // gl_FragColor = computeDayColor(u_initialColor, clamp(v_textureCoordinates, 0.0, 1.0));
-
-    gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
-}
-`;
-
 class TileMaterial extends ShaderMaterial {
     constructor (parameters = {}, shaderSetOptions?:any) {
         super(parameters);
 
         this.lights = false;
         this.fog = false;
+
+        const fragmentShader = this.createFragmentShader(shaderSetOptions);
 
         this.uniforms = {
             u_dayTextures: { value: [] },
@@ -379,6 +257,134 @@ class TileMaterial extends ShaderMaterial {
             return;
         }
         this.uniforms.u_center3D.value.copy(value);
+    }
+
+    createFragmentShader (options: any): string {
+        const fragmentShader = `
+        #include <common>
+        #include <packing>
+        #include <logdepthbuf_pars_fragment>
+        
+        varying vec3 v_textureCoordinates;
+        uniform vec4 u_initialColor;
+        uniform vec4 diffuse;
+        
+        
+        #if TEXTURE_UNITS > 0
+            uniform sampler2D u_dayTextures[TEXTURE_UNITS];
+            uniform vec4 u_dayTextureTranslationAndScale[TEXTURE_UNITS];
+            uniform bool u_dayTextureUseWebMercatorT[TEXTURE_UNITS];
+            uniform vec4 u_dayTextureTexCoordsRectangle[TEXTURE_UNITS];
+        #endif
+        
+        
+        vec4 sampleAndBlend(
+            vec4 previousColor,
+            sampler2D textureToSample,
+            vec2 tileTextureCoordinates,
+            vec4 textureCoordinateRectangle,
+            vec4 textureCoordinateTranslationAndScale,
+            float textureAlpha,
+            float textureBrightness,
+            float textureContrast,
+            float textureHue,
+            float textureSaturation,
+            float textureOneOverGamma,
+            float split)
+        {
+            
+            
+            vec2 alphaMultiplier = step(textureCoordinateRectangle.st, tileTextureCoordinates);
+            textureAlpha = textureAlpha * alphaMultiplier.x * alphaMultiplier.y;
+        
+            alphaMultiplier = step(vec2(0.0), textureCoordinateRectangle.pq - tileTextureCoordinates);
+            textureAlpha = textureAlpha * alphaMultiplier.x * alphaMultiplier.y;
+        
+            vec2 translation = textureCoordinateTranslationAndScale.xy;
+            vec2 scale = textureCoordinateTranslationAndScale.zw;
+            vec2 textureCoordinates = tileTextureCoordinates * scale + translation;
+            vec4 value = texture2D(textureToSample, textureCoordinates);
+            vec3 color = value.rgb;
+            float alpha = value.a;
+        
+        #ifdef APPLY_SPLIT
+            float splitPosition = czm_imagerySplitPosition;
+            
+            if (split < 0.0 && gl_FragCoord.x > splitPosition) {
+               alpha = 0.0;
+            }
+            
+            else if (split > 0.0 && gl_FragCoord.x < splitPosition) {
+               alpha = 0.0;
+            }
+        #endif
+        
+        #ifdef APPLY_BRIGHTNESS
+            color = mix(vec3(0.0), color, textureBrightness);
+        #endif
+        
+        #ifdef APPLY_CONTRAST
+            color = mix(vec3(0.5), color, textureContrast);
+        #endif
+        
+        #ifdef APPLY_HUE
+            color = czm_hue(color, textureHue);
+        #endif
+        
+        #ifdef APPLY_SATURATION
+            color = czm_saturation(color, textureSaturation);
+        #endif
+        
+        #ifdef APPLY_GAMMA
+            color = pow(color, vec3(textureOneOverGamma));
+        #endif
+        
+            float sourceAlpha = alpha * textureAlpha;
+            float outAlpha = mix(previousColor.a, 1.0, sourceAlpha);
+            vec3 outColor = mix(previousColor.rgb * previousColor.a, color, sourceAlpha) / outAlpha;
+            return vec4(outColor, outAlpha);
+        }
+        
+        
+        vec4 computeDayColor(vec4 initialColor, vec3 textureCoordinates)
+        {
+            vec4 color = initialColor;
+        
+            #pragma unroll_loop_start
+            for ( int i = 0; i < ${options.numberOfDayTextures}; i ++ ) {
+        
+                color = sampleAndBlend(
+                    color,
+                    u_dayTextures[ i ],
+                    u_dayTextureUseWebMercatorT[ i ] ? textureCoordinates.xz : textureCoordinates.xy,
+                    u_dayTextureTexCoordsRectangle[ i ],
+                    u_dayTextureTranslationAndScale[ i ],
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                );
+        
+            }
+            #pragma unroll_loop_end
+        
+            return color;
+        }
+        
+        void main(void){
+            #include <logdepthbuf_fragment>
+        
+        
+            gl_FragColor = computeDayColor(u_initialColor, clamp(v_textureCoordinates, 0.0, 1.0));
+        
+            // gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+        }
+        `;
+
+        return fragmentShader;
     }
 }
 

@@ -367,6 +367,37 @@ class Rectangle {
     }
 
     static MAX_VALUE = Object.freeze(new Rectangle(-Math.PI, -CesiumMath.PI_OVER_TWO, Math.PI, CesiumMath.PI_OVER_TWO));
+
+    /**
+ * Creates a rectangle given the boundary longitude and latitude in degrees.
+ *
+ * @param {Number} [west=0.0] The westernmost longitude in degrees in the range [-180.0, 180.0].
+ * @param {Number} [south=0.0] The southernmost latitude in degrees in the range [-90.0, 90.0].
+ * @param {Number} [east=0.0] The easternmost longitude in degrees in the range [-180.0, 180.0].
+ * @param {Number} [north=0.0] The northernmost latitude in degrees in the range [-90.0, 90.0].
+ * @param {Rectangle} [result] The object onto which to store the result, or undefined if a new instance should be created.
+ * @returns {Rectangle} The modified result parameter or a new Rectangle instance if none was provided.
+ *
+ * @example
+ * var rectangle = Cesium.Rectangle.fromDegrees(0.0, 20.0, 10.0, 30.0);
+ */
+    static fromDegrees (west = 0.0, south = 0.0, east = 0.0, north = 0.0, result?: Rectangle): Rectangle {
+        west = CesiumMath.toRadians(defaultValue(west, 0.0));
+        south = CesiumMath.toRadians(defaultValue(south, 0.0));
+        east = CesiumMath.toRadians(defaultValue(east, 0.0));
+        north = CesiumMath.toRadians(defaultValue(north, 0.0));
+
+        if (!defined(result)) {
+            return new Rectangle(west, south, east, north);
+        }
+
+        (result as Rectangle).west = west;
+        (result as Rectangle).south = south;
+        (result as Rectangle).east = east;
+        (result as Rectangle).north = north;
+
+        return (result as Rectangle);
+    }
 }
 
 // Rectangle.MAX_VALUE = Object.freeze(new Rectangle(-Math.PI, -CesiumMath.PI_OVER_TWO, Math.PI, CesiumMath.PI_OVER_TWO));

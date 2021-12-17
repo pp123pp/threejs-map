@@ -606,7 +606,7 @@ function selectTilesForRendering (primitive: any, frameState: any) {
     primitive._lastSelectionFrameNumber = frameNumber;
 }
 
-function queueTileLoad (primitive: any, queue: any, tile: any, frameState: any) {
+function queueTileLoad (primitive: QuadtreePrimitive, queue: any[], tile: QuadtreeTile, frameState: FrameState) {
     if (!tile.needsLoading) {
         return;
     }

@@ -22,6 +22,9 @@ import { PrimitiveCollection } from './PrimitiveCollection';
 import { defined } from '@/Core/defined';
 import { ImageryLayerCollection } from './ImageryLayerCollection';
 import { RenderCollection } from './RenderCollection';
+import { RequestScheduler } from '@/Core/RequestScheduler';
+import { ScreenSpaceCameraController } from './ScreenSpaceCameraController';
+import { TweenCollection } from '@/Core/TweenCollection';
 
 interface SceneOptions {
     renderState?: RenderStateParameters;
@@ -93,6 +96,14 @@ function prePassesUpdate (scene:Scene) {
     // frameState.creditDisplay.update();
 }
 
+function postPassesUpdate (scene: Scene) {
+    const frameState = scene._frameState;
+    // const primitives = scene.primitives;
+    // primitives.postPassesUpdate(frameState);
+
+    RequestScheduler.update();
+}
+
 function render (scene:Scene) {
     const frameState = scene._frameState;
 
@@ -121,6 +132,46 @@ function render (scene:Scene) {
     }
 }
 
+function getGlobeHeight (scene: Scene) {
+    const globe = scene._globe;
+    const camera = scene.activeCamera;
+    const cartographic = camera.positionCartographic;
+    if (defined(globe) && globe?.visible && defined(cartographic)) {
+        return globe.getHeight(cartographic);
+    }
+    return undefined;
+}
+
+function isCameraUnderground (scene: Scene) {
+    const camera = scene.activeCamera;
+    const mode = scene.mode;
+    const globe = scene.globe;
+    const cameraController = scene.screenSpaceCameraController;
+    const cartographic = camera.positionCartographic;
+
+    if (!defined(cartographic)) {
+        return false;
+    }
+
+    if (!cameraController.onMap() && cartographic.height < 0.0) {
+        // The camera can go off the map while in Columbus View.
+        // Make a best guess as to whether it's underground by checking if its height is less than zero.
+        return true;
+    }
+
+    if (
+        !defined(globe) ||
+      !globe.visible ||
+      mode === SceneMode.SCENE2D ||
+      mode === SceneMode.MORPHING
+    ) {
+        return false;
+    }
+
+    const globeHeight = scene._globeHeight as number;
+    return defined(globeHeight) && cartographic.height < globeHeight;
+}
+
 function updateAndRenderPrimitives (scene: Scene) {
     const frameState = scene._frameState;
 
@@ -138,6 +189,14 @@ function updateAndRenderPrimitives (scene: Scene) {
         scene._renderCollection.add(command);
     }
 }
+
+const executeComputeCommands = (scene: Scene) => {
+    const commandList = scene.frameState.computeCommandList;
+    const length = commandList.length;
+    for (let i = 0; i < length; ++i) {
+        commandList[i].execute(scene._computeEngine);
+    }
+};
 
 /**
  * 执行渲染
@@ -171,6 +230,10 @@ function executeCommandsInViewport (firstViewport: boolean, scene:Scene, backgro
     //     }
     // }
 
+    if (firstViewport) {
+        executeComputeCommands(scene);
+    }
+
     if (!firstViewport) {
         scene.frameState.commandList.length = 0;
     }
@@ -197,14 +260,20 @@ class Scene extends THREE.Scene {
     readonly preRender: Event;
     readonly rethrowRenderErrors: boolean;
     backgroundColor: CesiumColor;
-    readonly screenSpaceCameraController: OrbitControls;
+    readonly _screenSpaceCameraController: any;
     _mapProjection: GeographicProjection;
     _canvas: HTMLCanvasElement;
     _globe: Globe | undefined;
     _computeEngine: ComputeEngine;
     _removeGlobeCallbacks: any[];
-    _computeCommandList: ComputeCommand[];
-    _renderCollection: RenderCollection
+    _renderCollection: RenderCollection;
+    maximumRenderTimeChange: number;
+    _lastRenderTime: any;
+    _frameRateMonitor: any;
+    _removeRequestListenerCallback: any;
+    _globeHeight?: number;
+    _cameraUnderground: boolean;
+    _tweens: TweenCollection
     constructor (options: SceneOptions) {
         super();
 
@@ -246,11 +315,41 @@ class Scene extends THREE.Scene {
         this._renderRequested = true;
         this._shaderFrameCount = 0;
 
-        this._canvas = options.canvas as HTMLCanvasElement;
+        /**
+         * If {@link Scene#requestRenderMode} is <code>true</code>, this value defines the maximum change in
+         * simulation time allowed before a render is requested. Lower values increase the number of frames rendered
+         * and higher values decrease the number of frames rendered. If <code>undefined</code>, changes to
+         * the simulation time will never request a render.
+         * This value impacts the rate of rendering for changes in the scene like lighting, entity property updates,
+         * and animations.
+         *
+         * @see {@link https://cesium.com/blog/2018/01/24/cesium-scene-rendering-performance/|Improving Performance with Explicit Rendering}
+         * @see Scene#requestRenderMode
+         *
+         * @type {Number}
+         * @default 0.0
+         */
+        this.maximumRenderTimeChange = defaultValue(
+            options.maximumRenderTimeChange,
+            0.0
+        );
+        this._lastRenderTime = undefined;
+        this._frameRateMonitor = undefined;
+
+        this._removeRequestListenerCallback = RequestScheduler.requestCompletedEvent.addEventListener(
+            requestRenderAfterFrame(this)
+        );
+        // this._removeTaskProcessorListenerCallback = TaskProcessor.taskCompletedEvent.addEventListener(
+        //     requestRenderAfterFrame(this)
+        // );
+        this._removeGlobeCallbacks = [];
+
+        this._canvas = this.renderer.domElement as HTMLCanvasElement;
         this._context = new Context(this);
         this._computeEngine = new ComputeEngine(this, this._context);
 
-        this.screenSpaceCameraController = new OrbitControls(this.activeCamera, this.renderer.domElement);
+        this._globeHeight = undefined;
+        this._cameraUnderground = false;
 
         this._frameState = new FrameState(this);
         this._removeGlobeCallbacks = [];
@@ -268,11 +367,17 @@ class Scene extends THREE.Scene {
 
         this.backgroundColor = new CesiumColor(1.0, 0.0, 0.0, 1.0);
 
-        this._computeCommandList = [];
+        // this._computeCommandList = [];
 
         this._renderCollection = new RenderCollection();
 
         this.addObject(this._renderCollection);
+
+        this._tweens = new TweenCollection();
+
+        // this._screenSpaceCameraController = new OrbitControls(this.activeCamera, this.renderer.domElement);
+
+        this._screenSpaceCameraController = new ScreenSpaceCameraController(this);
     }
 
     get pixelRatio (): number {
@@ -296,7 +401,7 @@ class Scene extends THREE.Scene {
     }
 
     get activeCamera (): PerspectiveFrustumCamera {
-        return this._camera.activeCamera;
+        return this._camera.frustum;
     }
 
     get frameState ():FrameState {
@@ -325,8 +430,28 @@ class Scene extends THREE.Scene {
         return this.renderer.drawingBufferSize;
     }
 
+    get drawingBufferWidth (): number {
+        return this.drawingBufferSize.width;
+    }
+
+    get drawingBufferHeight (): number {
+        return this.drawingBufferSize.height;
+    }
+
     get imageryLayers ():ImageryLayerCollection {
         return this.globe.imageryLayers;
+    }
+
+    get cameraUnderground () : boolean {
+        return this._cameraUnderground;
+    }
+
+    get screenSpaceCameraController (): ScreenSpaceCameraController {
+        return this._screenSpaceCameraController;
+    }
+
+    get tweens () {
+        return this._tweens;
     }
 
     requestRender () :void{
@@ -350,7 +475,14 @@ class Scene extends THREE.Scene {
         if (this._shaderFrameCount++ === 120) {
             this._shaderFrameCount = 0;
         }
-        this.camera.update(this._mode);
+        this._tweens.update();
+
+        // this.camera.update(this._mode);
+
+        // this._globeHeight = getGlobeHeight(this);
+        // this._cameraUnderground = isCameraUnderground(this);
+
+        this._screenSpaceCameraController.update();
     }
 
     render (time: number): void{
@@ -402,6 +534,8 @@ class Scene extends THREE.Scene {
             // frameState.creditDisplay.beginFrame();
             tryAndCatchError(this, render);
         }
+
+        tryAndCatchError(this, postPassesUpdate);
     }
 
     updateFrameState (): void {
@@ -409,9 +543,11 @@ class Scene extends THREE.Scene {
 
         const frameState = this._frameState;
         frameState.commandList.length = 0;
+        frameState.computeCommandList.length = 0;
         frameState.shadowMaps.length = 0;
         frameState.mapProjection = this.mapProjection;
         frameState.mode = this._mode;
+        frameState.cameraUnderground = this._cameraUnderground;
         this._renderCollection.children = [];
         // frameState.cullingVolume = camera.computeCullingVolume();
 

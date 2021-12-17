@@ -1,5 +1,6 @@
 import { Cartesian3 } from './Cartesian3';
 import { CesiumMath } from './CesiumMath';
+import { CesiumQuaternion } from './CesiumQuaternion';
 import { Check } from './Check';
 import { defaultValue } from './defaultValue';
 import { defined } from './defined';
@@ -334,13 +335,6 @@ class CesiumMatrix3 {
      * @exception {DeveloperError} index must be 0, 1, or 2.
      */
    static getColumn (matrix:CesiumMatrix3, index:number, result:Cartesian3):Cartesian3 {
-       // >>includeStart('debug', pragmas.debug);
-       Check.typeOf.object('matrix', matrix);
-       Check.typeOf.number.greaterThanOrEquals('index', index, 0);
-       Check.typeOf.number.lessThanOrEquals('index', index, 2);
-       Check.typeOf.object('result', result);
-       // >>includeEnd('debug');
-
        const startIndex = index * 3;
        const x = matrix[startIndex];
        const y = matrix[startIndex + 1];
@@ -594,6 +588,52 @@ class CesiumMatrix3 {
        result[7] = matrix[7] * scale.z;
        result[8] = matrix[8] * scale.z;
        return result;
+   }
+
+   /**
+     * Computes a 3x3 rotation matrix from the provided quaternion.
+     *
+     * @param {Quaternion} quaternion the quaternion to use.
+     * @param {Matrix3} [result] The object in which the result will be stored, if undefined a new instance will be created.
+     * @returns {Matrix3} The 3x3 rotation matrix from this quaternion.
+     */
+   static fromQuaternion (quaternion:CesiumQuaternion, result?: CesiumMatrix3): CesiumMatrix3 {
+       const x2 = quaternion.x * quaternion.x;
+       const xy = quaternion.x * quaternion.y;
+       const xz = quaternion.x * quaternion.z;
+       const xw = quaternion.x * quaternion.w;
+       const y2 = quaternion.y * quaternion.y;
+       const yz = quaternion.y * quaternion.z;
+       const yw = quaternion.y * quaternion.w;
+       const z2 = quaternion.z * quaternion.z;
+       const zw = quaternion.z * quaternion.w;
+       const w2 = quaternion.w * quaternion.w;
+
+       const m00 = x2 - y2 - z2 + w2;
+       const m01 = 2.0 * (xy - zw);
+       const m02 = 2.0 * (xz + yw);
+
+       const m10 = 2.0 * (xy + zw);
+       const m11 = -x2 + y2 - z2 + w2;
+       const m12 = 2.0 * (yz - xw);
+
+       const m20 = 2.0 * (xz - yw);
+       const m21 = 2.0 * (yz + xw);
+       const m22 = -x2 - y2 + z2 + w2;
+
+       if (!defined(result)) {
+           return new CesiumMatrix3(m00, m01, m02, m10, m11, m12, m20, m21, m22);
+       }
+       (result as CesiumMatrix3)[0] = m00;
+       (result as CesiumMatrix3)[1] = m10;
+       (result as CesiumMatrix3)[2] = m20;
+       (result as CesiumMatrix3)[3] = m01;
+       (result as CesiumMatrix3)[4] = m11;
+       (result as CesiumMatrix3)[5] = m21;
+       (result as CesiumMatrix3)[6] = m02;
+       (result as CesiumMatrix3)[7] = m12;
+       (result as CesiumMatrix3)[8] = m22;
+       return (result as CesiumMatrix3);
    }
 }
 

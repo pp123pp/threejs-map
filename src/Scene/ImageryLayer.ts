@@ -10,7 +10,7 @@ import { RequestState } from '@/Core/RequestState';
 import { TerrainProvider } from '@/Core/TerrainProvider';
 import { TileProviderError } from '@/Core/TileProviderError';
 import { GeographicReprojectMaterial } from '@/Material/GeographicReprojectMaterial';
-import { BufferAttribute, StaticDrawUsage, Texture } from 'three';
+import { BufferAttribute, CanvasTexture, StaticDrawUsage, Texture } from 'three';
 import { Context } from './Context';
 import { FrameState } from './FrameState';
 import { Imagery } from './Imagery';
@@ -150,8 +150,8 @@ const reprojectToGeographic = (command: any, context: Context, texture: any, rec
     const material = reproject.material;
     const geometry = reproject.geometry;
 
-    const width = texture.width;
-    const height = texture.height;
+    const width = texture.image.width;
+    const height = texture.image.height;
 
     material.textureDimensions.x = width;
     material.textureDimensions.y = height;
@@ -321,7 +321,7 @@ class ImageryLayer {
         const computeCommands = this._reprojectComputeCommands;
         const length = computeCommands.length;
         for (let i = 0; i < length; ++i) {
-            frameState.commandList.push(computeCommands[i]);
+            frameState.computeCommandList.push(computeCommands[i]);
         }
         computeCommands.length = 0;
     }
@@ -636,7 +636,7 @@ class ImageryLayer {
                 return failure();
             }
 
-            imagery.image = image;
+            imagery.image = new CanvasTexture(image);
             imagery.state = ImageryState.RECEIVED;
             imagery.request = undefined;
 
@@ -781,7 +781,7 @@ class ImageryLayer {
         // no noticeable difference in the georeferencing of the image.
         if (needGeographicProjection &&
             !(this._imageryProvider.tilingScheme.projection instanceof GeographicProjection) &&
-            rectangle.width / texture.width > 1e-5) {
+            rectangle.width / texture.image.width > 1e-5) {
             const that = this;
             imagery.addReference();
             const computeCommand = new ComputeCommand({

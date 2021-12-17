@@ -3,6 +3,7 @@ import { DeveloperError } from '@/Core/DeveloperError';
 import { GeographicTilingScheme } from '@/Core/GeographicTilingScheme';
 import { Rectangle } from '@/Core/Rectangle';
 import { FrameState } from './FrameState';
+import { GlobeSurfaceTile } from './GlobeSurfaceTile';
 import { QuadtreeTileLoadState } from './QuadtreeTileLoadState';
 import TileSelectionResult, { TileSelectionResultEnum } from './TileSelectionResult';
 
@@ -45,7 +46,7 @@ class QuadtreeTile {
     _frameUpdated: any;
     _lastSelectionResultFrame: any;
     _loadedCallbacks: any;
-    data: any;
+    data?: GlobeSurfaceTile;
     constructor (options: {
         level: number,
         x: number,
@@ -212,18 +213,18 @@ class QuadtreeTile {
         return this.state < QuadtreeTileLoadState.DONE;
     }
 
-    get eligibleForUnloading (): boolean {
-        let result = true;
+    // get eligibleForUnloading (): boolean {
+    //     let result = true;
 
-        if (defined(this.data)) {
-            result = this.data.eligibleForUnloading;
-            if (!defined(result)) {
-                result = true;
-            }
-        }
+    //     if (defined(this.data)) {
+    //         result = this.data.eligibleForUnloading;
+    //         if (!defined(result)) {
+    //             result = true;
+    //         }
+    //     }
 
-        return result;
-    }
+    //     return result;
+    // }
 
     /**
      * Creates a rectangular set of tiles for level of detail zero, the coarsest, least detailed level.
@@ -305,6 +306,38 @@ class QuadtreeTile {
                 this._frameUpdated = parent._frameUpdated;
             }
         }
+    }
+
+    /**
+ * Frees the resources associated with this tile and returns it to the <code>START</code>
+ * {@link QuadtreeTileLoadState}.  If the {@link QuadtreeTile#data} property is defined and it
+ * has a <code>freeResources</code> method, the method will be invoked.
+ *
+ * @memberof QuadtreeTile
+ */
+    freeResources (): void {
+        this.state = QuadtreeTileLoadState.START;
+        this.renderable = false;
+        this.upsampledFromParent = false;
+
+        if (defined(this.data) && defined((this.data as GlobeSurfaceTile).freeResources)) {
+            (this.data as GlobeSurfaceTile).freeResources();
+        }
+
+        freeTile(this._southwestChild);
+        this._southwestChild = undefined;
+        freeTile(this._southeastChild);
+        this._southeastChild = undefined;
+        freeTile(this._northwestChild);
+        this._northwestChild = undefined;
+        freeTile(this._northeastChild);
+        this._northeastChild = undefined;
+    }
+}
+
+function freeTile (tile: any) {
+    if (defined(tile)) {
+        tile.freeResources();
     }
 }
 

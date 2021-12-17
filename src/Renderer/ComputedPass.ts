@@ -39,7 +39,7 @@ class ComputedPass {
 
 // Helper for passes that need to fill the viewport with a single quad.
 
-const _camera = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
+const _camera = new OrthographicCamera(-0.5, 0.5, 0.5, -0.5, 0, 0.5);
 
 // https://github.com/mrdoob/three/pull/21358
 

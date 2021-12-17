@@ -1,6 +1,12 @@
+import { Cartesian2 } from '@/Core/Cartesian2';
 import { Cartesian3 } from '@/Core/Cartesian3';
 import { Cartographic } from '@/Core/Cartographic';
+import { CesiumMatrix4 } from '@/Core/CesiumMatrix4';
+import { defined } from '@/Core/defined';
+import { DeveloperError } from '@/Core/DeveloperError';
 import { GeographicProjection } from '@/Core/GeographicProjection';
+import { PerspectiveOffCenterFrustum } from '@/Core/PerspectiveOffCenterFrustum';
+import { Ray } from '@/Core/Ray';
 import { SceneMode } from '@/Core/SceneMode';
 import { Frustum, MathUtils, Matrix4, PerspectiveCamera, Vector3 } from 'three';
 import { Scene } from './Scene';
@@ -33,6 +39,16 @@ const updateMembers = function (camera: PerspectiveFrustumCamera) {
         position = Cartesian3.clone(camera.position, camera.positionCartesian3) as Cartesian3;
     }
 
+    let right = camera._right;
+    const rightChanged = !Cartesian3.equals(right, camera.right);
+    if (rightChanged) {
+        Cartesian3.normalize(camera.right, camera.right);
+        right = Cartesian3.clone(camera.right, camera._right);
+    }
+
+    // const transformChanged = camera._transformChanged || camera._modeChanged;
+    // camera._transformChanged = false;
+
     if (mode === SceneMode.SCENE3D || mode === SceneMode.MORPHING) {
         camera._positionCartographic = camera._projection.ellipsoid.cartesianToCartographic(
             camera.positionCartesian3,
@@ -47,11 +63,11 @@ const updateMembers = function (camera: PerspectiveFrustumCamera) {
         camera.far !== camera._far
     ) {
         camera._aspect = camera.aspect;
-        camera._fov = camera.fov;
+        camera._fovRadius = camera.fovRadius;
         camera._fovy =
         camera.aspect <= 1
-            ? camera.fov
-            : Math.atan(Math.tan(camera.fov * 0.5) / camera.aspect) * 2.0;
+            ? camera.fovRadius
+            : Math.atan(Math.tan(camera.fovRadius * 0.5) / camera.aspect) * 2.0;
         camera._near = camera.near;
         camera._far = camera.far;
         camera._sseDenominator = 2.0 * Math.tan(0.5 * camera._fovy);
@@ -60,7 +76,7 @@ const updateMembers = function (camera: PerspectiveFrustumCamera) {
 
 const scratchCartesian = new Vector3();
 class PerspectiveFrustumCamera extends PerspectiveCamera {
-    protected scene: Scene;
+    scene: Scene;
     private _frustum;
     private _projScreenMatrix: Matrix4;
     public containerWidth: number;
@@ -74,10 +90,22 @@ class PerspectiveFrustumCamera extends PerspectiveCamera {
     _near: number;
     _far: number;
     _projection: GeographicProjection;
-    _fovy?: number
+    _fovy?: number;
+    _fovRadius?: number;
+    transform: CesiumMatrix4;
+    cesiumUp: Cartesian3;
+    _cesiumUp: Cartesian3;
+    _cesiumUpWC: Cartesian3;
+
+    right: Cartesian3;
+    _right: Cartesian3;
+    _rightWC: Cartesian3;
+    _offCenterFrustum: PerspectiveOffCenterFrustum;
     constructor (scene: Scene, options: PerspectiveFrustumCameraParameters) {
         super(options.fov, options.aspect, options.near, options.far);
         this.scene = scene;
+
+        this._offCenterFrustum = new PerspectiveOffCenterFrustum();
 
         this._frustum = new Frustum();
         this._projScreenMatrix = new Matrix4();
@@ -101,6 +129,26 @@ class PerspectiveFrustumCamera extends PerspectiveCamera {
 
         this._sseDenominator = 0.0;
         this._projection = scene.mapProjection;
+
+        this.transform = CesiumMatrix4.clone(CesiumMatrix4.IDENTITY);
+
+        /**
+         * The up direction of the camera.
+         *
+         * @type {Cartesian3}
+         */
+        this.cesiumUp = new Cartesian3();
+        this._cesiumUp = new Cartesian3();
+        this._cesiumUpWC = new Cartesian3();
+
+        /**
+         * The right direction of the camera.
+         *
+         * @type {Cartesian3}
+         */
+        this.right = new Cartesian3();
+        this._right = new Cartesian3();
+        this._rightWC = new Cartesian3();
     }
 
     get directionWC (): Cartesian3 {
@@ -131,6 +179,10 @@ class PerspectiveFrustumCamera extends PerspectiveCamera {
         return this.positionCartesian3;
     }
 
+    get fovy (): number {
+        return this._fovy as number;
+    }
+
     get positionCartographic ():Cartographic {
         const positionENU = scratchCartesian;
         // positionENU.x = this.positionWC.y;
@@ -157,6 +209,14 @@ class PerspectiveFrustumCamera extends PerspectiveCamera {
         // return 2.0 * Math.tan(0.5 * this.fov * THREE.MathUtils.DEG2RAD) / this._scene.drawingBufferSize.height;
     }
 
+    get aspectRatio (): number {
+        return this.aspect;
+    }
+
+    set aspectRatio (value: number) {
+        this.aspect = value;
+    }
+
     resize (container: Element): void {
         const { clientWidth, clientHeight } = container;
 
@@ -167,6 +227,70 @@ class PerspectiveFrustumCamera extends PerspectiveCamera {
         this.containerWidth = clientWidth;
         this.containerHeight = clientHeight;
     }
+
+    /**
+     * Create a ray from the camera position through the pixel at <code>windowPosition</code>
+     * in world coordinates.
+     *
+     * @param {Cartesian2} windowPosition The x and y coordinates of a pixel.
+     * @param {Ray} [result] The object onto which to store the result.
+     * @returns {Ray} Returns the {@link Cartesian3} position and direction of the ray.
+     */
+    getPickRay (windowPosition: Cartesian2, result?: Ray): Ray {
+    // >>includeStart('debug', pragmas.debug);
+        if (!defined(windowPosition)) {
+            throw new DeveloperError('windowPosition is required.');
+        }
+        // >>includeEnd('debug');
+
+        if (!defined(result)) {
+            result = new Ray();
+        }
+
+        return getPickRayPerspective(this, windowPosition, result as Ray);
+    }
+}
+
+const pickPerspCenter = new Cartesian3();
+const pickPerspXDir = new Cartesian3();
+const pickPerspYDir = new Cartesian3();
+function getPickRayPerspective (camera: PerspectiveFrustumCamera, windowPosition: Cartesian2, result: Ray) {
+    const canvas = camera.scene.canvas;
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
+
+    const tanPhi = Math.tan(camera.fovy * 0.5);
+    const tanTheta = camera.aspectRatio * tanPhi;
+    const near = camera.near;
+
+    const x = (2.0 / width) * windowPosition.x - 1.0;
+    const y = (2.0 / height) * (height - windowPosition.y) - 1.0;
+
+    const position = camera.positionWC;
+    Cartesian3.clone(position, result.origin);
+
+    const nearCenter = Cartesian3.multiplyByScalar(
+        camera.directionWC,
+        near,
+        pickPerspCenter
+    );
+    Cartesian3.add(position, nearCenter, nearCenter);
+    const xDir = Cartesian3.multiplyByScalar(
+        camera._rightWC,
+        x * near * tanTheta,
+        pickPerspXDir
+    );
+    const yDir = Cartesian3.multiplyByScalar(
+        camera._cesiumUpWC,
+        y * near * tanPhi,
+        pickPerspYDir
+    );
+    const direction = Cartesian3.add(nearCenter, xDir, result.direction);
+    Cartesian3.add(direction, yDir, direction);
+    Cartesian3.subtract(direction, position, direction);
+    Cartesian3.normalize(direction, direction);
+
+    return result;
 }
 
 export { PerspectiveFrustumCamera };

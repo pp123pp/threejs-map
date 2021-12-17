@@ -5,6 +5,7 @@ import { CullingVolume } from '@/Core/CullingVolume';
 import { Frustum } from 'three';
 import { Context } from './Context';
 import { PerspectiveFrustumCamera } from './PerspectiveFrustumCamera';
+import { ComputeCommand } from '@/Renderer/ComputeCommand';
 
 export interface PassesInterface{
     render: boolean,
@@ -31,6 +32,8 @@ class FrameState {
     terrainExaggerationRelativeHeight: number
     terrainExaggeration: number;
     minimumTerrainHeight: number;
+    computeCommandList: ComputeCommand[];
+    cameraUnderground: boolean;
     constructor (scene: Scene) {
         this.scene = scene;
 
@@ -99,6 +102,9 @@ class FrameState {
         };
 
         this.commandList = [];
+
+        this.computeCommandList = [];
+
         this.shadowMaps = [];
         // this.camera = scene.camera;
 
@@ -107,6 +113,8 @@ class FrameState {
         this.maximumScreenSpaceError = 2.0;
 
         this.mapProjection = undefined;
+
+        this.cameraUnderground = false;
 
         /**
          * An array of functions to be called at the end of the frame.  This array

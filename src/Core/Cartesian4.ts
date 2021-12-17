@@ -52,6 +52,14 @@ class Cartesian4 {
     }
 
     /**
+     * An immutable Cartesian4 instance initialized to (0.0, 0.0, 0.0, 1.0).
+     *
+     * @type {Cartesian4}
+     * @constant
+     */
+    static UNIT_W = Object.freeze(new Cartesian4(0.0, 0.0, 0.0, 1.0));
+
+    /**
      * Creates a Cartesian4 instance from a {@link Color}. <code>red</code>, <code>green</code>, <code>blue</code>,
      * and <code>alpha</code> map to <code>x</code>, <code>y</code>, <code>z</code>, and <code>w</code>, respectively.
      *
@@ -92,6 +100,15 @@ class Cartesian4 {
         (result as Cartesian4).z = cartesian.z;
         (result as Cartesian4).w = cartesian.w;
         return (result as Cartesian4);
+    }
+
+    toArray (array: number[] = [], offset = 0): number[] {
+        array[offset] = this.x;
+        array[offset + 1] = this.y;
+        array[offset + 2] = this.z;
+        array[offset + 3] = this.w;
+
+        return array;
     }
 }
 

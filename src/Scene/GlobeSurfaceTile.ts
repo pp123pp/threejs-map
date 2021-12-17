@@ -6,7 +6,7 @@ import { EllipsoidTerrainProvider } from '@/Core/EllipsoidTerrainProvider';
 import { TerrainEncoding } from '@/Core/TerrainEncoding';
 import { TerrainMesh } from '@/Core/TerrainMesh';
 import { TerrainQuantization } from '@/Core/TerrainQuantization';
-import { BufferGeometry, Float32BufferAttribute, InterleavedBuffer, InterleavedBufferAttribute, StaticDrawUsage, Uint16BufferAttribute } from 'three';
+import { BufferAttribute, BufferGeometry, Float32BufferAttribute, InterleavedBuffer, InterleavedBufferAttribute, StaticDrawUsage, Uint16BufferAttribute } from 'three';
 import { Context } from './Context';
 import { FrameState } from './FrameState';
 import { ImageryLayerCollection } from './ImageryLayerCollection';
@@ -21,10 +21,41 @@ import { RequestType } from '@/Core/RequestType';
 import { Request } from '@/Core/Request';
 import { TileBoundingRegion } from './TileBoundingRegion';
 import { ImageryState } from './ImageryState';
+import { Ray } from '@/Core/Ray';
+import { IntersectionTests } from '@/Core/IntersectionTests';
+import { Cartographic } from '@/Core/Cartographic';
+import { SceneMode } from '@/Core/SceneMode';
 function disposeArray () {
 
     // this.array = null;
 
+}
+
+const scratchV0 = new Cartesian3();
+const scratchV1 = new Cartesian3();
+const scratchV2 = new Cartesian3();
+
+const scratchCartographic = new Cartographic();
+
+function getPosition (encoding: any, mode: any, projection: any, vertices: any, index: any, result: any) {
+    let position = encoding.getExaggeratedPosition(vertices, index, result);
+
+    if (defined(mode) && mode !== SceneMode.SCENE3D) {
+        const ellipsoid = projection.ellipsoid;
+        const positionCartographic = ellipsoid.cartesianToCartographic(
+            position,
+            scratchCartographic
+        );
+        position = projection.project(positionCartographic, result);
+        position = Cartesian3.fromElements(
+            position.z,
+            position.x,
+            position.y,
+            result
+        );
+    }
+
+    return position;
 }
 
 function createResources (
@@ -52,7 +83,7 @@ function processTerrainStateMachine (
     imageryLayerCollection: ImageryLayerCollection,
     vertexArraysToDestroy: any[]
 ) {
-    const surfaceTile = tile.data;
+    const surfaceTile = tile.data as GlobeSurfaceTile;
 
     // If this tile is FAILED, we'll need to upsample from the parent. If the parent isn't
     // ready for that, let's push it along.
@@ -131,16 +162,16 @@ function processTerrainStateMachine (
         if (terrainData.waterMask !== undefined) {
             // createWaterMaskTextureIfNeeded(frameState.context, surfaceTile);
         } else {
-            const sourceTile = surfaceTile._findAncestorTileWithTerrainData(tile);
-            if (defined(sourceTile) && defined(sourceTile.data.waterMaskTexture)) {
-                surfaceTile.waterMaskTexture = sourceTile.data.waterMaskTexture;
-                ++surfaceTile.waterMaskTexture.referenceCount;
-                surfaceTile._computeWaterMaskTranslationAndScale(
-                    tile,
-                    sourceTile,
-                    surfaceTile.waterMaskTranslationAndScale
-                );
-            }
+            // const sourceTile = surfaceTile._findAncestorTileWithTerrainData(tile);
+            // if (defined(sourceTile) && defined(sourceTile.data.waterMaskTexture)) {
+            //     surfaceTile.waterMaskTexture = sourceTile.data.waterMaskTexture;
+            //     ++surfaceTile.waterMaskTexture.referenceCount;
+            //     surfaceTile._computeWaterMaskTranslationAndScale(
+            //         tile,
+            //         sourceTile,
+            //         surfaceTile.waterMaskTranslationAndScale
+            //     );
+            // }
         }
     }
 }
@@ -320,7 +351,7 @@ function prepareNewTile (tile: QuadtreeTile, terrainProvider: EllipsoidTerrainPr
     if (!defined(available) && defined(tile.parent)) {
         // Provider doesn't know if this tile is available. Does the parent tile know?
         const parent = tile.parent;
-        const parentSurfaceTile = parent.data;
+        const parentSurfaceTile = parent.data as GlobeSurfaceTile;
         if (defined(parentSurfaceTile) && defined(parentSurfaceTile.terrainData)) {
             available = parentSurfaceTile.terrainData.isChildAvailable(
                 parent.x,
@@ -333,7 +364,7 @@ function prepareNewTile (tile: QuadtreeTile, terrainProvider: EllipsoidTerrainPr
 
     if (available === false) {
         // This tile is not available, so mark it failed so we start upsampling right away.
-        tile.data.terrainState = TerrainState.FAILED;
+        (tile.data as GlobeSurfaceTile).terrainState = TerrainState.FAILED;
     }
 
     // Map imagery tiles to this terrain tile
@@ -360,7 +391,8 @@ class GlobeSurfaceTile {
     surfaceShader?: any;
     isClipped: boolean;
     clippedByBoundaries: boolean;
-    wireframeVertexArray?: any
+    wireframeVertexArray?: any;
+    waterMaskTexture?: any;
     constructor () {
         /**
          * The {@link TileImagery} attached to this tile.
@@ -414,24 +446,36 @@ class GlobeSurfaceTile {
         this.wireframeVertexArray = undefined;
     }
 
-    static _freeVertexArray (vertexArray: any): void {
+    static _freeVertexArray (vertexArray: BufferGeometry): void {
         if (defined(vertexArray)) {
-            const indexBuffer = vertexArray.indexBuffer;
+            const indexBuffer = vertexArray.index;
 
-            if (!vertexArray.isDestroyed()) {
-                vertexArray.destroy();
+            // if (!vertexArray.isDestroyed()) {
+            //     vertexArray.destroy();
+            // }
+
+            // if (
+            //     defined(indexBuffer) &&
+            // !indexBuffer.isDestroyed() &&
+            // defined(indexBuffer.referenceCount)
+            // ) {
+            //     --indexBuffer.referenceCount;
+            //     if (indexBuffer.referenceCount === 0) {
+            //         indexBuffer.destroy();
+            //     }
+            // }
+
+            const attributes = vertexArray.attributes;
+
+            for (const key in attributes) {
+                (attributes[key] as InterleavedBufferAttribute).data.array = [];
             }
 
-            if (
-                defined(indexBuffer) &&
-            !indexBuffer.isDestroyed() &&
-            defined(indexBuffer.referenceCount)
-            ) {
-                --indexBuffer.referenceCount;
-                if (indexBuffer.referenceCount === 0) {
-                    indexBuffer.destroy();
-                }
+            if (defined(indexBuffer)) {
+                (indexBuffer as BufferAttribute).array = [];
             }
+
+            vertexArray.dispose();
         }
     }
 
@@ -461,7 +505,7 @@ class GlobeSurfaceTile {
     ): void {
         GlobeSurfaceTile.initialize(tile, (terrainProvider as EllipsoidTerrainProvider), imageryLayerCollection);
 
-        const surfaceTile: GlobeSurfaceTile = tile.data;
+        const surfaceTile = tile.data as GlobeSurfaceTile;
 
         if (tile.state === QuadtreeTileLoadState.LOADING) {
             processTerrainStateMachine(
@@ -569,8 +613,8 @@ class GlobeSurfaceTile {
         terrainProvider: EllipsoidTerrainProvider,
         frameState: FrameState,
         skipLoading?: any
-    ) {
-        const surfaceTile = tile.data;
+    ): any {
+        const surfaceTile = tile.data as GlobeSurfaceTile;
         let isUpsampledOnly = tile.upsampledFromParent;
         let isAnyTileLoaded = false;
         let isDoneLoading = true;
@@ -627,6 +671,75 @@ class GlobeSurfaceTile {
         tile.renderable = tile.renderable && (isAnyTileLoaded || isDoneLoading);
 
         return isDoneLoading;
+    }
+
+    freeResources (): void {
+        // if (defined(this.waterMaskTexture)) {
+        //     --this.waterMaskTexture.referenceCount;
+        //     if (this.waterMaskTexture.referenceCount === 0) {
+        //         this.waterMaskTexture.destroy();
+        //     }
+        //     this.waterMaskTexture = undefined;
+        // }
+
+        this.terrainData = undefined;
+
+        this.terrainState = TerrainState.UNLOADED;
+        this.mesh = undefined;
+        this.fill = this.fill && this.fill.destroy();
+
+        const imageryList = this.imagery;
+        for (let i = 0, len = imageryList.length; i < len; ++i) {
+            imageryList[i].freeResources();
+        }
+        this.imagery.length = 0;
+
+        this.freeVertexArray();
+    }
+
+    pick (
+        ray: Ray,
+        mode: any,
+        projection: any,
+        cullBackFaces: any,
+        result: any
+    ) {
+        const mesh = this.renderedMesh;
+        if (!defined(mesh)) {
+            return undefined;
+        }
+
+        const vertices = mesh.vertices;
+        const indices = mesh.indices;
+        const encoding = mesh.encoding;
+        const indicesLength = indices.length;
+
+        let minT = Number.MAX_VALUE;
+
+        for (let i = 0; i < indicesLength; i += 3) {
+            const i0 = indices[i];
+            const i1 = indices[i + 1];
+            const i2 = indices[i + 2];
+
+            const v0 = getPosition(encoding, mode, projection, vertices, i0, scratchV0);
+            const v1 = getPosition(encoding, mode, projection, vertices, i1, scratchV1);
+            const v2 = getPosition(encoding, mode, projection, vertices, i2, scratchV2);
+
+            const t = IntersectionTests.rayTriangleParametric(
+                ray,
+                v0,
+                v1,
+                v2,
+                cullBackFaces
+            );
+            if (defined(t) && t < minT && t >= 0.0) {
+                minT = t;
+            }
+        }
+
+        return minT !== Number.MAX_VALUE
+            ? Ray.getPoint(ray, minT, result)
+            : undefined;
     }
 }
 

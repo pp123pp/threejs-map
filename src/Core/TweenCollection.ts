@@ -1,5 +1,5 @@
 
-import * as TweenJS from '@tweenjs/tween';
+import * as TweenJS from '@tweenjs/tween.js';
 import { clone } from './clone';
 import { defaultValue } from './defaultValue';
 import { defined } from './defined';
@@ -289,12 +289,12 @@ class TweenCollection {
    *
    * @param {Number} [time=getTimestamp()] The time in seconds.  By default tweens are synced to the system clock.
    */
-    update (time: number):void {
+    update (time?: number):void {
         const tweens = this._tweens;
 
         let i = 0;
         time = defined(time)
-            ? time / TimeConstants.SECONDS_PER_MILLISECOND
+            ? (time as number) / TimeConstants.SECONDS_PER_MILLISECOND
             : getTimestamp();
         while (i < tweens.length) {
             const tween = tweens[i];

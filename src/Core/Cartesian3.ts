@@ -550,6 +550,27 @@ class Cartesian3 {
         result = Cartesian3.multiplyByScalar(start, 1.0 - t, result);
         return Cartesian3.add(lerpScratch, result, result);
     }
+
+    /**
+     * Returns the angle, in radians, between the provided Cartesians.
+     *
+     * @param {Cartesian3} left The first Cartesian.
+     * @param {Cartesian3} right The second Cartesian.
+     * @returns {Number} The angle between the Cartesians.
+     */
+    static angleBetween (left: Cartesian3, right: Cartesian3): number {
+        Cartesian3.normalize(left, angleBetweenScratch);
+        Cartesian3.normalize(right, angleBetweenScratch2);
+        const cosine = Cartesian3.dot(angleBetweenScratch, angleBetweenScratch2);
+        const sine = Cartesian3.magnitude(
+            Cartesian3.cross(
+                angleBetweenScratch,
+                angleBetweenScratch2,
+                angleBetweenScratch
+            )
+        );
+        return Math.atan2(sine, cosine);
+    }
 }
 const distanceScratch = new Cartesian3();
 const mostOrthogonalAxisScratch = new Cartesian3();
@@ -563,5 +584,8 @@ const wgs84RadiiSquared = new Cartesian3(
 );
 
 const lerpScratch = new Cartesian3();
+
+const angleBetweenScratch = new Cartesian3();
+const angleBetweenScratch2 = new Cartesian3();
 
 export { Cartesian3 };

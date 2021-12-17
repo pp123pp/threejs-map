@@ -10,6 +10,7 @@
 
 import { Cartesian3 } from './Cartesian3';
 import { defaultValue } from './defaultValue';
+import { defined } from './defined';
 
 class Ray {
     origin: Cartesian3;
@@ -32,6 +33,29 @@ class Ray {
          * @type {Cartesian3}
          */
         this.direction = direction;
+    }
+
+    /**
+     * Computes the point along the ray given by r(t) = o + t*d,
+     * where o is the origin of the ray and d is the direction.
+     *
+     * @param {Ray} ray The ray.
+     * @param {Number} t A scalar value.
+     * @param {Cartesian3} [result] The object in which the result will be stored.
+     * @returns {Cartesian3} The modified result parameter, or a new instance if none was provided.
+     *
+     * @example
+     * //Get the first intersection point of a ray and an ellipsoid.
+     * var intersection = Cesium.IntersectionTests.rayEllipsoid(ray, ellipsoid);
+     * var point = Cesium.Ray.getPoint(ray, intersection.start);
+     */
+    static getPoint (ray: Ray, t: number, result: Cartesian3): Cartesian3 {
+        if (!defined(result)) {
+            result = new Cartesian3();
+        }
+
+        result = Cartesian3.multiplyByScalar(ray.direction, t, result);
+        return Cartesian3.add(ray.origin, result, result);
     }
 }
 
