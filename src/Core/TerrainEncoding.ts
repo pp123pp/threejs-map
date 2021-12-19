@@ -55,8 +55,6 @@ const attributesIndicesBits12 = {
  * @private
  */
 
-const threeMatrix4 = new Matrix4();
-
 class TerrainEncoding {
     quantization: TerrainQuantization;
     minimumHeight: number | undefined;
@@ -65,6 +63,7 @@ class TerrainEncoding {
     toScaledENU: CesiumMatrix4;
     fromScaledENU?: CesiumMatrix4;
     matrix: CesiumMatrix4;
+    _threeMatrix4: Matrix4;
     hasVertexNormals: boolean | undefined;
     hasWebMercatorT: boolean | undefined;
     hasGeodeticSurfaceNormals: boolean | undefined;
@@ -182,6 +181,8 @@ class TerrainEncoding {
          */
         this.matrix = (matrix as CesiumMatrix4);
 
+        this._threeMatrix4 = new Matrix4();
+
         /**
          * The terrain mesh contains normals.
          * @type {Boolean}
@@ -231,7 +232,12 @@ class TerrainEncoding {
     }
 
     get threeMatrix4 (): Matrix4 {
-        return CesiumMatrix4.copyThreeMatrix4(this.matrix, threeMatrix4);
+        if (defined(this.matrix)) {
+            CesiumMatrix4.toArray(this.matrix, this._threeMatrix4.elements);
+        }
+
+        return this._threeMatrix4;
+        // return CesiumMatrix4.copyThreeMatrix4(this.matrix, threeMatrix4);
     }
 
     encode (

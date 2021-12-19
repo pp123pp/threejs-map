@@ -2,6 +2,7 @@ import { Cartesian2 } from '@/Core/Cartesian2';
 import { Cartesian3 } from '@/Core/Cartesian3';
 import { Cartographic } from '@/Core/Cartographic';
 import { CesiumMatrix4 } from '@/Core/CesiumMatrix4';
+import { defaultValue } from '@/Core/defaultValue';
 import { defined } from '@/Core/defined';
 import { DeveloperError } from '@/Core/DeveloperError';
 import { GeographicProjection } from '@/Core/GeographicProjection';
@@ -20,6 +21,8 @@ export interface PerspectiveFrustumCameraParameters {
     aspect?: number;
     near?: number;
     far?: number;
+    xOffset?: number;
+    yOffset?: number;
 }
 
 const updateMembers = function (camera: PerspectiveFrustumCamera) {
@@ -101,6 +104,15 @@ class PerspectiveFrustumCamera extends PerspectiveCamera {
     _right: Cartesian3;
     _rightWC: Cartesian3;
     _offCenterFrustum: PerspectiveOffCenterFrustum;
+
+    xOffset: number;
+    _xOffset: number;
+
+    yOffset: number;
+    _yOffset: number;
+
+    _aspectRatio?: number;
+
     constructor (scene: Scene, options: PerspectiveFrustumCameraParameters) {
         super(options.fov, options.aspect, options.near, options.far);
         this.scene = scene;
@@ -127,6 +139,8 @@ class PerspectiveFrustumCamera extends PerspectiveCamera {
         this._near = this.near;
         this._far = this.far;
 
+        this._aspectRatio = undefined;
+
         this._sseDenominator = 0.0;
         this._projection = scene.mapProjection;
 
@@ -149,6 +163,22 @@ class PerspectiveFrustumCamera extends PerspectiveCamera {
         this.right = new Cartesian3();
         this._right = new Cartesian3();
         this._rightWC = new Cartesian3();
+
+        /**
+         * Offsets the frustum in the x direction.
+         * @type {Number}
+         * @default 0.0
+         */
+        this.xOffset = defaultValue(options.xOffset, 0.0) as number;
+        this._xOffset = this.xOffset;
+
+        /**
+         * Offsets the frustum in the y direction.
+         * @type {Number}
+         * @default 0.0
+         */
+        this.yOffset = defaultValue(options.yOffset, 0.0) as number;
+        this._yOffset = this.yOffset;
     }
 
     get directionWC (): Cartesian3 {
@@ -180,6 +210,7 @@ class PerspectiveFrustumCamera extends PerspectiveCamera {
     }
 
     get fovy (): number {
+        update(this);
         return this._fovy as number;
     }
 
@@ -291,6 +322,72 @@ function getPickRayPerspective (camera: PerspectiveFrustumCamera, windowPosition
     Cartesian3.normalize(direction, direction);
 
     return result;
+}
+
+function update (frustum: PerspectiveFrustumCamera) {
+    // >>includeStart('debug', pragmas.debug);
+    if (
+        !defined(frustum.fov) ||
+      !defined(frustum.aspectRatio) ||
+      !defined(frustum.near) ||
+      !defined(frustum.far)
+    ) {
+        throw new DeveloperError(
+            'fov, aspectRatio, near, or far parameters are not set.'
+        );
+    }
+    // >>includeEnd('debug');
+
+    const f = frustum._offCenterFrustum;
+
+    if (
+        frustum.fov !== frustum._fov ||
+      frustum.aspectRatio !== frustum._aspectRatio ||
+      frustum.near !== frustum._near ||
+      frustum.far !== frustum._far ||
+      frustum.xOffset !== frustum._xOffset ||
+      frustum.yOffset !== frustum._yOffset
+    ) {
+        // >>includeStart('debug', pragmas.debug);
+        if (frustum.fov < 0 || frustum.fov >= Math.PI) {
+            throw new DeveloperError('fov must be in the range [0, PI).');
+        }
+
+        if (frustum.aspectRatio < 0) {
+            throw new DeveloperError('aspectRatio must be positive.');
+        }
+
+        if (frustum.near < 0 || frustum.near > frustum.far) {
+            throw new DeveloperError(
+                'near must be greater than zero and less than far.'
+            );
+        }
+        // >>includeEnd('debug');
+
+        frustum._aspectRatio = frustum.aspectRatio;
+        frustum._fov = frustum.fov;
+        frustum._fovy =
+        frustum.aspectRatio <= 1
+            ? frustum.fov
+            : Math.atan(Math.tan(frustum.fov * 0.5) / frustum.aspectRatio) * 2.0;
+        frustum._near = frustum.near;
+        frustum._far = frustum.far;
+        frustum._sseDenominator = 2.0 * Math.tan(0.5 * frustum._fovy);
+        frustum._xOffset = frustum.xOffset;
+        frustum._yOffset = frustum.yOffset;
+
+        f.top = frustum.near * Math.tan(0.5 * frustum._fovy);
+        f.bottom = -f.top;
+        f.right = frustum.aspectRatio * f.top;
+        f.left = -f.right;
+        f.near = frustum.near;
+        f.far = frustum.far;
+
+        f.right += frustum.xOffset;
+        f.left += frustum.xOffset;
+        f.top += frustum.yOffset;
+        f.bottom += frustum.yOffset;
+    }
 }
 
 export { PerspectiveFrustumCamera };

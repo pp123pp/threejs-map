@@ -36,7 +36,7 @@ class PerspectiveOffCenterFrustum {
     _cullingVolume: CullingVolume;
     _perspectiveMatrix: CesiumMatrix4;
     _infinitePerspective: CesiumMatrix4;
-    constructor (options?: any) {
+    constructor (options: any = {}) {
         /**
          * Defines the left clipping plane.
          * @type {Number}

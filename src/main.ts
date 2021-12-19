@@ -26,9 +26,9 @@ const material = new MeshNormalMaterial({ side: DoubleSide, wireframe: true });
 const cube = new Mesh(geometry, material);
 // scene.add(cube);
 
-const axesHelper = new AxesHelper(50000000);
-scene.add(axesHelper);
-console.log(CameraEventType);
+// const axesHelper = new AxesHelper(50000000);
+// scene.add(axesHelper);
+// console.log(CameraEventType);
 
 const mapToken = '39d358c825ec7e59142958656c0a6864';// 盈嘉企业开发者秘钥
 // '3669131581c051178afabed885766ac2', //天地图广州---容易出错

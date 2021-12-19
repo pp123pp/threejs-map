@@ -1,6 +1,7 @@
 
 import { defined } from '@/Core/defined';
-import { ShaderMaterial, Vector2, Vector4, Matrix4, Vector3 } from 'three';
+import { Rectangle } from '@/Core/Rectangle';
+import { ShaderMaterial, Vector2, Vector4, Matrix4, Vector3, RawShaderMaterial, GLSL3 } from 'three';
 
 const vertexShader = `
 
@@ -8,11 +9,11 @@ const vertexShader = `
 #include <logdepthbuf_pars_vertex>
 
 #ifdef QUANTIZATION_BITS12
-    attribute vec4 compressed0;
-    attribute float compressed1;
+    in vec4 compressed0;
+    in float compressed1;
 #else
-    attribute vec4 position3DAndHeight;
-    attribute vec4 textureCoordAndEncodedNormals;
+    in vec4 position3DAndHeight;
+    in vec4 textureCoordAndEncodedNormals;
 #endif
 
 #ifdef QUANTIZATION_BITS12
@@ -23,7 +24,9 @@ const vertexShader = `
 
 uniform vec4 u_tileRectangle;
 uniform vec3 rtc;
-varying vec3 v_textureCoordinates;
+
+out vec3 v_textureCoordinates;
+out vec2 vHighPrecisionZW;
 
 float get2DGeographicYPositionFraction(vec2 textureCoordinates)
 {
@@ -113,8 +116,10 @@ void main(){
     gl_Position = projectionMatrix * modelViewMatrix *  vec4( transformed, 1.0 );
     
     v_textureCoordinates = vec3(textureCoordinates, webMercatorT);
-    
+   
+
     #include <logdepthbuf_vertex>
+    vHighPrecisionZW = gl_Position.zw;
 }
 
 `;
@@ -145,6 +150,7 @@ class TileMaterial extends ShaderMaterial {
         this.vertexShader = vertexShader;
         this.fragmentShader = fragmentShader;
         this.defines.TEXTURE_UNITS = shaderSetOptions.numberOfDayTextures;
+        this.glslVersion = GLSL3;
         // this.wireframe = true;
         // this.depthWrite = false;
     }
@@ -215,22 +221,22 @@ class TileMaterial extends ShaderMaterial {
         this.uniforms.rtc.value.copy(value);
     }
 
-    get tileRectangle () {
+    get tileRectangle (): Rectangle {
         return this.uniforms.u_tileRectangle.value;
     }
 
-    set tileRectangle (value) {
+    set tileRectangle (value: Rectangle) {
         if (!defined(value)) {
             return;
         }
         this.uniforms.u_tileRectangle.value.copy(value);
     }
 
-    get minMaxHeight () {
+    get minMaxHeight (): number {
         return this.uniforms.u_minMaxHeight.value;
     }
 
-    set minMaxHeight (value) {
+    set minMaxHeight (value: number) {
         if (!defined(value)) {
             return;
         }
@@ -248,11 +254,11 @@ class TileMaterial extends ShaderMaterial {
         this.uniforms.u_scaleAndBias.value.copy(value);
     }
 
-    get center3D () {
+    get center3D (): Vector3 {
         return this.uniforms.u_center3D.value;
     }
 
-    set center3D (value) {
+    set center3D (value: Vector3) {
         if (!defined(value)) {
             return;
         }
@@ -265,7 +271,12 @@ class TileMaterial extends ShaderMaterial {
         #include <packing>
         #include <logdepthbuf_pars_fragment>
         
-        varying vec3 v_textureCoordinates;
+        layout(location = 0) out vec4 gColor;
+        layout(location = 1) out vec4 gDepth;
+        layout(location = 2) out vec4 gNormal;
+
+        in vec3 v_textureCoordinates;
+        in vec2 vHighPrecisionZW;
         uniform vec4 u_initialColor;
         uniform vec4 diffuse;
         
@@ -377,10 +388,15 @@ class TileMaterial extends ShaderMaterial {
         void main(void){
             #include <logdepthbuf_fragment>
         
+            float fragCoordZ = 0.5 * vHighPrecisionZW[0] / vHighPrecisionZW[1] + 0.5;
         
-            gl_FragColor = computeDayColor(u_initialColor, clamp(v_textureCoordinates, 0.0, 1.0));
+            // gl_FragColor = computeDayColor(u_initialColor, clamp(v_textureCoordinates, 0.0, 1.0));
         
             // gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+
+            gColor = computeDayColor(u_initialColor, clamp(v_textureCoordinates, 0.0, 1.0));
+            gDepth = packDepthToRGBA( fragCoordZ );
+            gNormal = vec4(1.0);
         }
         `;
 

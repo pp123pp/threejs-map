@@ -817,7 +817,7 @@ const pickGlobeScratchRay = new Ray();
 const scratchDepthIntersection = new Cartesian3();
 const scratchRayIntersection = new Cartesian3();
 
-function pickGlobe (controller: any, mousePosition: any, result: any) {
+function pickGlobe (controller: ScreenSpaceCameraController, mousePosition: Cartesian2, result: Cartesian3) {
     const scene = controller._scene;
     const globe = controller._globe;
     const camera = scene.camera;
@@ -845,14 +845,14 @@ function pickGlobe (controller: any, mousePosition: any, result: any) {
     );
 
     const pickDistance = defined(depthIntersection)
-        ? Cartesian3.distance(depthIntersection, camera.positionWC)
+        ? Cartesian3.distance((depthIntersection as Cartesian3), camera.positionWC)
         : Number.POSITIVE_INFINITY;
     const rayDistance = defined(rayIntersection)
         ? Cartesian3.distance(rayIntersection, camera.positionWC)
         : Number.POSITIVE_INFINITY;
 
     if (pickDistance < rayDistance) {
-        return Cartesian3.clone(depthIntersection, result);
+        return Cartesian3.clone((depthIntersection as Cartesian3), result);
     }
 
     return Cartesian3.clone(rayIntersection, result);
@@ -990,7 +990,7 @@ function translateCV (controller: any, startPosition: any, movement: any) {
     const startMouse = Cartesian2.clone(
         movement.startPosition,
         translateCVStartMouse
-    );
+    ) as Cartesian2;
     const endMouse = Cartesian2.clone(movement.endPosition, translateCVEndMouse);
     let startRay = camera.getPickRay(startMouse, translateCVStartRay);
 
@@ -2315,7 +2315,7 @@ function look3D (controller: ScreenSpaceCameraController, startPosition: any, mo
 
     angle = movement.startPosition.x > movement.endPosition.x ? -angle : angle;
 
-    const horizontalRotationAxis = controller._horizontalRotationAxis;
+    const horizontalRotationAxis: any = controller._horizontalRotationAxis;
     if (defined(rotationAxis)) {
         camera.look(rotationAxis, -angle);
     } else if (defined(horizontalRotationAxis)) {

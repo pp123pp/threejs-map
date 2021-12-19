@@ -513,6 +513,13 @@ class CesiumMatrix4 {
     }
 
     static copyThreeMatrix4 (matrix: CesiumMatrix4, threeMatrix: Matrix4): Matrix4 {
+        if (!defined(matrix[0])) {
+            debugger;
+        }
+
+        if (!defined(threeMatrix.elements[0])) {
+            debugger;
+        }
         threeMatrix.elements[0] = matrix[0];
         threeMatrix.elements[1] = matrix[1];
         threeMatrix.elements[2] = matrix[2];
@@ -672,16 +679,16 @@ class CesiumMatrix4 {
     }
 
     /**
- * Computes a Matrix4 instance representing an infinite off center perspective transformation.
- *
- * @param {Number} left The number of meters to the left of the camera that will be in view.
- * @param {Number} right The number of meters to the right of the camera that will be in view.
- * @param {Number} bottom The number of meters below of the camera that will be in view.
- * @param {Number} top The number of meters above of the camera that will be in view.
- * @param {Number} near The distance to the near plane in meters.
- * @param {Matrix4} result The object in which the result will be stored.
- * @returns {Matrix4} The modified result parameter.
- */
+     * Computes a Matrix4 instance representing an infinite off center perspective transformation.
+     *
+     * @param {Number} left The number of meters to the left of the camera that will be in view.
+     * @param {Number} right The number of meters to the right of the camera that will be in view.
+     * @param {Number} bottom The number of meters below of the camera that will be in view.
+     * @param {Number} top The number of meters above of the camera that will be in view.
+     * @param {Number} near The distance to the near plane in meters.
+     * @param {Matrix4} result The object in which the result will be stored.
+     * @returns {Matrix4} The modified result parameter.
+     */
     static computeInfinitePerspectiveOffCenter (
         left: number,
         right: number,
@@ -715,6 +722,96 @@ class CesiumMatrix4 {
         result[14] = column3Row2;
         result[15] = 0.0;
         return result;
+    }
+
+    /**
+     * Computes the product of a matrix and a {@link Cartesian3}.  This is equivalent to calling {@link Matrix4.multiplyByVector}
+     * with a {@link Cartesian4} with a <code>w</code> component of zero.
+     *
+     * @param {Matrix4} matrix The matrix.
+     * @param {Cartesian3} cartesian The point.
+     * @param {Cartesian3} result The object onto which to store the result.
+     * @returns {Cartesian3} The modified result parameter.
+     *
+     * @example
+     * var p = new Cesium.Cartesian3(1.0, 2.0, 3.0);
+     * var result = Cesium.Matrix4.multiplyByPointAsVector(matrix, p, new Cesium.Cartesian3());
+     * // A shortcut for
+     * //   Cartesian3 p = ...
+     * //   Cesium.Matrix4.multiplyByVector(matrix, new Cesium.Cartesian4(p.x, p.y, p.z, 0.0), result);
+     */
+    static multiplyByPointAsVector (matrix: CesiumMatrix4, cartesian: Cartesian3, result: Cartesian3): Cartesian3 {
+        const vX = cartesian.x;
+        const vY = cartesian.y;
+        const vZ = cartesian.z;
+
+        const x = matrix[0] * vX + matrix[4] * vY + matrix[8] * vZ;
+        const y = matrix[1] * vX + matrix[5] * vY + matrix[9] * vZ;
+        const z = matrix[2] * vX + matrix[6] * vY + matrix[10] * vZ;
+
+        result.x = x;
+        result.y = y;
+        result.z = z;
+        return result;
+    }
+
+    /**
+ * Computes an Array from the provided Matrix4 instance.
+ * The array will be in column-major order.
+ *
+ * @param {Matrix4} matrix The matrix to use..
+ * @param {Number[]} [result] The Array onto which to store the result.
+ * @returns {Number[]} The modified Array parameter or a new Array instance if one was not provided.
+ *
+ * @example
+ * //create an array from an instance of Matrix4
+ * // m = [10.0, 14.0, 18.0, 22.0]
+ * //     [11.0, 15.0, 19.0, 23.0]
+ * //     [12.0, 16.0, 20.0, 24.0]
+ * //     [13.0, 17.0, 21.0, 25.0]
+ * var a = Cesium.Matrix4.toArray(m);
+ *
+ * // m remains the same
+ * //creates a = [10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0]
+ */
+    static toArray (matrix: CesiumMatrix4, result?: number[]): number[] {
+        if (!defined(result)) {
+            return [
+                matrix[0],
+                matrix[1],
+                matrix[2],
+                matrix[3],
+                matrix[4],
+                matrix[5],
+                matrix[6],
+                matrix[7],
+                matrix[8],
+                matrix[9],
+                matrix[10],
+                matrix[11],
+                matrix[12],
+                matrix[13],
+                matrix[14],
+                matrix[15]
+            ];
+        }
+        (result as number[])[0] = matrix[0];
+        (result as number[])[1] = matrix[1];
+        (result as number[])[2] = matrix[2];
+        (result as number[])[3] = matrix[3];
+        (result as number[])[4] = matrix[4];
+        (result as number[])[5] = matrix[5];
+        (result as number[])[6] = matrix[6];
+        (result as number[])[7] = matrix[7];
+        (result as number[])[8] = matrix[8];
+        (result as number[])[9] = matrix[9];
+        (result as number[])[10] = matrix[10];
+        (result as number[])[11] = matrix[11];
+        (result as number[])[12] = matrix[12];
+        (result as number[])[13] = matrix[13];
+        (result as number[])[14] = matrix[14];
+        (result as number[])[15] = matrix[15];
+        return (result as number[]);
     }
 }
 

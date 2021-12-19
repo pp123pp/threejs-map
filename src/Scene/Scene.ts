@@ -6,6 +6,7 @@ import { SceneMode } from '../Core/SceneMode';
 import * as THREE from 'three';
 import { Vector2, WebGLRenderer, WebGLRendererParameters } from 'three';
 import { Camera } from './Camera';
+// import { Camera } from './CameraCopy';
 import { Context } from './Context';
 import { FrameState, PassesInterface } from './FrameState';
 import { MapRenderer, RenderStateParameters } from './MapRenderer';
@@ -16,7 +17,6 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { GeographicProjection } from '../Core/GeographicProjection';
 import { Globe } from './Globe';
 import { ComputeEngine } from '../Renderer/ComputeEngine';
-
 import { ComputeCommand } from '../Renderer/ComputeCommand';
 import { PrimitiveCollection } from './PrimitiveCollection';
 import { defined } from '@/Core/defined';
@@ -25,6 +25,10 @@ import { RenderCollection } from './RenderCollection';
 import { RequestScheduler } from '@/Core/RequestScheduler';
 import { ScreenSpaceCameraController } from './ScreenSpaceCameraController';
 import { TweenCollection } from '@/Core/TweenCollection';
+import { Cartesian2 } from '@/Core/Cartesian2';
+import { Cartesian3 } from '@/Core/Cartesian3';
+import { EffectComposerCollection } from './EffectComposerCollection';
+import { PickDepth } from './PickDepth';
 
 interface SceneOptions {
     renderState?: RenderStateParameters;
@@ -241,8 +245,10 @@ function executeCommandsInViewport (firstViewport: boolean, scene:Scene, backgro
     updateAndRenderPrimitives(scene);
 
     // executeCommands(scene, passState);
-    scene.renderer.clear();
-    scene.renderer.render(scene, scene.activeCamera);
+    // scene.renderer.clear();
+    // scene.renderer.render(scene, scene.activeCamera);
+
+    scene.effectComposerCollection.render();
 }
 
 class Scene extends THREE.Scene {
@@ -273,7 +279,9 @@ class Scene extends THREE.Scene {
     _removeRequestListenerCallback: any;
     _globeHeight?: number;
     _cameraUnderground: boolean;
-    _tweens: TweenCollection
+    _tweens: TweenCollection;
+    effectComposerCollection: EffectComposerCollection;
+    _pickDepth: PickDepth;
     constructor (options: SceneOptions) {
         super();
 
@@ -288,15 +296,15 @@ class Scene extends THREE.Scene {
         this.postUpdate = new Event();
         this.preRender = new Event();
 
+        this.renderer = new MapRenderer(options.renderState);
+
         this._camera = new Camera(this, {
-            near: 0.1,
+            near: 1,
             far: 100000000
         });
 
         this.activeCamera.position.set(10, 10, 10);
         this.activeCamera.lookAt(0, 0, 0);
-
-        this.renderer = new MapRenderer(options.renderState);
 
         /**
          * When <code>true</code>, rendering a frame will only occur when needed as determined by changes within the scene.
@@ -346,6 +354,7 @@ class Scene extends THREE.Scene {
 
         this._canvas = this.renderer.domElement as HTMLCanvasElement;
         this._context = new Context(this);
+        this.renderer.setRenderTarget(this._context.sceneFrameBuffer);
         this._computeEngine = new ComputeEngine(this, this._context);
 
         this._globeHeight = undefined;
@@ -376,8 +385,11 @@ class Scene extends THREE.Scene {
         this._tweens = new TweenCollection();
 
         // this._screenSpaceCameraController = new OrbitControls(this.activeCamera, this.renderer.domElement);
-
         this._screenSpaceCameraController = new ScreenSpaceCameraController(this);
+
+        this.effectComposerCollection = new EffectComposerCollection(this);
+
+        this._pickDepth = new PickDepth();
     }
 
     get pixelRatio (): number {
@@ -402,6 +414,7 @@ class Scene extends THREE.Scene {
 
     get activeCamera (): PerspectiveFrustumCamera {
         return this._camera.frustum;
+        // return this.camera.activeCamera;
     }
 
     get frameState ():FrameState {
@@ -450,8 +463,12 @@ class Scene extends THREE.Scene {
         return this._screenSpaceCameraController;
     }
 
-    get tweens () {
+    get tweens (): TweenCollection {
         return this._tweens;
+    }
+
+    get pickPositionSupported (): boolean {
+        return true;
     }
 
     requestRender () :void{
@@ -461,6 +478,7 @@ class Scene extends THREE.Scene {
     setSize (container: Element): void {
         this.camera.resize(container);
         this.renderer.setSize(container.clientWidth, container.clientHeight);
+        this.effectComposerCollection.setSize(container);
     }
 
     clearPasses (passes: PassesInterface): void {
@@ -559,6 +577,31 @@ class Scene extends THREE.Scene {
         const mode = frameState.mode;
 
         executeCommandsInViewport(true, this, backgroundColor);
+    }
+
+    /**
+     * Returns the cartesian position reconstructed from the depth buffer and window position.
+     * The returned position is in world coordinates. Used internally by camera functions to
+     * prevent conversion to projected 2D coordinates and then back.
+     * <p>
+     * Set {@link Scene#pickTranslucentDepth} to <code>true</code> to include the depth of
+     * translucent primitives; otherwise, this essentially picks through translucent primitives.
+     * </p>
+     *
+     * @private
+     *
+     * @param {Cartesian2} windowPosition Window coordinates to perform picking on.
+     * @param {Cartesian3} [result] The object on which to restore the result.
+     * @returns {Cartesian3} The cartesian position in world coordinates.
+     *
+     * @exception {DeveloperError} Picking from the depth buffer is not supported. Check pickPositionSupported.
+     */
+    pickPositionWorldCoordinates (windowPosition: Cartesian2, result?: Cartesian3): Cartesian3 {
+        return this._picking.pickPositionWorldCoordinates(
+            this,
+            windowPosition,
+            result
+        );
     }
 }
 

@@ -1,17 +1,34 @@
+import { Cartesian2 } from '@/Core/Cartesian2';
 import { Cartesian3 } from '@/Core/Cartesian3';
 import { Cartographic } from '@/Core/Cartographic';
 import { CesiumMath } from '@/Core/CesiumMath';
+import { CesiumMatrix3 } from '@/Core/CesiumMatrix3';
 import { CesiumMatrix4 } from '@/Core/CesiumMatrix4';
+import { CesiumQuaternion } from '@/Core/CesiumQuaternion';
+import { defaultValue } from '@/Core/defaultValue';
 import { defined } from '@/Core/defined';
+import { DeveloperError } from '@/Core/DeveloperError';
 import { EllipsoidGeodesic } from '@/Core/EllipsoidGeodesic';
 import { Event } from '@/Core/Event';
 import { GeographicProjection } from '@/Core/GeographicProjection';
 import { HeadingPitchRange } from '@/Core/HeadingPitchRange';
+import { Ray } from '@/Core/Ray';
 import { Rectangle } from '@/Core/Rectangle';
 import { SceneMode } from '@/Core/SceneMode';
 import { OrthographicFrustumCamera } from './OrthographicFrustumCamera';
 import { PerspectiveFrustumCamera, PerspectiveFrustumCameraParameters } from './PerspectiveFrustumCamera';
 import { Scene } from './Scene';
+
+const lookScratchQuaternion = new CesiumQuaternion();
+const lookScratchMatrix = new CesiumMatrix3();
+const moveScratch = new Cartesian3();
+
+const setTransformPosition = new Cartesian3();
+const setTransformUp = new Cartesian3();
+const setTransformDirection = new Cartesian3();
+
+const rotateScratchQuaternion = new CesiumQuaternion();
+const rotateScratchMatrix = new CesiumMatrix3();
 
 function updateViewMatrix (camera: Camera) {
     CesiumMatrix4.computeView(
@@ -316,8 +333,445 @@ class Camera {
         0.0
     );
 
+    get transform (): CesiumMatrix4 {
+        return this._transform;
+    }
+
+    get inverseTransform (): CesiumMatrix4 {
+        updateMembers(this);
+        return this._invTransform;
+    }
+
+    get viewMatrix (): CesiumMatrix4 {
+        updateMembers(this);
+        return this._viewMatrix;
+    }
+
+    get inverseViewMatrix (): CesiumMatrix4 {
+        updateMembers(this);
+        return this.inverseViewMatrix;
+    }
+
+    get positionCartographic (): Cartographic {
+        updateMembers(this);
+        return this._positionCartographic;
+    }
+
+    get positionWC (): Cartesian3 {
+        updateMembers(this);
+        return this._positionWC;
+    }
+
+    get directionWC (): Cartesian3 {
+        updateMembers(this);
+        return this._directionWC;
+    }
+
+    get upWC (): Cartesian3 {
+        updateMembers(this);
+        return this._upWC;
+    }
+
+    get rightWC (): Cartesian3 {
+        updateMembers(this);
+        return this._rightWC;
+    }
+
     resize (container: Element): void {
         this.frustum.resize(container);
+    }
+
+    /**
+     * Translates the camera's position by <code>amount</code> along <code>direction</code>.
+     *
+     * @param {Cartesian3} direction The direction to move.
+     * @param {Number} [amount] The amount, in meters, to move. Defaults to <code>defaultMoveAmount</code>.
+     *
+     * @see Camera#moveBackward
+     * @see Camera#moveForward
+     * @see Camera#moveLeft
+     * @see Camera#moveRight
+     * @see Camera#moveUp
+     * @see Camera#moveDown
+     */
+    move (direction: Cartesian3, amount: number): void {
+    // >>includeStart('debug', pragmas.debug);
+        if (!defined(direction)) {
+            throw new DeveloperError('direction is required.');
+        }
+        // >>includeEnd('debug');
+
+        const cameraPosition = this.position;
+        Cartesian3.multiplyByScalar(direction, amount, moveScratch);
+        Cartesian3.add(cameraPosition, moveScratch, cameraPosition);
+
+        if (this._mode === SceneMode.SCENE2D) {
+            // clampMove2D(this, cameraPosition);
+        }
+        this._adjustOrthographicFrustum(true);
+    }
+
+    /**
+   * Translates the camera's position by <code>amount</code> along the camera's view vector.
+   * When in 2D mode, this will zoom in the camera instead of translating the camera's position.
+   *
+   * @param {Number} [amount] The amount, in meters, to move. Defaults to <code>defaultMoveAmount</code>.
+   *
+   * @see Camera#moveBackward
+   */
+    moveForward (amount?: number): void {
+        amount = defaultValue(amount, this.defaultMoveAmount);
+
+        if (this._mode === SceneMode.SCENE2D) {
+            // 2D mode
+            // zoom2D(this, amount);
+        } else {
+            // 3D or Columbus view mode
+            this.move(this.direction, (amount as number));
+        }
+    }
+
+    /**
+   * Translates the camera's position by <code>amount</code> along the opposite direction
+   * of the camera's view vector.
+   * When in 2D mode, this will zoom out the camera instead of translating the camera's position.
+   *
+   * @param {Number} [amount] The amount, in meters, to move. Defaults to <code>defaultMoveAmount</code>.
+   *
+   * @see Camera#moveForward
+   */
+    moveBackward (amount?: number): void {
+        amount = defaultValue(amount, this.defaultMoveAmount);
+
+        if (this._mode === SceneMode.SCENE2D) {
+            // 2D mode
+            // zoom2D(this, -(amount as number));
+        } else {
+            // 3D or Columbus view mode
+            this.move(this.direction, -(amount as number));
+        }
+    }
+
+    /**
+   * Translates the camera's position by <code>amount</code> along the camera's up vector.
+   *
+   * @param {Number} [amount] The amount, in meters, to move. Defaults to <code>defaultMoveAmount</code>.
+   *
+   * @see Camera#moveDown
+   */
+    moveUp (amount?: number): void {
+        amount = defaultValue(amount, this.defaultMoveAmount);
+        this.move(this.up, (amount as number));
+    }
+
+    /**
+   * Translates the camera's position by <code>amount</code> along the opposite direction
+   * of the camera's up vector.
+   *
+   * @param {Number} [amount] The amount, in meters, to move. Defaults to <code>defaultMoveAmount</code>.
+   *
+   * @see Camera#moveUp
+   */
+    moveDown (amount?: number): void {
+        amount = defaultValue(amount, this.defaultMoveAmount);
+        this.move(this.up, -(amount as number));
+    }
+
+    /**
+   * Translates the camera's position by <code>amount</code> along the camera's right vector.
+   *
+   * @param {Number} [amount] The amount, in meters, to move. Defaults to <code>defaultMoveAmount</code>.
+   *
+   * @see Camera#moveLeft
+   */
+    moveRight (amount?: number): void {
+        amount = defaultValue(amount, this.defaultMoveAmount);
+        this.move(this.right, (amount as number));
+    }
+
+    /**
+   * Translates the camera's position by <code>amount</code> along the opposite direction
+   * of the camera's right vector.
+   *
+   * @param {Number} [amount] The amount, in meters, to move. Defaults to <code>defaultMoveAmount</code>.
+   *
+   * @see Camera#moveRight
+   */
+    moveLeft (amount?: number): void {
+        amount = defaultValue(amount, this.defaultMoveAmount);
+        this.move(this.right, -(amount as number));
+    }
+
+    /**
+     * Rotates the camera around its up vector by amount, in radians, in the opposite direction
+     * of its right vector if not in 2D mode.
+     *
+     * @param {Number} [amount] The amount, in radians, to rotate by. Defaults to <code>defaultLookAmount</code>.
+     *
+     * @see Camera#lookRight
+     */
+    lookLeft (amount?: number): void {
+        amount = defaultValue(amount, this.defaultLookAmount);
+
+        // only want view of map to change in 3D mode, 2D visual is incorrect when look changes
+        if (this._mode !== SceneMode.SCENE2D) {
+            this.look(this.up, -(amount as number));
+        }
+    }
+
+    /**
+   * Rotates the camera around its up vector by amount, in radians, in the direction
+   * of its right vector if not in 2D mode.
+   *
+   * @param {Number} [amount] The amount, in radians, to rotate by. Defaults to <code>defaultLookAmount</code>.
+   *
+   * @see Camera#lookLeft
+   */
+    lookRight (amount?: number): void {
+        amount = defaultValue(amount, this.defaultLookAmount);
+
+        // only want view of map to change in 3D mode, 2D visual is incorrect when look changes
+        if (this._mode !== SceneMode.SCENE2D) {
+            this.look(this.up, amount);
+        }
+    }
+
+    /**
+   * Rotates the camera around its right vector by amount, in radians, in the direction
+   * of its up vector if not in 2D mode.
+   *
+   * @param {Number} [amount] The amount, in radians, to rotate by. Defaults to <code>defaultLookAmount</code>.
+   *
+   * @see Camera#lookDown
+   */
+    lookUp (amount?: number): void {
+        amount = defaultValue(amount, this.defaultLookAmount);
+
+        // only want view of map to change in 3D mode, 2D visual is incorrect when look changes
+        if (this._mode !== SceneMode.SCENE2D) {
+            this.look(this.right, -(amount as number));
+        }
+    }
+
+    /**
+   * Rotates the camera around its right vector by amount, in radians, in the opposite direction
+   * of its up vector if not in 2D mode.
+   *
+   * @param {Number} [amount] The amount, in radians, to rotate by. Defaults to <code>defaultLookAmount</code>.
+   *
+   * @see Camera#lookUp
+   */
+    lookDown (amount?: number): void {
+        amount = defaultValue(amount, this.defaultLookAmount);
+
+        // only want view of map to change in 3D mode, 2D visual is incorrect when look changes
+        if (this._mode !== SceneMode.SCENE2D) {
+            this.look(this.right, amount);
+        }
+    }
+
+    /**
+     * Rotate each of the camera's orientation vectors around <code>axis</code> by <code>angle</code>
+     *
+     * @param {Cartesian3} axis The axis to rotate around.
+     * @param {Number} [angle] The angle, in radians, to rotate by. Defaults to <code>defaultLookAmount</code>.
+     *
+     * @see Camera#lookUp
+     * @see Camera#lookDown
+     * @see Camera#lookLeft
+     * @see Camera#lookRight
+     */
+    look (axis: Cartesian3, angle?: number) {
+    // >>includeStart('debug', pragmas.debug);
+        if (!defined(axis)) {
+            throw new DeveloperError('axis is required.');
+        }
+        // >>includeEnd('debug');
+
+        const turnAngle = defaultValue(angle, this.defaultLookAmount) as number;
+        const quaternion = CesiumQuaternion.fromAxisAngle(
+            axis,
+            -turnAngle,
+            lookScratchQuaternion
+        );
+        const rotation = CesiumMatrix3.fromQuaternion(quaternion, lookScratchMatrix);
+
+        const direction = this.direction;
+        const up = this.up;
+        const right = this.right;
+
+        CesiumMatrix3.multiplyByVector(rotation, direction, direction);
+        CesiumMatrix3.multiplyByVector(rotation, up, up);
+        CesiumMatrix3.multiplyByVector(rotation, right, right);
+    }
+
+    /**
+     * Rotate the camera counter-clockwise around its direction vector by amount, in radians.
+     *
+     * @param {Number} [amount] The amount, in radians, to rotate by. Defaults to <code>defaultLookAmount</code>.
+     *
+     * @see Camera#twistRight
+     */
+    twistLeft (amount?: number): void {
+        amount = defaultValue(amount, this.defaultLookAmount);
+        this.look(this.direction, (amount as number));
+    }
+
+    /**
+     * Rotate the camera clockwise around its direction vector by amount, in radians.
+     *
+     * @param {Number} [amount] The amount, in radians, to rotate by. Defaults to <code>defaultLookAmount</code>.
+     *
+     * @see Camera#twistLeft
+     */
+    twistRight (amount?: number): void {
+        amount = defaultValue(amount, this.defaultLookAmount);
+        this.look(this.direction, -(amount as number));
+    }
+
+    _adjustOrthographicFrustum (zooming?: any): void{
+        // if (!(this.frustum instanceof OrthographicFrustum)) {
+
+        // }
+        return undefined;
+    }
+
+    /**
+     * Create a ray from the camera position through the pixel at <code>windowPosition</code>
+     * in world coordinates.
+     *
+     * @param {Cartesian2} windowPosition The x and y coordinates of a pixel.
+     * @param {Ray} [result] The object onto which to store the result.
+     * @returns {Ray} Returns the {@link Cartesian3} position and direction of the ray.
+     */
+    getPickRay (windowPosition: Cartesian2, result?: Ray): Ray {
+    // >>includeStart('debug', pragmas.debug);
+        if (!defined(windowPosition)) {
+            throw new DeveloperError('windowPosition is required.');
+        }
+        // >>includeEnd('debug');
+
+        if (!defined(result)) {
+            result = new Ray();
+        }
+
+        const frustum = this.frustum;
+        // if (
+        //     defined(frustum.aspectRatio) &&
+        //     defined(frustum.fov) &&
+        //     defined(frustum.near)
+        // ) {
+        //     return getPickRayPerspective(this, windowPosition, result);
+        // }
+
+        // return getPickRayOrthographic(this, windowPosition, result);
+
+        return getPickRayPerspective(this, windowPosition, (result as Ray));
+    }
+
+    _setTransform (transform: CesiumMatrix4): void {
+        const position = Cartesian3.clone(this.positionWC, setTransformPosition);
+        const up = Cartesian3.clone(this.upWC, setTransformUp);
+        const direction = Cartesian3.clone(this.directionWC, setTransformDirection);
+
+        CesiumMatrix4.clone(transform, this._transform);
+        this._transformChanged = true;
+        updateMembers(this);
+        const inverse = this._actualInvTransform;
+
+        CesiumMatrix4.multiplyByPoint(inverse, position, this.position);
+        CesiumMatrix4.multiplyByPointAsVector(inverse, direction, this.direction);
+        CesiumMatrix4.multiplyByPointAsVector(inverse, up, this.up);
+        Cartesian3.cross(this.direction, this.up, this.right);
+
+        updateMembers(this);
+    }
+
+    /**
+     * Rotates the camera around <code>axis</code> by <code>angle</code>. The distance
+     * of the camera's position to the center of the camera's reference frame remains the same.
+     *
+     * @param {Cartesian3} axis The axis to rotate around given in world coordinates.
+     * @param {Number} [angle] The angle, in radians, to rotate by. Defaults to <code>defaultRotateAmount</code>.
+     *
+     * @see Camera#rotateUp
+     * @see Camera#rotateDown
+     * @see Camera#rotateLeft
+     * @see Camera#rotateRight
+     */
+    rotate (axis: Cartesian3, angle?: number): void {
+    // >>includeStart('debug', pragmas.debug);
+        if (!defined(axis)) {
+            throw new DeveloperError('axis is required.');
+        }
+        // >>includeEnd('debug');
+
+        const turnAngle = defaultValue(angle, this.defaultRotateAmount) as number;
+        const quaternion = CesiumQuaternion.fromAxisAngle(
+            axis,
+            -turnAngle,
+            rotateScratchQuaternion
+        );
+        const rotation = CesiumMatrix3.fromQuaternion(quaternion, rotateScratchMatrix);
+        CesiumMatrix3.multiplyByVector(rotation, this.position, this.position);
+        CesiumMatrix3.multiplyByVector(rotation, this.direction, this.direction);
+        CesiumMatrix3.multiplyByVector(rotation, this.up, this.up);
+        Cartesian3.cross(this.direction, this.up, this.right);
+        Cartesian3.cross(this.right, this.direction, this.up);
+
+        this._adjustOrthographicFrustum(false);
+    }
+
+    /**
+   * Rotates the camera around the center of the camera's reference frame by angle downwards.
+   *
+   * @param {Number} [angle] The angle, in radians, to rotate by. Defaults to <code>defaultRotateAmount</code>.
+   *
+   * @see Camera#rotateUp
+   * @see Camera#rotate
+   */
+    rotateDown (angle?: number): void {
+        angle = defaultValue(angle, this.defaultRotateAmount);
+        rotateVertical(this, angle as number);
+    }
+
+    /**
+     * Rotates the camera around the center of the camera's reference frame by angle upwards.
+     *
+     * @param {Number} [angle] The angle, in radians, to rotate by. Defaults to <code>defaultRotateAmount</code>.
+     *
+     * @see Camera#rotateDown
+     * @see Camera#rotate
+     */
+    rotateUp (angle?: number): void {
+        angle = defaultValue(angle, this.defaultRotateAmount);
+        rotateVertical(this, -(angle as number));
+    }
+
+    /**
+     * Rotates the camera around the center of the camera's reference frame by angle to the right.
+     *
+     * @param {Number} [angle] The angle, in radians, to rotate by. Defaults to <code>defaultRotateAmount</code>.
+     *
+     * @see Camera#rotateLeft
+     * @see Camera#rotate
+     */
+    rotateRight (angle?: number): void {
+        angle = defaultValue(angle, this.defaultRotateAmount) as number;
+        rotateHorizontal(this, -angle);
+    }
+
+    /**
+     * Rotates the camera around the center of the camera's reference frame by angle to the left.
+     *
+     * @param {Number} [angle] The angle, in radians, to rotate by. Defaults to <code>defaultRotateAmount</code>.
+     *
+     * @see Camera#rotateRight
+     * @see Camera#rotate
+     */
+    rotateLeft (angle?: number): void {
+        angle = defaultValue(angle, this.defaultRotateAmount) as number;
+        rotateHorizontal(this, angle);
     }
 }
 
@@ -542,6 +996,269 @@ function rectangleCameraPosition3D (camera: Camera, rectangle: Rectangle, result
         Cartesian3.multiplyByScalar(direction, -d, viewRectangle3DEquator),
         result
     );
+}
+const scratchCartesian = new Cartesian3();
+
+function updateMembers (camera: Camera) {
+    const mode = camera._mode;
+
+    const heightChanged = false;
+    const height = 0.0;
+    if (mode === SceneMode.SCENE2D) {
+        // height = camera.frustum.right - camera.frustum.left;
+        // heightChanged = height !== camera._positionCartographic.height;
+    }
+
+    let position = camera._position;
+    const positionChanged =
+    !Cartesian3.equals(position, camera.position) || heightChanged;
+    if (positionChanged) {
+        position = Cartesian3.clone(camera.position, camera._position);
+    }
+
+    let direction = camera._direction;
+    const directionChanged = !Cartesian3.equals(direction, camera.direction);
+    if (directionChanged) {
+        Cartesian3.normalize(camera.direction, camera.direction);
+        direction = Cartesian3.clone(camera.direction, camera._direction);
+    }
+
+    let up = camera._up;
+    const upChanged = !Cartesian3.equals(up, camera.up);
+    if (upChanged) {
+        Cartesian3.normalize(camera.up, camera.up);
+        up = Cartesian3.clone(camera.up, camera._up);
+    }
+
+    let right = camera._right;
+    const rightChanged = !Cartesian3.equals(right, camera.right);
+    if (rightChanged) {
+        Cartesian3.normalize(camera.right, camera.right);
+        right = Cartesian3.clone(camera.right, camera._right);
+    }
+
+    const transformChanged = camera._transformChanged || camera._modeChanged;
+    camera._transformChanged = false;
+
+    if (transformChanged) {
+        CesiumMatrix4.inverseTransformation(camera._transform, camera._invTransform);
+
+        if (
+            camera._mode === SceneMode.COLUMBUS_VIEW ||
+            camera._mode === SceneMode.SCENE2D
+        ) {
+            // if (CesiumMatrix4.equals(CesiumMatrix4.IDENTITY, camera._transform)) {
+            //     CesiumMatrix4.clone(Camera.TRANSFORM_2D, camera._actualTransform);
+            // } else if (camera._mode === SceneMode.COLUMBUS_VIEW) {
+            //     convertTransformForColumbusView(camera);
+            // } else {
+            //     convertTransformFor2D(camera);
+            // }
+        } else {
+            CesiumMatrix4.clone(camera._transform, camera._actualTransform);
+        }
+
+        CesiumMatrix4.inverseTransformation(
+            camera._actualTransform,
+            camera._actualInvTransform
+        );
+
+        camera._modeChanged = false;
+    }
+
+    const transform = camera._actualTransform;
+
+    if (positionChanged || transformChanged) {
+        camera._positionWC = CesiumMatrix4.multiplyByPoint(
+            transform,
+            position,
+            camera._positionWC
+        );
+
+        // Compute the Cartographic position of the camera.
+        if (mode === SceneMode.SCENE3D || mode === SceneMode.MORPHING) {
+            camera._positionCartographic = camera._projection.ellipsoid.cartesianToCartographic(
+                camera._positionWC,
+                camera._positionCartographic
+            ) as Cartographic;
+        } else {
+            // The camera position is expressed in the 2D coordinate system where the Y axis is to the East,
+            // the Z axis is to the North, and the X axis is out of the map.  Express them instead in the ENU axes where
+            // X is to the East, Y is to the North, and Z is out of the local horizontal plane.
+            const positionENU = scratchCartesian;
+            positionENU.x = camera._positionWC.y;
+            positionENU.y = camera._positionWC.z;
+            positionENU.z = camera._positionWC.x;
+
+            // In 2D, the camera height is always 12.7 million meters.
+            // The apparent height is equal to half the frustum width.
+            if (mode === SceneMode.SCENE2D) {
+                positionENU.z = height;
+            }
+
+            camera._projection.unproject(positionENU, camera._positionCartographic);
+        }
+    }
+
+    if (directionChanged || upChanged || rightChanged) {
+        const det = Cartesian3.dot(
+            direction,
+            Cartesian3.cross(up, right, scratchCartesian)
+        );
+        if (Math.abs(1.0 - det) > CesiumMath.EPSILON2) {
+            // orthonormalize axes
+            const invUpMag = 1.0 / Cartesian3.magnitudeSquared(up);
+            const scalar = Cartesian3.dot(up, direction) * invUpMag;
+            const w0 = Cartesian3.multiplyByScalar(direction, scalar, scratchCartesian);
+            up = Cartesian3.normalize(
+                Cartesian3.subtract(up, w0, camera._up),
+                camera._up
+            );
+            Cartesian3.clone(up, camera.up);
+
+            right = Cartesian3.cross(direction, up, camera._right);
+            Cartesian3.clone(right, camera.right);
+        }
+    }
+
+    if (directionChanged || transformChanged) {
+        camera._directionWC = CesiumMatrix4.multiplyByPointAsVector(
+            transform,
+            direction,
+            camera._directionWC
+        );
+        Cartesian3.normalize(camera._directionWC, camera._directionWC);
+    }
+
+    if (upChanged || transformChanged) {
+        camera._upWC = CesiumMatrix4.multiplyByPointAsVector(transform, up, camera._upWC);
+        Cartesian3.normalize(camera._upWC, camera._upWC);
+    }
+
+    if (rightChanged || transformChanged) {
+        camera._rightWC = CesiumMatrix4.multiplyByPointAsVector(
+            transform,
+            right,
+            camera._rightWC
+        );
+        Cartesian3.normalize(camera._rightWC, camera._rightWC);
+    }
+
+    if (
+        positionChanged ||
+        directionChanged ||
+        upChanged ||
+        rightChanged ||
+        transformChanged
+    ) {
+        updateViewMatrix(camera);
+    }
+}
+
+const pickPerspCenter = new Cartesian3();
+const pickPerspXDir = new Cartesian3();
+const pickPerspYDir = new Cartesian3();
+function getPickRayPerspective (camera: Camera, windowPosition: Cartesian2, result: Ray): Ray {
+    const canvas = camera._scene.canvas;
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
+
+    const tanPhi = Math.tan(camera.frustum.fovy * 0.5);
+    const tanTheta = camera.frustum.aspectRatio * tanPhi;
+    const near = camera.frustum.near;
+
+    const x = (2.0 / width) * windowPosition.x - 1.0;
+    const y = (2.0 / height) * (height - windowPosition.y) - 1.0;
+
+    const position = camera.positionWC;
+    Cartesian3.clone(position, result.origin);
+
+    const nearCenter = Cartesian3.multiplyByScalar(
+        camera.directionWC,
+        near,
+        pickPerspCenter
+    );
+    Cartesian3.add(position, nearCenter, nearCenter);
+    const xDir = Cartesian3.multiplyByScalar(
+        camera.rightWC,
+        x * near * tanTheta,
+        pickPerspXDir
+    );
+    const yDir = Cartesian3.multiplyByScalar(
+        camera.upWC,
+        y * near * tanPhi,
+        pickPerspYDir
+    );
+    const direction = Cartesian3.add(nearCenter, xDir, result.direction);
+    Cartesian3.add(direction, yDir, direction);
+    Cartesian3.subtract(direction, position, direction);
+    Cartesian3.normalize(direction, direction);
+
+    return result;
+}
+
+const rotateVertScratchP = new Cartesian3();
+const rotateVertScratchA = new Cartesian3();
+const rotateVertScratchTan = new Cartesian3();
+const rotateVertScratchNegate = new Cartesian3();
+function rotateVertical (camera: Camera, angle: number) {
+    const position = camera.position;
+    if (
+        defined(camera.constrainedAxis) &&
+    !Cartesian3.equalsEpsilon(
+        camera.position,
+        Cartesian3.ZERO,
+        CesiumMath.EPSILON2
+    )
+    ) {
+        const p = Cartesian3.normalize(position, rotateVertScratchP);
+        const northParallel = Cartesian3.equalsEpsilon(
+            p,
+            camera.constrainedAxis,
+            CesiumMath.EPSILON2
+        );
+        const southParallel = Cartesian3.equalsEpsilon(
+            p,
+            Cartesian3.negate((camera.constrainedAxis as Cartesian3), rotateVertScratchNegate),
+            CesiumMath.EPSILON2
+        );
+        if (!northParallel && !southParallel) {
+            const constrainedAxis = Cartesian3.normalize(
+                (camera.constrainedAxis as Cartesian3),
+                rotateVertScratchA
+            );
+
+            let dot = Cartesian3.dot(p, constrainedAxis);
+            let angleToAxis = CesiumMath.acosClamped(dot);
+            if (angle > 0 && angle > angleToAxis) {
+                angle = angleToAxis - CesiumMath.EPSILON4;
+            }
+
+            dot = Cartesian3.dot(
+                p,
+                Cartesian3.negate(constrainedAxis, rotateVertScratchNegate)
+            );
+            angleToAxis = CesiumMath.acosClamped(dot);
+            if (angle < 0 && -angle > angleToAxis) {
+                angle = -angleToAxis + CesiumMath.EPSILON4;
+            }
+
+            const tangent = Cartesian3.cross(constrainedAxis, p, rotateVertScratchTan);
+            camera.rotate(tangent, angle);
+        } else if ((northParallel && angle < 0) || (southParallel && angle > 0)) {
+            camera.rotate(camera.right, angle);
+        }
+    } else {
+        camera.rotate(camera.right, angle);
+    }
+}
+
+function rotateHorizontal (camera: Camera, angle: number) {
+    if (defined(camera.constrainedAxis)) {
+        camera.rotate((camera.constrainedAxis as Cartesian3), angle);
+    } else {
+        camera.rotate(camera.up, angle);
+    }
 }
 
 export { Camera };
