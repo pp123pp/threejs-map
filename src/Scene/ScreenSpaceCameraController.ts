@@ -19,10 +19,12 @@ import { MapMode2D } from '@/Core/MapMode2D';
 import { Plane } from '@/Core/Plane';
 import { Ray } from '@/Core/Ray';
 import { SceneMode } from '@/Core/SceneMode';
+import { SceneTransforms } from '@/Core/SceneTransforms';
 import { TerrainExaggeration } from '@/Core/TerrainExaggeration';
 import { Transforms } from '@/Core/Transforms';
 import { TweenCollection, Tween } from '@/Core/TweenCollection';
 import CameraEventAggregator from './CameraEventAggregator';
+import { Globe } from './Globe';
 import { OrthographicFrustumCamera } from './OrthographicFrustumCamera';
 import { Scene } from './Scene';
 
@@ -621,35 +623,35 @@ function handleZoom (
     }
 
     if ((!sameStartPosition && zoomOnVector) || zoomingOnVector) {
-        let ray;
-        const zoomMouseStart = SceneTransforms.wgs84ToWindowCoordinates(
-            scene,
-            object._zoomWorldPosition,
-            scratchZoomOffset
-        );
-        if (
-            mode !== SceneMode.COLUMBUS_VIEW &&
-        Cartesian2.equals(startPosition, object._zoomMouseStart) &&
-        defined(zoomMouseStart)
-        ) {
-            ray = camera.getPickRay(zoomMouseStart, scratchZoomPickRay);
-        } else {
-            ray = camera.getPickRay(startPosition, scratchZoomPickRay);
-        }
+        // let ray;
+        // const zoomMouseStart = SceneTransforms.wgs84ToWindowCoordinates(
+        //     scene,
+        //     object._zoomWorldPosition,
+        //     scratchZoomOffset
+        // );
+        // if (
+        //     mode !== SceneMode.COLUMBUS_VIEW &&
+        // Cartesian2.equals(startPosition, object._zoomMouseStart) &&
+        // defined(zoomMouseStart)
+        // ) {
+        //     ray = camera.getPickRay(zoomMouseStart, scratchZoomPickRay);
+        // } else {
+        //     ray = camera.getPickRay(startPosition, scratchZoomPickRay);
+        // }
 
-        const rayDirection = ray.direction;
-        if (mode === SceneMode.COLUMBUS_VIEW || mode === SceneMode.SCENE2D) {
-            Cartesian3.fromElements(
-                rayDirection.y,
-                rayDirection.z,
-                rayDirection.x,
-                rayDirection
-            );
-        }
+        // const rayDirection = ray.direction;
+        // if (mode === SceneMode.COLUMBUS_VIEW || mode === SceneMode.SCENE2D) {
+        //     Cartesian3.fromElements(
+        //         rayDirection.y,
+        //         rayDirection.z,
+        //         rayDirection.x,
+        //         rayDirection
+        //     );
+        // }
 
-        camera.move(rayDirection, distance);
+        // camera.move(rayDirection, distance);
 
-        object._zoomingOnVector = true;
+        // object._zoomingOnVector = true;
     } else {
         camera.zoomIn(distance);
     }
@@ -819,7 +821,7 @@ const scratchRayIntersection = new Cartesian3();
 
 function pickGlobe (controller: ScreenSpaceCameraController, mousePosition: Cartesian2, result: Cartesian3) {
     const scene = controller._scene;
-    const globe = controller._globe;
+    const globe = controller._globe as Globe;
     const camera = scene.camera;
 
     if (!defined(globe)) {
@@ -842,7 +844,7 @@ function pickGlobe (controller: ScreenSpaceCameraController, mousePosition: Cart
         scene,
         cullBackFaces,
         scratchRayIntersection
-    );
+    ) as Cartesian3;
 
     const pickDistance = defined(depthIntersection)
         ? Cartesian3.distance((depthIntersection as Cartesian3), camera.positionWC)

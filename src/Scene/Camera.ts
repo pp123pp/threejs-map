@@ -1,5 +1,6 @@
 import { Cartesian2 } from '@/Core/Cartesian2';
 import { Cartesian3 } from '@/Core/Cartesian3';
+import { Cartesian4 } from '@/Core/Cartesian4';
 import { Cartographic } from '@/Core/Cartographic';
 import { CesiumMath } from '@/Core/CesiumMath';
 import { CesiumMatrix3 } from '@/Core/CesiumMatrix3';
@@ -8,13 +9,18 @@ import { CesiumQuaternion } from '@/Core/CesiumQuaternion';
 import { defaultValue } from '@/Core/defaultValue';
 import { defined } from '@/Core/defined';
 import { DeveloperError } from '@/Core/DeveloperError';
+import { Ellipsoid } from '@/Core/Ellipsoid';
 import { EllipsoidGeodesic } from '@/Core/EllipsoidGeodesic';
 import { Event } from '@/Core/Event';
 import { GeographicProjection } from '@/Core/GeographicProjection';
 import { HeadingPitchRange } from '@/Core/HeadingPitchRange';
+import { HeadingPitchRoll } from '@/Core/HeadingPitchRoll';
+import { IntersectionTests } from '@/Core/IntersectionTests';
+import { MapMode2D } from '@/Core/MapMode2D';
 import { Ray } from '@/Core/Ray';
 import { Rectangle } from '@/Core/Rectangle';
 import { SceneMode } from '@/Core/SceneMode';
+import { Transforms } from '@/Core/Transforms';
 import { OrthographicFrustumCamera } from './OrthographicFrustumCamera';
 import { PerspectiveFrustumCamera, PerspectiveFrustumCameraParameters } from './PerspectiveFrustumCamera';
 import { Scene } from './Scene';
@@ -29,6 +35,24 @@ const setTransformDirection = new Cartesian3();
 
 const rotateScratchQuaternion = new CesiumQuaternion();
 const rotateScratchMatrix = new CesiumMatrix3();
+
+const scratchHPRMatrix1 = new CesiumMatrix4();
+const scratchHPRMatrix2 = new CesiumMatrix4();
+
+const scratchSetViewOptions = {
+    destination: undefined,
+    orientation: {
+        direction: undefined,
+        up: undefined,
+        heading: undefined,
+        pitch: undefined,
+        roll: undefined
+    },
+    convert: undefined,
+    endTransform: undefined
+};
+
+const scratchHpr = new HeadingPitchRoll();
 
 function updateViewMatrix (camera: Camera) {
     CesiumMatrix4.computeView(
@@ -55,7 +79,7 @@ class Camera {
     _actualInvTransform: CesiumMatrix4;
     _transformChanged: boolean;
 
-    position: Cartesian3;
+    // position: Cartesian3;
     _position: Cartesian3;
     _positionWC: Cartesian3;
     _positionCartographic: Cartographic;
@@ -120,7 +144,7 @@ class Camera {
          *
          * @type {Cartesian3}
          */
-        this.position = new Cartesian3();
+        // this.position = new Cartesian3();
         this._position = new Cartesian3();
         this._positionWC = new Cartesian3();
         this._positionCartographic = new Cartographic();
@@ -188,7 +212,7 @@ class Camera {
         this.frustum = new PerspectiveFrustumCamera(scene, options);
         this.frustum.aspectRatio =
           scene.drawingBufferWidth / scene.drawingBufferHeight;
-        this.frustum.fov = CesiumMath.toRadians(60.0);
+        this.frustum.fov = 60.0;
 
         /**
          * The default amount to move the camera when an argument is not
@@ -333,6 +357,16 @@ class Camera {
         0.0
     );
 
+    get position (): any {
+        return this.frustum.position;
+    }
+
+    set position (value: any) {
+        this.position.x = value.x;
+        this.position.y = value.y;
+        this.position.z = value.z;
+    }
+
     get transform (): CesiumMatrix4 {
         return this._transform;
     }
@@ -379,6 +413,138 @@ class Camera {
 
     resize (container: Element): void {
         this.frustum.resize(container);
+    }
+
+    /**
+     * Get the camera position needed to view a rectangle on an ellipsoid or map
+     *
+     * @param {Rectangle} rectangle The rectangle to view.
+     * @param {Cartesian3} [result] The camera position needed to view the rectangle
+     * @returns {Cartesian3} The camera position needed to view the rectangle
+     */
+    getRectangleCameraCoordinates (rectangle: Rectangle, result?: Cartesian3): Cartesian3 | undefined {
+    // >>includeStart('debug', pragmas.debug);
+        if (!defined(rectangle)) {
+            throw new DeveloperError('rectangle is required');
+        }
+        // >>includeEnd('debug');
+        const mode = this._mode;
+
+        if (!defined(result)) {
+            result = new Cartesian3();
+        }
+
+        if (mode === SceneMode.SCENE3D) {
+            return rectangleCameraPosition3D(this, rectangle, result);
+        } else if (mode === SceneMode.COLUMBUS_VIEW) {
+            // return rectangleCameraPositionColumbusView(this, rectangle, result);
+        } else if (mode === SceneMode.SCENE2D) {
+            // return rectangleCameraPosition2D(this, rectangle, result);
+        }
+
+        return undefined;
+    }
+
+    /**
+     * Sets the camera position, orientation and transform.
+     *
+     * @param {Object} options Object with the following properties:
+     * @param {Cartesian3|Rectangle} [options.destination] The final position of the camera in WGS84 (world) coordinates or a rectangle that would be visible from a top-down view.
+     * @param {Object} [options.orientation] An object that contains either direction and up properties or heading, pitch and roll properties. By default, the direction will point
+     * towards the center of the frame in 3D and in the negative z direction in Columbus view. The up direction will point towards local north in 3D and in the positive
+     * y direction in Columbus view. Orientation is not used in 2D when in infinite scrolling mode.
+     * @param {Matrix4} [options.endTransform] Transform matrix representing the reference frame of the camera.
+     * @param {Boolean} [options.convert] Whether to convert the destination from world coordinates to scene coordinates (only relevant when not using 3D). Defaults to <code>true</code>.
+     *
+     * @example
+     * // 1. Set position with a top-down view
+     * viewer.camera.setView({
+     *     destination : Cesium.Cartesian3.fromDegrees(-117.16, 32.71, 15000.0)
+     * });
+     *
+     * // 2 Set view with heading, pitch and roll
+     * viewer.camera.setView({
+     *     destination : cartesianPosition,
+     *     orientation: {
+     *         heading : Cesium.Math.toRadians(90.0), // east, default value is 0.0 (north)
+     *         pitch : Cesium.Math.toRadians(-90),    // default value (looking down)
+     *         roll : 0.0                             // default value
+     *     }
+     * });
+     *
+     * // 3. Change heading, pitch and roll with the camera position remaining the same.
+     * viewer.camera.setView({
+     *     orientation: {
+     *         heading : Cesium.Math.toRadians(90.0), // east, default value is 0.0 (north)
+     *         pitch : Cesium.Math.toRadians(-90),    // default value (looking down)
+     *         roll : 0.0                             // default value
+     *     }
+     * });
+     *
+     *
+     * // 4. View rectangle with a top-down view
+     * viewer.camera.setView({
+     *     destination : Cesium.Rectangle.fromDegrees(west, south, east, north)
+     * });
+     *
+     * // 5. Set position with an orientation using unit vectors.
+     * viewer.camera.setView({
+     *     destination : Cesium.Cartesian3.fromDegrees(-122.19, 46.25, 5000.0),
+     *     orientation : {
+     *         direction : new Cesium.Cartesian3(-0.04231243104240401, -0.20123236049443421, -0.97862924300734),
+     *         up : new Cesium.Cartesian3(-0.47934589305293746, -0.8553216253114552, 0.1966022179118339)
+     *     }
+     * });
+     */
+    setView (options: any): any {
+        options = defaultValue(options, defaultValue.EMPTY_OBJECT);
+        let orientation = defaultValue(
+            options.orientation,
+            defaultValue.EMPTY_OBJECT
+        );
+
+        const mode = this._mode;
+        if (mode === SceneMode.MORPHING) {
+            return;
+        }
+
+        if (defined(options.endTransform)) {
+            this._setTransform(options.endTransform);
+        }
+
+        let convert = defaultValue(options.convert, true);
+        let destination = defaultValue(
+            options.destination,
+            Cartesian3.clone(this.positionWC, scratchSetViewCartesian)
+        );
+        if (defined(destination) && defined(destination.west)) {
+            destination = this.getRectangleCameraCoordinates(
+                destination,
+                scratchSetViewCartesian
+            );
+            convert = false;
+        }
+
+        if (defined(orientation.direction)) {
+            orientation = directionUpToHeadingPitchRoll(
+                this,
+                destination,
+                orientation,
+                scratchSetViewOptions.orientation
+            );
+        }
+
+        scratchHpr.heading = defaultValue(orientation.heading, 0.0);
+        scratchHpr.pitch = defaultValue(orientation.pitch, -CesiumMath.PI_OVER_TWO);
+        scratchHpr.roll = defaultValue(orientation.roll, 0.0);
+
+        if (mode === SceneMode.SCENE3D) {
+            setView3D(this, destination, scratchHpr);
+        } else if (mode === SceneMode.SCENE2D) {
+            // setView2D(this, destination, scratchHpr, convert);
+        } else {
+            // setViewCV(this, destination, scratchHpr, convert);
+        }
     }
 
     /**
@@ -773,6 +939,89 @@ class Camera {
         angle = defaultValue(angle, this.defaultRotateAmount) as number;
         rotateHorizontal(this, angle);
     }
+
+    /**
+     * Zooms <code>amount</code> along the camera's view vector.
+     *
+     * @param {Number} [amount] The amount to move. Defaults to <code>defaultZoomAmount</code>.
+     *
+     * @see Camera#zoomOut
+     */
+    zoomIn (amount: number): void {
+        amount = defaultValue(amount, this.defaultZoomAmount);
+        if (this._mode === SceneMode.SCENE2D) {
+            //   zoom2D(this, amount);
+        } else {
+            zoom3D(this, amount);
+        }
+    }
+
+    /**
+     * Pick an ellipsoid or map.
+     *
+     * @param {Cartesian2} windowPosition The x and y coordinates of a pixel.
+     * @param {Ellipsoid} [ellipsoid=Ellipsoid.WGS84] The ellipsoid to pick.
+     * @param {Cartesian3} [result] The object onto which to store the result.
+     * @returns {Cartesian3 | undefined} If the ellipsoid or map was picked,
+     * returns the point on the surface of the ellipsoid or map in world
+     * coordinates. If the ellipsoid or map was not picked, returns undefined.
+     *
+     * @example
+     * var canvas = viewer.scene.canvas;
+     * var center = new Cesium.Cartesian2(canvas.clientWidth / 2.0, canvas.clientHeight / 2.0);
+     * var ellipsoid = viewer.scene.globe.ellipsoid;
+     * var result = viewer.camera.pickEllipsoid(center, ellipsoid);
+     */
+    pickEllipsoid (windowPosition: Cartesian2, ellipsoid = Ellipsoid.WGS84, result?: Cartesian3): Cartesian3 | undefined {
+        const canvas = this._scene.canvas;
+        if (canvas.clientWidth === 0 || canvas.clientHeight === 0) {
+            return undefined;
+        }
+
+        if (!defined(result)) {
+            result = new Cartesian3();
+        }
+
+        ellipsoid = defaultValue(ellipsoid, Ellipsoid.WGS84);
+
+        if (this._mode === SceneMode.SCENE3D) {
+            result = pickEllipsoid3D(this, windowPosition, ellipsoid, result);
+        } else if (this._mode === SceneMode.SCENE2D) {
+            // result = pickMap2D(this, windowPosition, this._projection, result);
+        } else if (this._mode === SceneMode.COLUMBUS_VIEW) {
+            // result = pickMapColumbusView(
+            //     this,
+            //     windowPosition,
+            //     this._projection,
+            //     result
+            // );
+        } else {
+            return undefined;
+        }
+
+        return result;
+    }
+
+    /**
+     * Transform a vector or point from world coordinates to the camera's reference frame.
+     *
+     * @param {Cartesian4} cartesian The vector or point to transform.
+     * @param {Cartesian4} [result] The object onto which to store the result.
+     * @returns {Cartesian4} The transformed vector or point.
+     */
+    worldToCameraCoordinates (cartesian: Cartesian4, result?: Cartesian4): Cartesian4 {
+    // >>includeStart('debug', pragmas.debug);
+        if (!defined(cartesian)) {
+            throw new DeveloperError('cartesian is required.');
+        }
+        // >>includeEnd('debug');
+
+        if (!defined(result)) {
+            result = new Cartesian4();
+        }
+        updateMembers(this);
+        return CesiumMatrix4.multiplyByVector(this._actualInvTransform, cartesian, (result as Cartesian4));
+    }
 }
 
 const viewRectangle3DCartographic1 = new Cartographic();
@@ -797,7 +1046,7 @@ function computeD (direction: Cartesian3, upOrRight: Cartesian3, corner: Cartesi
     return opposite / tanThetaOrPhi - Cartesian3.dot(direction, corner);
 }
 
-function rectangleCameraPosition3D (camera: Camera, rectangle: Rectangle, result: any, updateCamera: any) {
+function rectangleCameraPosition3D (camera: Camera, rectangle: Rectangle, result: any, updateCamera?: any) {
     const ellipsoid = camera._projection.ellipsoid;
     const cameraRF = updateCamera ? camera : defaultRF;
 
@@ -1259,6 +1508,122 @@ function rotateHorizontal (camera: Camera, angle: number) {
     } else {
         camera.rotate(camera.up, angle);
     }
+}
+
+function zoom3D (camera: Camera, amount: number) {
+    camera.move(camera.direction, amount);
+}
+
+const scratchSetViewCartesian = new Cartesian3();
+const scratchSetViewTransform1 = new CesiumMatrix4();
+const scratchSetViewTransform2 = new CesiumMatrix4();
+const scratchSetViewQuaternion = new CesiumQuaternion();
+const scratchSetViewMatrix3 = new CesiumMatrix3();
+const scratchSetViewCartographic = new Cartographic();
+
+function setView3D (camera: Camera, position: Cartesian3, hpr: HeadingPitchRoll) {
+    const currentTransform = CesiumMatrix4.clone(
+        camera.transform,
+        scratchSetViewTransform1
+    );
+    const localTransform = Transforms.eastNorthUpToFixedFrame(
+        position,
+        camera._projection.ellipsoid,
+        scratchSetViewTransform2
+    );
+    camera._setTransform(localTransform);
+
+    Cartesian3.clone(Cartesian3.ZERO, camera.position);
+    hpr.heading = hpr.heading - CesiumMath.PI_OVER_TWO;
+
+    const rotQuat = CesiumQuaternion.fromHeadingPitchRoll(hpr, scratchSetViewQuaternion);
+    const rotMat = CesiumMatrix3.fromQuaternion(rotQuat, scratchSetViewMatrix3);
+
+    CesiumMatrix3.getColumn(rotMat, 0, camera.direction);
+    CesiumMatrix3.getColumn(rotMat, 2, camera.up);
+    Cartesian3.cross(camera.direction, camera.up, camera.right);
+
+    camera._setTransform(currentTransform);
+
+    camera._adjustOrthographicFrustum(true);
+}
+
+const scratchToHPRDirection = new Cartesian3();
+const scratchToHPRUp = new Cartesian3();
+const scratchToHPRRight = new Cartesian3();
+
+function directionUpToHeadingPitchRoll (camera: Camera, position: Cartesian3, orientation: any, result?: any) {
+    const direction = Cartesian3.clone(
+        orientation.direction,
+        scratchToHPRDirection
+    );
+    const up = Cartesian3.clone(orientation.up, scratchToHPRUp);
+
+    if (camera._scene.mode === SceneMode.SCENE3D) {
+        const ellipsoid = camera._projection.ellipsoid;
+        const transform = Transforms.eastNorthUpToFixedFrame(
+            position,
+            ellipsoid,
+            scratchHPRMatrix1
+        );
+        const invTransform = CesiumMatrix4.inverseTransformation(
+            transform,
+            scratchHPRMatrix2
+        );
+
+        CesiumMatrix4.multiplyByPointAsVector(invTransform, direction, direction);
+        CesiumMatrix4.multiplyByPointAsVector(invTransform, up, up);
+    }
+
+    const right = Cartesian3.cross(direction, up, scratchToHPRRight);
+
+    result.heading = getHeading(direction, up);
+    result.pitch = getPitch(direction);
+    result.roll = getRoll(direction, up, right);
+
+    return result;
+}
+
+function getHeading (direction: Cartesian3, up: Cartesian3) {
+    let heading;
+    if (
+        !CesiumMath.equalsEpsilon(Math.abs(direction.z), 1.0, CesiumMath.EPSILON3)
+    ) {
+        heading = Math.atan2(direction.y, direction.x) - CesiumMath.PI_OVER_TWO;
+    } else {
+        heading = Math.atan2(up.y, up.x) - CesiumMath.PI_OVER_TWO;
+    }
+
+    return CesiumMath.TWO_PI - CesiumMath.zeroToTwoPi(heading);
+}
+
+function getPitch (direction: Cartesian3) {
+    return CesiumMath.PI_OVER_TWO - CesiumMath.acosClamped(direction.z);
+}
+
+function getRoll (direction: Cartesian3, up: Cartesian3, right: Cartesian3) {
+    let roll = 0.0;
+    if (
+        !CesiumMath.equalsEpsilon(Math.abs(direction.z), 1.0, CesiumMath.EPSILON3)
+    ) {
+        roll = Math.atan2(-right.z, up.z);
+        roll = CesiumMath.zeroToTwoPi(roll + CesiumMath.TWO_PI);
+    }
+
+    return roll;
+}
+
+const pickEllipsoid3DRay = new Ray();
+function pickEllipsoid3D (camera: Camera, windowPosition: Cartesian2, ellipsoid = Ellipsoid.WGS84, result?: Cartesian3): Cartesian3 | undefined {
+    ellipsoid = defaultValue(ellipsoid, Ellipsoid.WGS84);
+    const ray = camera.getPickRay(windowPosition, pickEllipsoid3DRay);
+    const intersection = IntersectionTests.rayEllipsoid(ray, ellipsoid);
+    if (!intersection) {
+        return undefined;
+    }
+
+    const t = intersection.start > 0.0 ? intersection.start : intersection.stop;
+    return Ray.getPoint(ray, t, result);
 }
 
 export { Camera };

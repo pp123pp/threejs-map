@@ -1,3 +1,5 @@
+import { BoundingSphere } from '@/Core/BoundingSphere';
+import { Cartesian2 } from '@/Core/Cartesian2';
 import { Cartesian3 } from '@/Core/Cartesian3';
 import { Cartographic } from '@/Core/Cartographic';
 import { defaultValue } from '@/Core/defaultValue';
@@ -6,23 +8,53 @@ import { DeveloperError } from '@/Core/DeveloperError';
 import { Ellipsoid } from '@/Core/Ellipsoid';
 import { EllipsoidTerrainProvider } from '@/Core/EllipsoidTerrainProvider';
 import { Event } from '@/Core/Event';
+import { IntersectionTests } from '@/Core/IntersectionTests';
 import { Object3DCollection } from '@/Core/Object3DCollection';
 import { Ray } from '@/Core/Ray';
 import { Rectangle } from '@/Core/Rectangle';
+import { SceneMode } from '@/Core/SceneMode';
+import { Mesh, Raycaster, SphereBufferGeometry, Vector2 } from 'three';
 import { FrameState } from './FrameState';
 import { GlobeSurfaceTileProvider } from './GlobeSurfaceTileProvider';
 import { ImageryLayerCollection } from './ImageryLayerCollection';
 import { QuadtreePrimitive } from './QuadtreePrimitive';
+import { Scene } from './Scene';
 
 const scratchGetHeightCartesian = new Cartesian3();
 const scratchGetHeightIntersection = new Cartesian3();
 const scratchGetHeightCartographic = new Cartographic();
 const scratchGetHeightRay = new Ray();
 
+const scratchArray: any = [];
+const scratchSphereIntersectionResult = {
+    start: 0.0,
+    stop: 0.0
+};
+
+const raycaster = new Raycaster();
+const mouse = new Vector2();
+
+const pickEarth = new Mesh(new SphereBufferGeometry(6378137, 32, 32));
+
 function tileIfContainsCartographic (tile: any, cartographic: any) {
     return defined(tile) && Rectangle.contains(tile.rectangle, cartographic)
         ? tile
         : undefined;
+}
+
+function createComparePickTileFunction (rayOrigin: Cartesian3) {
+    return function (a:any, b:any) {
+        const aDist = BoundingSphere.distanceSquaredTo(
+            a.pickBoundingSphere,
+            rayOrigin
+        );
+        const bDist = BoundingSphere.distanceSquaredTo(
+            b.pickBoundingSphere,
+            rayOrigin
+        );
+
+        return aDist - bDist;
+    };
 }
 
 class Globe extends Object3DCollection {
@@ -330,6 +362,87 @@ class Globe extends Object3DCollection {
         if (frameState.passes.render) {
             this._surface.update(frameState);
         }
+    }
+
+    pickWorldCoordinates (ray: Ray,
+        scene: Scene,
+        cullBackFaces = true,
+        result?: Cartesian3): Cartesian3 | undefined {
+        cullBackFaces = defaultValue(cullBackFaces, true);
+
+        const mode = scene.mode;
+        const projection = scene.mapProjection;
+
+        const sphereIntersections = scratchArray;
+        sphereIntersections.length = 0;
+
+        const tilesToRender = this._surface._tilesToRender;
+        let length = tilesToRender.length;
+
+        let tile;
+        let i;
+
+        for (i = 0; i < length; ++i) {
+            tile = tilesToRender[i];
+            const surfaceTile = tile.data;
+
+            if (!defined(surfaceTile)) {
+                continue;
+            }
+
+            let boundingVolume = surfaceTile.pickBoundingSphere;
+            if (mode !== SceneMode.SCENE3D) {
+                surfaceTile.pickBoundingSphere = boundingVolume = BoundingSphere.fromRectangleWithHeights2D(
+                    tile.rectangle,
+                    projection,
+                    surfaceTile.tileBoundingRegion.minimumHeight,
+                    surfaceTile.tileBoundingRegion.maximumHeight,
+                    boundingVolume
+                );
+                Cartesian3.fromElements(
+                    boundingVolume.center.z,
+                    boundingVolume.center.x,
+                    boundingVolume.center.y,
+                    boundingVolume.center
+                );
+            } else if (defined(surfaceTile.renderedMesh)) {
+                BoundingSphere.clone(
+                    surfaceTile.tileBoundingRegion.boundingSphere,
+                    boundingVolume
+                );
+            } else {
+                // So wait how did we render this thing then? It shouldn't be possible to get here.
+                continue;
+            }
+
+            const boundingSphereIntersection = IntersectionTests.raySphere(
+                ray,
+                boundingVolume,
+                scratchSphereIntersectionResult
+            );
+            if (defined(boundingSphereIntersection)) {
+                sphereIntersections.push(surfaceTile);
+            }
+        }
+
+        sphereIntersections.sort(createComparePickTileFunction(ray.origin));
+
+        let intersection;
+        length = sphereIntersections.length;
+        for (i = 0; i < length; ++i) {
+            intersection = sphereIntersections[i].pick(
+                ray,
+                scene.mode,
+                scene.mapProjection,
+                cullBackFaces,
+                result
+            );
+            if (defined(intersection)) {
+                break;
+            }
+        }
+
+        return intersection;
     }
 }
 

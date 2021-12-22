@@ -49,12 +49,12 @@ class Ray {
      * var intersection = Cesium.IntersectionTests.rayEllipsoid(ray, ellipsoid);
      * var point = Cesium.Ray.getPoint(ray, intersection.start);
      */
-    static getPoint (ray: Ray, t: number, result: Cartesian3): Cartesian3 {
+    static getPoint (ray: Ray, t: number, result?: Cartesian3): Cartesian3 {
         if (!defined(result)) {
             result = new Cartesian3();
         }
 
-        result = Cartesian3.multiplyByScalar(ray.direction, t, result);
+        result = Cartesian3.multiplyByScalar(ray.direction, t, (result as Cartesian3));
         return Cartesian3.add(ray.origin, result, result);
     }
 }

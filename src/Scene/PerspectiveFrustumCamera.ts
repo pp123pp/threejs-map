@@ -349,7 +349,7 @@ function update (frustum: PerspectiveFrustumCamera) {
       frustum.yOffset !== frustum._yOffset
     ) {
         // >>includeStart('debug', pragmas.debug);
-        if (frustum.fov < 0 || frustum.fov >= Math.PI) {
+        if (frustum.fov < 0 || frustum.fov >= 180) {
             throw new DeveloperError('fov must be in the range [0, PI).');
         }
 
@@ -368,8 +368,8 @@ function update (frustum: PerspectiveFrustumCamera) {
         frustum._fov = frustum.fov;
         frustum._fovy =
         frustum.aspectRatio <= 1
-            ? frustum.fov
-            : Math.atan(Math.tan(frustum.fov * 0.5) / frustum.aspectRatio) * 2.0;
+            ? frustum.fovRadius
+            : Math.atan(Math.tan(frustum.fovRadius * 0.5) / frustum.aspectRatio) * 2.0;
         frustum._near = frustum.near;
         frustum._far = frustum.far;
         frustum._sseDenominator = 2.0 * Math.tan(0.5 * frustum._fovy);

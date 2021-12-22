@@ -110,6 +110,28 @@ class Cartesian4 {
 
         return array;
     }
+
+    /**
+     * Creates a Cartesian4 instance from x, y, z and w coordinates.
+     *
+     * @param {Number} x The x coordinate.
+     * @param {Number} y The y coordinate.
+     * @param {Number} z The z coordinate.
+     * @param {Number} w The w coordinate.
+     * @param {Cartesian4} [result] The object onto which to store the result.
+     * @returns {Cartesian4} The modified result parameter or a new Cartesian4 instance if one was not provided.
+     */
+    static fromElements (x: number, y: number, z: number, w: number, result?: Cartesian4): Cartesian4 {
+        if (!defined(result)) {
+            return new Cartesian4(x, y, z, w);
+        }
+
+        (result as Cartesian4).x = x;
+        (result as Cartesian4).y = y;
+        (result as Cartesian4).z = z;
+        (result as Cartesian4).w = w;
+        return (result as Cartesian4);
+    }
 }
 
 export { Cartesian4 };

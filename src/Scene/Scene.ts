@@ -4,7 +4,7 @@ import { defaultValue } from '../Core/defaultValue';
 import { Event } from '../Core/Event';
 import { SceneMode } from '../Core/SceneMode';
 import * as THREE from 'three';
-import { Vector2, WebGLRenderer, WebGLRendererParameters } from 'three';
+import { Mesh, Raycaster, SphereBufferGeometry, Vector2, WebGLRenderer, WebGLRendererParameters } from 'three';
 import { Camera } from './Camera';
 // import { Camera } from './CameraCopy';
 import { Context } from './Context';
@@ -29,6 +29,12 @@ import { Cartesian2 } from '@/Core/Cartesian2';
 import { Cartesian3 } from '@/Core/Cartesian3';
 import { EffectComposerCollection } from './EffectComposerCollection';
 import { PickDepth } from './PickDepth';
+import { Picking } from './Picking';
+
+const raycaster = new Raycaster();
+const mouse = new Vector2();
+
+const pickEarth = new Mesh(new SphereBufferGeometry(6378137, 32, 32));
 
 interface SceneOptions {
     renderState?: RenderStateParameters;
@@ -281,7 +287,8 @@ class Scene extends THREE.Scene {
     _cameraUnderground: boolean;
     _tweens: TweenCollection;
     effectComposerCollection: EffectComposerCollection;
-    _pickDepth: PickDepth;
+    _picking: Picking;
+    useDepthPicking: boolean;
     constructor (options: SceneOptions) {
         super();
 
@@ -389,7 +396,10 @@ class Scene extends THREE.Scene {
 
         this.effectComposerCollection = new EffectComposerCollection(this);
 
-        this._pickDepth = new PickDepth();
+        this._picking = new Picking(this);
+
+        // 是否启用深度坐标拾取
+        this.useDepthPicking = true;
     }
 
     get pixelRatio (): number {
@@ -596,12 +606,33 @@ class Scene extends THREE.Scene {
      *
      * @exception {DeveloperError} Picking from the depth buffer is not supported. Check pickPositionSupported.
      */
-    pickPositionWorldCoordinates (windowPosition: Cartesian2, result?: Cartesian3): Cartesian3 {
-        return this._picking.pickPositionWorldCoordinates(
-            this,
-            windowPosition,
-            result
-        );
+    pickPositionWorldCoordinates (windowPosition: Cartesian2, result?: Cartesian3): Cartesian3 | undefined {
+        // return this._picking.pickPositionWorldCoordinates(
+        //     windowPosition,
+        //     result
+        // );
+
+        if (!defined(result)) {
+            result = new Cartesian3();
+        }
+        mouse.x = (windowPosition.x / this._canvas.clientWidth) * 2 - 1;
+        mouse.y = -(windowPosition.y / this._canvas.clientHeight) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, this.activeCamera);
+
+        const intersects = raycaster.intersectObject(pickEarth)[0];
+
+        if (!defined(intersects)) {
+            return undefined;
+        }
+
+        const point = intersects.point;
+
+        (result as Cartesian3).x = point.x;
+        (result as Cartesian3).y = point.y;
+        (result as Cartesian3).z = point.z;
+
+        return result;
     }
 }
 

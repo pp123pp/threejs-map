@@ -1,5 +1,6 @@
 import { Cartesian3 } from './Cartesian3';
 import { defined } from './defined';
+import { HeadingPitchRoll } from './HeadingPitchRoll';
 
 let fromAxisAngleScratch = new Cartesian3();
 
@@ -64,6 +65,75 @@ class CesiumQuaternion {
         (result as CesiumQuaternion).w = w;
         return (result as CesiumQuaternion);
     }
+
+    /**
+     * Computes the product of two quaternions.
+     *
+     * @param {Quaternion} left The first quaternion.
+     * @param {Quaternion} right The second quaternion.
+     * @param {Quaternion} result The object onto which to store the result.
+     * @returns {Quaternion} The modified result parameter.
+     */
+    static multiply (left: CesiumQuaternion, right: CesiumQuaternion, result: CesiumQuaternion): CesiumQuaternion {
+        const leftX = left.x;
+        const leftY = left.y;
+        const leftZ = left.z;
+        const leftW = left.w;
+
+        const rightX = right.x;
+        const rightY = right.y;
+        const rightZ = right.z;
+        const rightW = right.w;
+
+        const x = leftW * rightX + leftX * rightW + leftY * rightZ - leftZ * rightY;
+        const y = leftW * rightY - leftX * rightZ + leftY * rightW + leftZ * rightX;
+        const z = leftW * rightZ + leftX * rightY - leftY * rightX + leftZ * rightW;
+        const w = leftW * rightW - leftX * rightX - leftY * rightY - leftZ * rightZ;
+
+        result.x = x;
+        result.y = y;
+        result.z = z;
+        result.w = w;
+        return result;
+    }
+
+    /**
+     * Computes a rotation from the given heading, pitch and roll angles. Heading is the rotation about the
+     * negative z axis. Pitch is the rotation about the negative y axis. Roll is the rotation about
+     * the positive x axis.
+     *
+     * @param {HeadingPitchRoll} headingPitchRoll The rotation expressed as a heading, pitch and roll.
+     * @param {Quaternion} [result] The object onto which to store the result.
+     * @returns {Quaternion} The modified result parameter or a new Quaternion instance if none was provided.
+     */
+    static fromHeadingPitchRoll (headingPitchRoll: HeadingPitchRoll, result?: CesiumQuaternion): CesiumQuaternion {
+        scratchRollQuaternion = CesiumQuaternion.fromAxisAngle(
+            Cartesian3.UNIT_X,
+            headingPitchRoll.roll,
+            scratchHPRQuaternion
+        );
+        scratchPitchQuaternion = CesiumQuaternion.fromAxisAngle(
+            Cartesian3.UNIT_Y,
+            -headingPitchRoll.pitch,
+            result
+        );
+        result = CesiumQuaternion.multiply(
+            scratchPitchQuaternion,
+            scratchRollQuaternion,
+            scratchPitchQuaternion
+        );
+        scratchHeadingQuaternion = CesiumQuaternion.fromAxisAngle(
+            Cartesian3.UNIT_Z,
+            -headingPitchRoll.heading,
+            scratchHPRQuaternion
+        );
+        return CesiumQuaternion.multiply(scratchHeadingQuaternion, result, result);
+    }
 }
+
+const scratchHPRQuaternion = new CesiumQuaternion();
+let scratchHeadingQuaternion = new CesiumQuaternion();
+let scratchPitchQuaternion = new CesiumQuaternion();
+let scratchRollQuaternion = new CesiumQuaternion();
 
 export { CesiumQuaternion };

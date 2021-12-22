@@ -37,6 +37,7 @@ const fromRectangle2DNortheast = new Cartographic();
 
 const unionScratch = new Cartesian3();
 const unionScratchCenter = new Cartesian3();
+const distanceSquaredToScratch = new Cartesian3();
 
 /**
      * A bounding sphere with a center and a radius.
@@ -408,6 +409,28 @@ class BoundingSphere {
         (result as BoundingSphere).radius = halfDistanceBetweenTangentPoints;
 
         return (result as BoundingSphere);
+    }
+
+    /**
+     * Computes the estimated distance squared from the closest point on a bounding sphere to a point.
+     *
+     * @param {BoundingSphere} sphere The sphere.
+     * @param {Cartesian3} cartesian The point
+     * @returns {Number} The estimated distance squared from the bounding sphere to the point.
+     *
+     * @example
+     * // Sort bounding spheres from back to front
+     * spheres.sort(function(a, b) {
+     *     return Cesium.BoundingSphere.distanceSquaredTo(b, camera.positionWC) - Cesium.BoundingSphere.distanceSquaredTo(a, camera.positionWC);
+     * });
+     */
+    static distanceSquaredTo (sphere: BoundingSphere, cartesian: Cartesian3): number {
+        const diff = Cartesian3.subtract(
+            sphere.center,
+            cartesian,
+            distanceSquaredToScratch
+        );
+        return Cartesian3.magnitudeSquared(diff) - sphere.radius * sphere.radius;
     }
 }
 

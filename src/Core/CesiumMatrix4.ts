@@ -756,24 +756,24 @@ class CesiumMatrix4 {
     }
 
     /**
- * Computes an Array from the provided Matrix4 instance.
- * The array will be in column-major order.
- *
- * @param {Matrix4} matrix The matrix to use..
- * @param {Number[]} [result] The Array onto which to store the result.
- * @returns {Number[]} The modified Array parameter or a new Array instance if one was not provided.
- *
- * @example
- * //create an array from an instance of Matrix4
- * // m = [10.0, 14.0, 18.0, 22.0]
- * //     [11.0, 15.0, 19.0, 23.0]
- * //     [12.0, 16.0, 20.0, 24.0]
- * //     [13.0, 17.0, 21.0, 25.0]
- * var a = Cesium.Matrix4.toArray(m);
- *
- * // m remains the same
- * //creates a = [10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0]
- */
+     * Computes an Array from the provided Matrix4 instance.
+     * The array will be in column-major order.
+     *
+     * @param {Matrix4} matrix The matrix to use..
+     * @param {Number[]} [result] The Array onto which to store the result.
+     * @returns {Number[]} The modified Array parameter or a new Array instance if one was not provided.
+     *
+     * @example
+     * //create an array from an instance of Matrix4
+     * // m = [10.0, 14.0, 18.0, 22.0]
+     * //     [11.0, 15.0, 19.0, 23.0]
+     * //     [12.0, 16.0, 20.0, 24.0]
+     * //     [13.0, 17.0, 21.0, 25.0]
+     * var a = Cesium.Matrix4.toArray(m);
+     *
+     * // m remains the same
+     * //creates a = [10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0]
+     */
     static toArray (matrix: CesiumMatrix4, result?: number[]): number[] {
         if (!defined(result)) {
             return [
@@ -812,6 +812,104 @@ class CesiumMatrix4 {
         (result as number[])[14] = matrix[14];
         (result as number[])[15] = matrix[15];
         return (result as number[]);
+    }
+
+    /**
+     * Computes a Matrix4 instance that transforms from normalized device coordinates to window coordinates.
+     *
+     * @param {Object} [viewport = { x : 0.0, y : 0.0, width : 0.0, height : 0.0 }] The viewport's corners as shown in Example 1.
+     * @param {Number} [nearDepthRange=0.0] The near plane distance in window coordinates.
+     * @param {Number} [farDepthRange=1.0] The far plane distance in window coordinates.
+     * @param {Matrix4} [result] The object in which the result will be stored.
+     * @returns {Matrix4} The modified result parameter.
+     *
+     * @example
+     * // Create viewport transformation using an explicit viewport and depth range.
+     * var m = Cesium.Matrix4.computeViewportTransformation({
+     *     x : 0.0,
+     *     y : 0.0,
+     *     width : 1024.0,
+     *     height : 768.0
+     * }, 0.0, 1.0, new Cesium.Matrix4());
+     */
+    static computeViewportTransformation (
+        viewport = {
+            x: 0,
+            y: 0,
+            width: 0,
+            height: 0
+        },
+        nearDepthRange = 0.0,
+        farDepthRange = 1.0,
+        result?: CesiumMatrix4
+    ):CesiumMatrix4 {
+        if (!defined(result)) {
+            result = new Matrix4();
+        }
+
+        viewport = defaultValue(viewport, defaultValue.EMPTY_OBJECT) as any;
+        const x = defaultValue(viewport.x, 0.0);
+        const y = defaultValue(viewport.y, 0.0);
+        const width = defaultValue(viewport.width, 0.0);
+        const height = defaultValue(viewport.height, 0.0);
+        nearDepthRange = defaultValue(nearDepthRange, 0.0);
+        farDepthRange = defaultValue(farDepthRange, 1.0);
+
+        const halfWidth = width * 0.5;
+        const halfHeight = height * 0.5;
+        const halfDepth = (farDepthRange - nearDepthRange) * 0.5;
+
+        const column0Row0 = halfWidth;
+        const column1Row1 = halfHeight;
+        const column2Row2 = halfDepth;
+        const column3Row0 = x + halfWidth;
+        const column3Row1 = y + halfHeight;
+        const column3Row2 = nearDepthRange + halfDepth;
+        const column3Row3 = 1.0;
+
+        (result as CesiumMatrix4)[0] = column0Row0;
+        (result as CesiumMatrix4)[1] = 0.0;
+        (result as CesiumMatrix4)[2] = 0.0;
+        (result as CesiumMatrix4)[3] = 0.0;
+        (result as CesiumMatrix4)[4] = 0.0;
+        (result as CesiumMatrix4)[5] = column1Row1;
+        (result as CesiumMatrix4)[6] = 0.0;
+        (result as CesiumMatrix4)[7] = 0.0;
+        (result as CesiumMatrix4)[8] = 0.0;
+        (result as CesiumMatrix4)[9] = 0.0;
+        (result as CesiumMatrix4)[10] = column2Row2;
+        (result as CesiumMatrix4)[11] = 0.0;
+        (result as CesiumMatrix4)[12] = column3Row0;
+        (result as CesiumMatrix4)[13] = column3Row1;
+        (result as CesiumMatrix4)[14] = column3Row2;
+        (result as CesiumMatrix4)[15] = column3Row3;
+        return (result as CesiumMatrix4);
+    }
+
+    /**
+     * Computes the product of a matrix and a column vector.
+     *
+     * @param {Matrix4} matrix The matrix.
+     * @param {Cartesian4} cartesian The vector.
+     * @param {Cartesian4} result The object onto which to store the result.
+     * @returns {Cartesian4} The modified result parameter.
+     */
+    static multiplyByVector (matrix: CesiumMatrix4, cartesian:Cartesian4, result: Cartesian4): Cartesian4 {
+        const vX = cartesian.x;
+        const vY = cartesian.y;
+        const vZ = cartesian.z;
+        const vW = cartesian.w;
+
+        const x = matrix[0] * vX + matrix[4] * vY + matrix[8] * vZ + matrix[12] * vW;
+        const y = matrix[1] * vX + matrix[5] * vY + matrix[9] * vZ + matrix[13] * vW;
+        const z = matrix[2] * vX + matrix[6] * vY + matrix[10] * vZ + matrix[14] * vW;
+        const w = matrix[3] * vX + matrix[7] * vY + matrix[11] * vZ + matrix[15] * vW;
+
+        result.x = x;
+        result.y = y;
+        result.z = z;
+        result.w = w;
+        return result;
     }
 }
 
