@@ -1,7 +1,7 @@
 
 import { defined } from '@/Core/defined';
 import { Rectangle } from '@/Core/Rectangle';
-import { ShaderMaterial, Vector2, Vector4, Matrix4, Vector3, RawShaderMaterial, GLSL3 } from 'three';
+import { ShaderMaterial, Vector2, Vector4, Matrix4, Vector3, RawShaderMaterial, GLSL3, DoubleSide } from 'three';
 
 const vertexShader = `
 
@@ -151,6 +151,8 @@ class TileMaterial extends ShaderMaterial {
         this.fragmentShader = fragmentShader;
         this.defines.TEXTURE_UNITS = shaderSetOptions.numberOfDayTextures;
         this.glslVersion = GLSL3;
+
+        // this.side = DoubleSide;
         // this.wireframe = true;
         // this.depthWrite = false;
     }

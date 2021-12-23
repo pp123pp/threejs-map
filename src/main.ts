@@ -18,7 +18,7 @@ const camera = scene.activeCamera;
 // camera.position.set(6378137 * 2, 6378137 * 2, 6378137 * 2);
 // camera.position.set(2033992.677662228, -15449708.24660572, 10948396.652844096);
 
-camera.position.set(2305512.128970612, -17512103.235566255, 12414839.227329167);
+camera.position.set(3452756.404004388, -26226288.65595444, 18610961.973367725);
 camera.lookAt(0, 0, 0);
 
 const geometry = new SphereGeometry(6378137, 64, 64);

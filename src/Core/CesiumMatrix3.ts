@@ -635,6 +635,37 @@ class CesiumMatrix3 {
        (result as CesiumMatrix3)[8] = m22;
        return (result as CesiumMatrix3);
    }
+
+   /**
+     * Computes a Matrix3 instance representing a non-uniform scale.
+     *
+     * @param {Cartesian3} scale The x, y, and z scale factors.
+     * @param {Matrix3} [result] The object in which the result will be stored, if undefined a new instance will be created.
+     * @returns {Matrix3} The modified result parameter, or a new Matrix3 instance if one was not provided.
+     *
+     * @example
+     * // Creates
+     * //   [7.0, 0.0, 0.0]
+     * //   [0.0, 8.0, 0.0]
+     * //   [0.0, 0.0, 9.0]
+     * var m = Cesium.Matrix3.fromScale(new Cesium.Cartesian3(7.0, 8.0, 9.0));
+     */
+   static fromScale (scale: Cartesian3, result?: CesiumMatrix3): CesiumMatrix3 {
+       if (!defined(result)) {
+           return new CesiumMatrix3(scale.x, 0.0, 0.0, 0.0, scale.y, 0.0, 0.0, 0.0, scale.z);
+       }
+
+       (result as CesiumMatrix3)[0] = scale.x;
+       (result as CesiumMatrix3)[1] = 0.0;
+       (result as CesiumMatrix3)[2] = 0.0;
+       (result as CesiumMatrix3)[3] = 0.0;
+       (result as CesiumMatrix3)[4] = scale.y;
+       (result as CesiumMatrix3)[5] = 0.0;
+       (result as CesiumMatrix3)[6] = 0.0;
+       (result as CesiumMatrix3)[7] = 0.0;
+       (result as CesiumMatrix3)[8] = scale.z;
+       return (result as CesiumMatrix3);
+   }
 }
 
 const jMatrix = new CesiumMatrix3();

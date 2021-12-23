@@ -581,7 +581,6 @@ function handleZoom (
                             camera.direction
                         );
                         Cartesian3.clone(camera.direction, camera.direction);
-
                         // Set new right & up vectors
                         Cartesian3.cross(camera.direction, camera.up, camera.right);
                         Cartesian3.cross(camera.right, camera.direction, camera.up);

@@ -21,6 +21,7 @@ import { Ray } from '@/Core/Ray';
 import { Rectangle } from '@/Core/Rectangle';
 import { SceneMode } from '@/Core/SceneMode';
 import { Transforms } from '@/Core/Transforms';
+import { Vector3 } from 'three';
 import { OrthographicFrustumCamera } from './OrthographicFrustumCamera';
 import { PerspectiveFrustumCamera, PerspectiveFrustumCameraParameters } from './PerspectiveFrustumCamera';
 import { Scene } from './Scene';
@@ -94,7 +95,7 @@ class Camera {
     _direction: Cartesian3;
     _directionWC: Cartesian3;
 
-    up: Cartesian3;
+    // up: Cartesian3;
     _up: Cartesian3;
     _upWC: Cartesian3;
 
@@ -186,7 +187,7 @@ class Camera {
          *
          * @type {Cartesian3}
          */
-        this.up = new Cartesian3();
+        // this.up = new Cartesian3();
         this._up = new Cartesian3();
         this._upWC = new Cartesian3();
 
@@ -367,6 +368,16 @@ class Camera {
         this.position.z = value.z;
     }
 
+    get up (): any {
+        return this.frustum.up;
+    }
+
+    set up (value: any) {
+        this.frustum.up.x = value.x;
+        this.frustum.up.y = value.y;
+        this.frustum.up.z = value.z;
+    }
+
     get transform (): CesiumMatrix4 {
         return this._transform;
     }
@@ -409,6 +420,64 @@ class Camera {
     get rightWC (): Cartesian3 {
         updateMembers(this);
         return this._rightWC;
+    }
+
+    get heading (): number {
+        // if (this._mode !== SceneMode.MORPHING) {
+        const ellipsoid = this._projection.ellipsoid;
+
+        const oldTransform = CesiumMatrix4.clone(this._transform, scratchHPRMatrix1);
+        const transform = Transforms.eastNorthUpToFixedFrame(
+            this.positionWC,
+            ellipsoid,
+            scratchHPRMatrix2
+        );
+        this._setTransform(transform);
+
+        const heading = getHeading(this.direction, this.up);
+
+        this._setTransform(oldTransform);
+
+        return heading;
+        // }
+
+        // return undefined;
+    }
+
+    get pitch (): number {
+        const ellipsoid = this._projection.ellipsoid;
+
+        const oldTransform = CesiumMatrix4.clone(this._transform, scratchHPRMatrix1);
+        const transform = Transforms.eastNorthUpToFixedFrame(
+            this.positionWC,
+            ellipsoid,
+            scratchHPRMatrix2
+        );
+        this._setTransform(transform);
+
+        const pitch = getPitch(this.direction);
+
+        this._setTransform(oldTransform);
+
+        return pitch;
+    }
+
+    get roll (): number {
+        const ellipsoid = this._projection.ellipsoid;
+
+        const oldTransform = CesiumMatrix4.clone(this._transform, scratchHPRMatrix1);
+        const transform = Transforms.eastNorthUpToFixedFrame(
+            this.positionWC,
+            ellipsoid,
+            scratchHPRMatrix2
+        );
+        this._setTransform(transform);
+
+        const roll = getRoll(this.direction, this.up, this.right);
+
+        this._setTransform(oldTransform);
+
+        return roll;
     }
 
     resize (container: Element): void {
@@ -545,6 +614,10 @@ class Camera {
         } else {
             // setViewCV(this, destination, scratchHpr, convert);
         }
+    }
+
+    lookAt (target: Cartesian3): void {
+        this.frustum.lookAt(target.x, target.y, target.z);
     }
 
     /**
@@ -1270,6 +1343,7 @@ function updateMembers (camera: Camera) {
     if (directionChanged) {
         Cartesian3.normalize(camera.direction, camera.direction);
         direction = Cartesian3.clone(camera.direction, camera._direction);
+        camera.lookAt(camera._direction);
     }
 
     let up = camera._up;

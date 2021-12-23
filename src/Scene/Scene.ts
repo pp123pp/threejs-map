@@ -310,6 +310,8 @@ class Scene extends THREE.Scene {
             far: 100000000
         });
 
+        this._camera.constrainedAxis = Cartesian3.UNIT_Z;
+
         this.activeCamera.position.set(10, 10, 10);
         this.activeCamera.lookAt(0, 0, 0);
 
