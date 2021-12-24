@@ -21,7 +21,7 @@ import { Ray } from '@/Core/Ray';
 import { Rectangle } from '@/Core/Rectangle';
 import { SceneMode } from '@/Core/SceneMode';
 import { Transforms } from '@/Core/Transforms';
-import { Vector3 } from 'three';
+import { Raycaster, Vector2, Vector3 } from 'three';
 import { OrthographicFrustumCamera } from './OrthographicFrustumCamera';
 import { PerspectiveFrustumCamera, PerspectiveFrustumCameraParameters } from './PerspectiveFrustumCamera';
 import { Scene } from './Scene';
@@ -1481,10 +1481,27 @@ function updateMembers (camera: Camera) {
 const pickPerspCenter = new Cartesian3();
 const pickPerspXDir = new Cartesian3();
 const pickPerspYDir = new Cartesian3();
+
+const raycaster = new Raycaster();
+const mouse = new Vector2();
+
 function getPickRayPerspective (camera: Camera, windowPosition: Cartesian2, result: Ray): Ray {
     const canvas = camera._scene.canvas;
     const width = canvas.clientWidth;
     const height = canvas.clientHeight;
+
+    // mouse.x = (windowPosition.x / width) * 2 - 1;
+    // mouse.y = -(windowPosition.y / height) * 2 + 1;
+
+    // raycaster.setFromCamera(mouse, camera.frustum);
+
+    // result.direction.x = raycaster.ray.direction.x;
+    // result.direction.y = raycaster.ray.direction.y;
+    // result.direction.z = raycaster.ray.direction.z;
+
+    // result.origin.x = raycaster.ray.origin.x;
+    // result.origin.y = raycaster.ray.origin.y;
+    // result.origin.z = raycaster.ray.origin.z;
 
     const tanPhi = Math.tan(camera.frustum.fovy * 0.5);
     const tanTheta = camera.frustum.aspectRatio * tanPhi;

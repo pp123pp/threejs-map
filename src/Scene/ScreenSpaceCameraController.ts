@@ -1949,7 +1949,7 @@ const tilt3DLookUp = new Cartesian3();
 function tilt3D (controller: any, startPosition: any, movement: any) {
     const scene = controller._scene;
     const camera = scene.camera;
-
+    // console.log(movement.startPosition, movement.endPosition);
     if (!CesiumMatrix4.equals(camera.transform, CesiumMatrix4.IDENTITY)) {
         return;
     }

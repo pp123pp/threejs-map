@@ -391,10 +391,6 @@ class TileMaterial extends ShaderMaterial {
             #include <logdepthbuf_fragment>
         
             float fragCoordZ = 0.5 * vHighPrecisionZW[0] / vHighPrecisionZW[1] + 0.5;
-        
-            // gl_FragColor = computeDayColor(u_initialColor, clamp(v_textureCoordinates, 0.0, 1.0));
-        
-            // gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
 
             gColor = computeDayColor(u_initialColor, clamp(v_textureCoordinates, 0.0, 1.0));
             gDepth = packDepthToRGBA( fragCoordZ );
