@@ -258,70 +258,6 @@ class PerspectiveFrustumCamera extends PerspectiveCamera {
         this.containerWidth = clientWidth;
         this.containerHeight = clientHeight;
     }
-
-    /**
-     * Create a ray from the camera position through the pixel at <code>windowPosition</code>
-     * in world coordinates.
-     *
-     * @param {Cartesian2} windowPosition The x and y coordinates of a pixel.
-     * @param {Ray} [result] The object onto which to store the result.
-     * @returns {Ray} Returns the {@link Cartesian3} position and direction of the ray.
-     */
-    getPickRay (windowPosition: Cartesian2, result?: Ray): Ray {
-    // >>includeStart('debug', pragmas.debug);
-        if (!defined(windowPosition)) {
-            throw new DeveloperError('windowPosition is required.');
-        }
-        // >>includeEnd('debug');
-
-        if (!defined(result)) {
-            result = new Ray();
-        }
-
-        return getPickRayPerspective(this, windowPosition, result as Ray);
-    }
-}
-
-const pickPerspCenter = new Cartesian3();
-const pickPerspXDir = new Cartesian3();
-const pickPerspYDir = new Cartesian3();
-function getPickRayPerspective (camera: PerspectiveFrustumCamera, windowPosition: Cartesian2, result: Ray) {
-    const canvas = camera.scene.canvas;
-    const width = canvas.clientWidth;
-    const height = canvas.clientHeight;
-
-    const tanPhi = Math.tan(camera.fovy * 0.5);
-    const tanTheta = camera.aspectRatio * tanPhi;
-    const near = camera.near;
-
-    const x = (2.0 / width) * windowPosition.x - 1.0;
-    const y = (2.0 / height) * (height - windowPosition.y) - 1.0;
-
-    const position = camera.positionWC;
-    Cartesian3.clone(position, result.origin);
-
-    const nearCenter = Cartesian3.multiplyByScalar(
-        camera.directionWC,
-        near,
-        pickPerspCenter
-    );
-    Cartesian3.add(position, nearCenter, nearCenter);
-    const xDir = Cartesian3.multiplyByScalar(
-        camera._rightWC,
-        x * near * tanTheta,
-        pickPerspXDir
-    );
-    const yDir = Cartesian3.multiplyByScalar(
-        camera._cesiumUpWC,
-        y * near * tanPhi,
-        pickPerspYDir
-    );
-    const direction = Cartesian3.add(nearCenter, xDir, result.direction);
-    Cartesian3.add(direction, yDir, direction);
-    Cartesian3.subtract(direction, position, direction);
-    Cartesian3.normalize(direction, direction);
-
-    return result;
 }
 
 function update (frustum: PerspectiveFrustumCamera) {
@@ -367,9 +303,11 @@ function update (frustum: PerspectiveFrustumCamera) {
         frustum._aspectRatio = frustum.aspectRatio;
         frustum._fov = frustum.fov;
         frustum._fovy =
-        frustum.aspectRatio <= 1
-            ? frustum.fovRadius
-            : Math.atan(Math.tan(frustum.fovRadius * 0.5) / frustum.aspectRatio) * 2.0;
+        // frustum.aspectRatio <= 1
+        //     ? frustum.fovRadius
+        //     : Math.atan(Math.tan(frustum.fovRadius * 0.5) / frustum.aspectRatio) * 2.0;
+        frustum.aspectRatio = frustum.aspect;
+
         frustum._near = frustum.near;
         frustum._far = frustum.far;
         frustum._sseDenominator = 2.0 * Math.tan(0.5 * frustum._fovy);

@@ -3,6 +3,7 @@ import { defaultValue } from '@/Core/defaultValue';
 import { defined } from '@/Core/defined';
 import { Ellipsoid } from '@/Core/Ellipsoid';
 import { FeatureDetection } from '@/Core/FeatureDetection';
+import { ScreenSpaceEventHandler } from '@/Core/ScreenSpaceEventHandler';
 import { Camera } from '@/Scene/Camera';
 import { Globe } from '@/Scene/Globe';
 import { RenderStateParameters } from '@/Scene/MapRenderer';
@@ -71,7 +72,7 @@ class MapWidgets {
     protected _useBrowserRecommendedResolution: boolean
     _useDefaultRenderLoop: boolean;
     protected _forceResize: boolean;
-
+    readonly _screenSpaceEventHandler: ScreenSpaceEventHandler;
     constructor (container: Element | string, options: {
         renderState?: RenderStateParameters,
         requestRenderMode?: false,
@@ -163,6 +164,8 @@ class MapWidgets {
 
         this._targetFrameRate = 60;
         this.targetFrameRate = undefined;
+
+        this._screenSpaceEventHandler = new ScreenSpaceEventHandler(canvas);
     }
 
     get container (): Element {
@@ -205,6 +208,10 @@ class MapWidgets {
         // }
         // >>includeEnd('debug');
         this._targetFrameRate = value;
+    }
+
+    get screenSpaceEventHandler (): ScreenSpaceEventHandler {
+        return this._screenSpaceEventHandler;
     }
 
     configurePixelRatio ():number {

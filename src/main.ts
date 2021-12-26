@@ -1,10 +1,16 @@
-import { AxesHelper, DoubleSide, Mesh, MeshNormalMaterial, SphereGeometry } from 'three';
+import { AxesHelper, DoubleSide, Mesh, MeshNormalMaterial, ShaderChunk, ShaderLib, SphereGeometry, Vector2 } from 'three';
 import { CameraEventType } from './Core/CameraEventType';
-import { TileCoordinatesImageryProvider, WebMapTileServiceImageryProvider } from './Map';
+import { MeshNormalGlsl3Material, ScreenSpaceEventType, TileCoordinatesImageryProvider, WebMapTileServiceImageryProvider } from './Map';
 import { Scene } from './Scene/Scene';
 import './Widgets/MapWidgets/CesiumWidget.css';
 import { MapWidgets } from './Widgets/MapWidgets/MapWidgets';
 import { when } from './ThirdParty/when';
+import { Cartesian3 } from './Core/Cartesian3';
+
+import * as Map from './Map';
+import { IntersectionTests } from './Core/IntersectionTests';
+import { Ray } from './Core/Ray';
+import { BoundingSphere } from './Core/BoundingSphere';
 
 // const a = document.querySelector('#app');
 // console.log(a);
@@ -21,12 +27,7 @@ const camera = scene.activeCamera;
 camera.position.set(3452756.404004388, -26226288.65595444, 18610961.973367725);
 camera.lookAt(0, 0, 0);
 
-const geometry = new SphereGeometry(6378137, 64, 64);
-const material = new MeshNormalMaterial({ side: DoubleSide, wireframe: true });
-const cube = new Mesh(geometry, material);
-// scene.add(cube);
-
-// const axesHelper = new AxesHelper(50000000);
+const axesHelper = new AxesHelper(50000000);
 // scene.add(axesHelper);
 // console.log(CameraEventType);
 
@@ -48,3 +49,47 @@ scene.imageryLayers.addImageryProvider(new WebMapTileServiceImageryProvider({
 }));
 
 // scene.imageryLayers.addImageryProvider(new (TileCoordinatesImageryProvider as any)());
+
+const geometry = new SphereGeometry(1, 64, 64);
+const material = new MeshNormalGlsl3Material({ side: DoubleSide, wireframe: true });
+const cube = new Mesh(geometry, material);
+scene.add(cube);
+
+// console.log(Map);
+// console.log(ShaderLib);
+
+// console.log(ShaderChunk.output_fragment);
+// console.log(ShaderChunk.common);
+
+widget.screenSpaceEventHandler.setInputAction((movement: { position: Vector2; }) => {
+    // console.log(movement.position);
+
+    const ps = scene.camera.pickEllipsoid(movement.position) as Cartesian3;
+    cube.position.x = ps.x;
+    cube.position.y = ps.y;
+    cube.position.z = ps.z;
+
+    // const ps = scene.camera.pickEllipsoid(new Vector2(947, 484));
+    // console.log(ps);
+},
+ScreenSpaceEventType.LEFT_CLICK);
+
+const dir = new Cartesian3(0.11748815150991918, 0.851140094089239, -0.511622003522663);
+const origin = new Cartesian3(-750218.2389975131, -5434937.975067148, 3280656.172650098);
+const ray = new Ray(origin, dir);
+
+const center = new Cartesian3(-748319.8922073904, -5416312.055485242, 3272319.4740408007);
+const radius = 6439.7651535103705;
+const boundingVolume = new BoundingSphere(center, radius);
+
+const scratchSphereIntersectionResult = {
+    start: 0.0,
+    stop: 0.0
+};
+IntersectionTests.raySphere(
+    ray,
+    boundingVolume,
+    scratchSphereIntersectionResult
+);
+
+console.log(scratchSphereIntersectionResult);

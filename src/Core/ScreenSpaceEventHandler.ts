@@ -266,7 +266,9 @@ const mouseUpEvent: {
 } = {
     position: new Vector2()
 };
-const mouseClickEvent: any = {
+const mouseClickEvent: {
+    position: Vector2
+} = {
     position: new Vector2()
 };
 

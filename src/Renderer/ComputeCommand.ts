@@ -1,5 +1,6 @@
 import { defaultValue } from '@/Core/defaultValue';
 import { BufferGeometry, ShaderMaterial } from 'three';
+import { ComputeEngine } from './ComputeEngine';
 
 class ComputeCommand {
     geometry: BufferGeometry;
@@ -89,7 +90,7 @@ class ComputeCommand {
      * @param {Context} computeEngine The context that processes the compute command.
      * @return {undefined}
      */
-    execute (computeEngine: any): void {
+    execute (computeEngine: ComputeEngine): void {
         computeEngine.execute(this);
     }
 }

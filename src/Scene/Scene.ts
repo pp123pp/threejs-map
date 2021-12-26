@@ -306,7 +306,7 @@ class Scene extends THREE.Scene {
         this.renderer = new MapRenderer(options.renderState);
 
         this._camera = new Camera(this, {
-            near: 1,
+            near: 0.1,
             far: 100000000
         });
 
@@ -614,27 +614,7 @@ class Scene extends THREE.Scene {
         //     result
         // );
 
-        if (!defined(result)) {
-            result = new Cartesian3();
-        }
-        mouse.x = (windowPosition.x / this._canvas.clientWidth) * 2 - 1;
-        mouse.y = -(windowPosition.y / this._canvas.clientHeight) * 2 + 1;
-
-        raycaster.setFromCamera(mouse, this.activeCamera);
-
-        const intersects = raycaster.intersectObject(pickEarth)[0];
-
-        if (!defined(intersects)) {
-            return undefined;
-        }
-
-        const point = intersects.point;
-
-        (result as Cartesian3).x = point.x;
-        (result as Cartesian3).y = point.y;
-        (result as Cartesian3).z = point.z;
-
-        return result;
+        return this.camera.pickEllipsoid(windowPosition, undefined, result);
     }
 }
 
