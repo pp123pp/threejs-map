@@ -1,3 +1,4 @@
+import { Vector3 } from 'three';
 import { BoundingSphere } from './BoundingSphere';
 import { Cartesian3 } from './Cartesian3';
 import { Cartographic } from './Cartographic';
@@ -257,6 +258,39 @@ IntersectionTests.raySphere = function (ray: Ray, sphere: BoundingSphere, result
 
     (result as Interval).start = Math.max((result as Interval).start, 0.0);
     return (result as Interval);
+};
+
+const _vector = new Cartesian3();
+IntersectionTests.intersectSphere = function (ray: Ray, sphere: BoundingSphere, result: Cartesian3): Cartesian3 | null {
+    // _vector.subVectors(sphere.center, this.origin);
+    Cartesian3.subtract(sphere.center, ray.origin, _vector);
+    const tca = Cartesian3.dot(_vector, ray.direction); // _vector.dot(this.direction);
+    const d2 = Cartesian3.dot(_vector, _vector) - tca * tca;// _vector.dot(_vector) - tca * tca;
+    const radius2 = sphere.radius * sphere.radius;
+
+    if (d2 > radius2) return null;
+
+    const thc = Math.sqrt(radius2 - d2);
+
+    // t0 = first intersect point - entrance on front of sphere
+    const t0 = tca - thc;
+
+    // t1 = second intersect point - exit point on back of sphere
+    const t1 = tca + thc;
+
+    // test to see if both t0 and t1 are behind the ray - if so, return null
+    if (t0 < 0 && t1 < 0) return null;
+
+    // test to see if t0 is behind the ray:
+    // if it is, the ray is inside the sphere, so return the second exit point scaled by t1,
+    // in order to always return an intersect point that is in front of the ray.
+
+    // if (t0 < 0) return ray.at(t1, result);
+    if (t0 < 0) return Ray.getPoint(ray, t1, result);
+
+    // else t0 is in front of the ray, so return the first collision point scaled by t0
+    // return ray.at(t0, result);
+    return Ray.getPoint(ray, t0, result);
 };
 
 const scratchQ = new Cartesian3();

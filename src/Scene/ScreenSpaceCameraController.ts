@@ -238,7 +238,7 @@ const scratchZoomViewOptions = {
 };
 
 function handleZoom (
-    object:any,
+    object:ScreenSpaceCameraController,
     startPosition:Cartesian2,
     movement:any,
     zoomFactor: number,
@@ -321,7 +321,7 @@ function handleZoom (
         object._zoomMouseStart = Cartesian2.clone(
             startPosition,
             object._zoomMouseStart
-        );
+        ) as Cartesian2;
 
         if (defined(object._globe)) {
             if (mode === SceneMode.SCENE2D) {

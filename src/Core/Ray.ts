@@ -35,6 +35,15 @@ class Ray {
         this.direction = direction;
     }
 
+    at (t: number, target: Cartesian3): Cartesian3 {
+        // return target.copy(this.direction).multiplyScalar(t).add(this.origin);
+
+        Cartesian3.clone(this.direction, target);
+        Cartesian3.multiplyByScalar(target, t, target);
+        Cartesian3.add(target, this.origin, target);
+        return target;
+    }
+
     /**
      * Computes the point along the ray given by r(t) = o + t*d,
      * where o is the origin of the ray and d is the direction.

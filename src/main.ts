@@ -74,12 +74,12 @@ widget.screenSpaceEventHandler.setInputAction((movement: { position: Vector2; })
 },
 ScreenSpaceEventType.LEFT_CLICK);
 
-const dir = new Cartesian3(0.11748815150991918, 0.851140094089239, -0.511622003522663);
-const origin = new Cartesian3(-750218.2389975131, -5434937.975067148, 3280656.172650098);
-const ray = new Ray(origin, dir);
+const direction = new Cartesian3(-0.4903381374223797, 0.7704996762071239, -0.407306714840142);
+const origin = new Cartesian3(30222806.15307514, -42745526.64600748, 26630845.84547744);
+const ray = new Ray(origin, direction);
 
-const center = new Cartesian3(-748319.8922073904, -5416312.055485242, 3272319.4740408007);
-const radius = 6439.7651535103705;
+const center = new Cartesian3(-12.277106075028938, -5250.839785214442, 10077.616726956829);
+const radius = 6379226.7259915285;
 const boundingVolume = new BoundingSphere(center, radius);
 
 const scratchSphereIntersectionResult = {

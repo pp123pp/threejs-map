@@ -31,6 +31,8 @@ const scratchSphereIntersectionResult = {
     stop: 0.0
 };
 
+const intersectionPoint = new Cartesian3();
+
 const raycaster = new Raycaster();
 const mouse = new Vector2();
 
@@ -415,10 +417,10 @@ class Globe extends Object3DCollection {
                 continue;
             }
 
-            const boundingSphereIntersection = IntersectionTests.raySphere(
+            const boundingSphereIntersection = IntersectionTests.intersectSphere(
                 ray,
                 boundingVolume,
-                scratchSphereIntersectionResult
+                intersectionPoint
             );
             if (defined(boundingSphereIntersection)) {
                 sphereIntersections.push(surfaceTile);

@@ -303,9 +303,9 @@ function update (frustum: PerspectiveFrustumCamera) {
         frustum._aspectRatio = frustum.aspectRatio;
         frustum._fov = frustum.fov;
         frustum._fovy =
-        // frustum.aspectRatio <= 1
-        //     ? frustum.fovRadius
-        //     : Math.atan(Math.tan(frustum.fovRadius * 0.5) / frustum.aspectRatio) * 2.0;
+        frustum.aspectRatio <= 1
+            ? frustum.fovRadius
+            : Math.atan(Math.tan(frustum.fovRadius * 0.5) / frustum.aspectRatio) * 2.0;
         frustum.aspectRatio = frustum.aspect;
 
         frustum._near = frustum.near;

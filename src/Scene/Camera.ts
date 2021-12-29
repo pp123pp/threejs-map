@@ -1094,6 +1094,26 @@ class Camera {
         updateMembers(this);
         return CesiumMatrix4.multiplyByVector(this._actualInvTransform, cartesian, (result as Cartesian4));
     }
+
+    /**
+ * Gets the magnitude of the camera position. In 3D, this is the vector magnitude. In 2D and
+ * Columbus view, this is the distance to the map.
+ *
+ * @returns {Number} The magnitude of the position.
+ */
+    getMagnitude (): number {
+        // if (this._mode === SceneMode.SCENE3D) {
+        //     return Cartesian3.magnitude(this.position);
+        // } else if (this._mode === SceneMode.COLUMBUS_VIEW) {
+        //     return Math.abs(this.position.z);
+        // } else if (this._mode === SceneMode.SCENE2D) {
+        //     return Math.max(
+        //         this.frustum.right - this.frustum.left,
+        //         this.frustum.top - this.frustum.bottom
+        //     );
+        // }
+        return Cartesian3.magnitude(this.position);
+    }
 }
 
 const viewRectangle3DCartographic1 = new Cartographic();
