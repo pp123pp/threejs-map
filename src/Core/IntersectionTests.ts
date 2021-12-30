@@ -20,6 +20,7 @@ import { Ray } from './Ray';
  * @namespace IntersectionTests
  */
 const IntersectionTests: {
+    // raySphere?: (ray: Ray, sphere: BoundingSphere, result?: Interval) => Interval | undefined,
     [name: string]: any
 } = {};
 

@@ -11,6 +11,7 @@ import * as Map from './Map';
 import { IntersectionTests } from './Core/IntersectionTests';
 import { Ray } from './Core/Ray';
 import { BoundingSphere } from './Core/BoundingSphere';
+import { Cartesian2 } from './Core/Cartesian2';
 
 // const a = document.querySelector('#app');
 // console.log(a);
@@ -24,7 +25,7 @@ const camera = scene.activeCamera;
 // camera.position.set(6378137 * 2, 6378137 * 2, 6378137 * 2);
 // camera.position.set(2033992.677662228, -15449708.24660572, 10948396.652844096);
 
-camera.position.set(3452756.404004388, -26226288.65595444, 18610961.973367725);
+camera.position.set(494576.01496063126, -5075750.075503268, 4094283.9076712704);
 camera.lookAt(0, 0, 0);
 
 const axesHelper = new AxesHelper(50000000);
@@ -61,16 +62,19 @@ scene.add(cube);
 // console.log(ShaderChunk.output_fragment);
 // console.log(ShaderChunk.common);
 
-widget.screenSpaceEventHandler.setInputAction((movement: { position: Vector2; }) => {
+const screenPs = new Cartesian2();
+widget.screenSpaceEventHandler.setInputAction((movement: any) => {
     // console.log(movement.position);
 
-    const ps = scene.camera.pickEllipsoid(movement.position) as Cartesian3;
-    cube.position.x = ps.x;
-    cube.position.y = ps.y;
-    cube.position.z = ps.z;
+    // screenPs.x = event.clientX;
+    // screenPs.y = event.clientY;
+    // const ps = scene.camera.pickEllipsoid(movement.endPosition) as Cartesian3;
 
-    // const ps = scene.camera.pickEllipsoid(new Vector2(947, 484));
-    // console.log(ps);
+    const ray = scene.camera.getPickRay(movement.position);
+    const ps = scene.globe.pickWorldCoordinates(ray, scene, true) as Cartesian3;
+    // cube.position.x = ps.x;
+    // cube.position.y = ps.y;
+    // cube.position.z = ps.z;
 },
 ScreenSpaceEventType.LEFT_CLICK);
 

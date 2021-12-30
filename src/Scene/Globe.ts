@@ -417,11 +417,17 @@ class Globe extends Object3DCollection {
                 continue;
             }
 
-            const boundingSphereIntersection = IntersectionTests.intersectSphere(
+            // const boundingSphereIntersection = IntersectionTests.intersectSphere(
+            //     ray,
+            //     boundingVolume,
+            //     intersectionPoint
+            // );
+            const boundingSphereIntersection = IntersectionTests.raySphere(
                 ray,
                 boundingVolume,
-                intersectionPoint
+                scratchSphereIntersectionResult
             );
+
             if (defined(boundingSphereIntersection)) {
                 sphereIntersections.push(surfaceTile);
             }

@@ -67,13 +67,17 @@ const updateMembers = function (camera: PerspectiveFrustumCamera) {
     ) {
         camera._aspect = camera.aspect;
         camera._fovRadius = camera.fovRadius;
-        camera._fovy =
-        camera.aspect <= 1
-            ? camera.fovRadius
-            : Math.atan(Math.tan(camera.fovRadius * 0.5) / camera.aspect) * 2.0;
+        camera._fovy = MathUtils.degToRad(camera.fov);
         camera._near = camera.near;
         camera._far = camera.far;
-        camera._sseDenominator = 2.0 * Math.tan(0.5 * camera._fovy);
+        // camera._sseDenominator = 2.0 * Math.tan(0.5 * camera._fovy);
+
+        if (camera.aspect <= 1) {
+            camera._sseDenominator = 2.0 * Math.tan(0.5 * camera.fovRadius);
+        } else {
+            // const hFOV = 2 * Math.atan(Math.tan(camera.fov * Math.PI / 180 / 2) * camera.aspect);
+            camera._sseDenominator = 2.0 * Math.tan(0.5 * camera.fovRadius);
+        }
     }
 };
 

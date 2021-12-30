@@ -306,6 +306,7 @@ class Scene extends THREE.Scene {
         this.renderer = new MapRenderer(options.renderState);
 
         this._camera = new Camera(this, {
+            aspect: this.drawingBufferSize.width / this.drawingBufferSize.height,
             near: 0.1,
             far: 100000000
         });
