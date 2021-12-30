@@ -23,10 +23,14 @@ const scene: Scene = widget.scene;
 const camera = scene.activeCamera;
 
 // camera.position.set(6378137 * 2, 6378137 * 2, 6378137 * 2);
-// camera.position.set(2033992.677662228, -15449708.24660572, 10948396.652844096);
+// camera.position.set(3452756.404004388, -26226288.65595444, 18610961.973367725);
 
-camera.position.set(494576.01496063126, -5075750.075503268, 4094283.9076712704);
+// camera.position.set(-742945.7510284233, -6142190.297500091, 6604747.564006202);
 camera.lookAt(0, 0, 0);
+
+scene.camera.setView({
+    destination: new Cartesian3(-742945.7510284233, -6142190.297500091, 6604747.564006202)
+});
 
 const axesHelper = new AxesHelper(50000000);
 // scene.add(axesHelper);
@@ -72,9 +76,9 @@ widget.screenSpaceEventHandler.setInputAction((movement: any) => {
 
     const ray = scene.camera.getPickRay(movement.position);
     const ps = scene.globe.pickWorldCoordinates(ray, scene, true) as Cartesian3;
-    // cube.position.x = ps.x;
-    // cube.position.y = ps.y;
-    // cube.position.z = ps.z;
+    cube.position.x = ps.x;
+    cube.position.y = ps.y;
+    cube.position.z = ps.z;
 },
 ScreenSpaceEventType.LEFT_CLICK);
 

@@ -158,8 +158,8 @@ class FrameState {
         this.minimumTerrainHeight = 0.0;
     }
 
-    get camera (): PerspectiveFrustumCamera {
-        return this.scene.activeCamera;
+    get camera (): Camera {
+        return this.scene.camera;
     }
 }
 

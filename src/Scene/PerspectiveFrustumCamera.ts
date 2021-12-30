@@ -2,6 +2,7 @@ import { Cartesian2 } from '@/Core/Cartesian2';
 import { Cartesian3 } from '@/Core/Cartesian3';
 import { Cartographic } from '@/Core/Cartographic';
 import { CesiumMatrix4 } from '@/Core/CesiumMatrix4';
+import { CullingVolume } from '@/Core/CullingVolume';
 import { defaultValue } from '@/Core/defaultValue';
 import { defined } from '@/Core/defined';
 import { DeveloperError } from '@/Core/DeveloperError';
@@ -262,6 +263,28 @@ class PerspectiveFrustumCamera extends PerspectiveCamera {
         this.containerWidth = clientWidth;
         this.containerHeight = clientHeight;
     }
+
+    /**
+     * Creates a culling volume for this frustum.
+     *
+     * @param {Cartesian3} position The eye position.
+     * @param {Cartesian3} direction The view direction.
+     * @param {Cartesian3} up The up direction.
+     * @returns {CullingVolume} A culling volume at the given position and orientation.
+     *
+     * @example
+     * // Check if a bounding volume intersects the frustum.
+     * var cullingVolume = frustum.computeCullingVolume(cameraPosition, cameraDirection, cameraUp);
+     * var intersect = cullingVolume.computeVisibility(boundingVolume);
+     */
+    computeCullingVolume (
+        position: Cartesian3,
+        direction: Cartesian3,
+        up: Cartesian3
+    ): CullingVolume {
+        update(this);
+        return this._offCenterFrustum.computeCullingVolume(position, direction, up);
+    }
 }
 
 function update (frustum: PerspectiveFrustumCamera) {
@@ -282,39 +305,19 @@ function update (frustum: PerspectiveFrustumCamera) {
 
     if (
         frustum.fov !== frustum._fov ||
-      frustum.aspectRatio !== frustum._aspectRatio ||
-      frustum.near !== frustum._near ||
-      frustum.far !== frustum._far ||
-      frustum.xOffset !== frustum._xOffset ||
-      frustum.yOffset !== frustum._yOffset
+        frustum.aspectRatio !== frustum._aspectRatio ||
+        frustum.near !== frustum._near ||
+        frustum.far !== frustum._far
     ) {
-        // >>includeStart('debug', pragmas.debug);
-        if (frustum.fov < 0 || frustum.fov >= 180) {
-            throw new DeveloperError('fov must be in the range [0, PI).');
-        }
-
-        if (frustum.aspectRatio < 0) {
-            throw new DeveloperError('aspectRatio must be positive.');
-        }
-
-        if (frustum.near < 0 || frustum.near > frustum.far) {
-            throw new DeveloperError(
-                'near must be greater than zero and less than far.'
-            );
-        }
-        // >>includeEnd('debug');
-
         frustum._aspectRatio = frustum.aspectRatio;
         frustum._fov = frustum.fov;
-        frustum._fovy =
-        frustum.aspectRatio <= 1
-            ? frustum.fovRadius
-            : Math.atan(Math.tan(frustum.fovRadius * 0.5) / frustum.aspectRatio) * 2.0;
+        frustum._fovy = MathUtils.degToRad(frustum.fov);
         frustum.aspectRatio = frustum.aspect;
 
         frustum._near = frustum.near;
         frustum._far = frustum.far;
-        frustum._sseDenominator = 2.0 * Math.tan(0.5 * frustum._fovy);
+        frustum._sseDenominator = 2.0 * Math.tan(0.5 * frustum.fovRadius);
+
         frustum._xOffset = frustum.xOffset;
         frustum._yOffset = frustum.yOffset;
 

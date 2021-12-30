@@ -580,7 +580,11 @@ class Scene extends THREE.Scene {
         frameState.mode = this._mode;
         frameState.cameraUnderground = this._cameraUnderground;
         this._renderCollection.children = [];
-        // frameState.cullingVolume = camera.computeCullingVolume();
+        frameState.cullingVolume = camera.frustum.computeCullingVolume(
+            camera.positionWC,
+            camera.directionWC,
+            camera.upWC
+        );
 
         this.clearPasses(frameState.passes);
     }

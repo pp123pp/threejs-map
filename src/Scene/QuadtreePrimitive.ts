@@ -1270,7 +1270,7 @@ function screenSpaceError (primitive: QuadtreePrimitive, frameState: FrameState,
 
     const distance = tile._distance;
     const height = frameState.scene.drawingBufferSize.height;
-    const sseDenominator = frameState.camera.sseDenominator;
+    const sseDenominator = frameState.camera.frustum.sseDenominator;
 
     let error = (maxGeometricError * height) / (distance * sseDenominator);
 

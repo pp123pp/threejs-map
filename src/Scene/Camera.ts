@@ -55,6 +55,20 @@ const scratchSetViewOptions = {
 
 const scratchHpr = new HeadingPitchRoll();
 
+interface hprOptions {
+    heading?: number,
+    pitch?: number,
+    roll?: number,
+}
+
+interface orientationOptions {
+    direction?: Cartesian3,
+    up?: Cartesian3,
+    heading?: number,
+    pitch?: number,
+    roll?: number,
+}
+
 function updateViewMatrix (camera: Camera) {
     CesiumMatrix4.computeView(
         camera._position,
@@ -567,7 +581,12 @@ class Camera {
      *     }
      * });
      */
-    setView (options: any): any {
+    setView (options: {
+        destination?: Cartesian3,
+        orientation?: orientationOptions,
+        endTransform?: CesiumMatrix4,
+        convert?: boolean
+    }): any {
         options = defaultValue(options, defaultValue.EMPTY_OBJECT);
         let orientation = defaultValue(
             options.orientation,
@@ -580,7 +599,7 @@ class Camera {
         }
 
         if (defined(options.endTransform)) {
-            this._setTransform(options.endTransform);
+            this._setTransform((options.endTransform as CesiumMatrix4));
         }
 
         let convert = defaultValue(options.convert, true);
@@ -596,7 +615,7 @@ class Camera {
             convert = false;
         }
 
-        if (defined(orientation.direction)) {
+        if (defined((orientation as orientationOptions).direction)) {
             orientation = directionUpToHeadingPitchRoll(
                 this,
                 destination,
@@ -605,9 +624,9 @@ class Camera {
             );
         }
 
-        scratchHpr.heading = defaultValue(orientation.heading, 0.0);
-        scratchHpr.pitch = defaultValue(orientation.pitch, -CesiumMath.PI_OVER_TWO);
-        scratchHpr.roll = defaultValue(orientation.roll, 0.0);
+        scratchHpr.heading = defaultValue((orientation as orientationOptions).heading, 0.0) as number;
+        scratchHpr.pitch = defaultValue((orientation as orientationOptions).pitch, -CesiumMath.PI_OVER_TWO) as number;
+        scratchHpr.roll = defaultValue((orientation as orientationOptions).roll, 0.0) as number;
 
         if (mode === SceneMode.SCENE3D) {
             setView3D(this, destination, scratchHpr);
@@ -1512,38 +1531,53 @@ function getPickRayPerspective (camera: Camera, windowPosition: Cartesian2, resu
     const width = canvas.clientWidth;
     const height = canvas.clientHeight;
 
-    const tanPhi = Math.tan((camera.frustum._fovy as number) * 0.5);
-    const tanTheta = camera.frustum.aspectRatio * tanPhi;
-    const near = camera.frustum.near;
+    mouse.x = (windowPosition.x / width) * 2 - 1;
+    mouse.y = -(windowPosition.y / height) * 2 + 1;
 
-    const x = (2.0 / width) * windowPosition.x - 1.0;
-    const y = (2.0 / height) * (height - windowPosition.y) - 1.0;
+    raycaster.setFromCamera(mouse, camera.frustum);
 
-    const position = camera.positionWC;
-    Cartesian3.clone(position, result.origin);
+    result.direction.x = raycaster.ray.direction.x;
+    result.direction.y = raycaster.ray.direction.y;
+    result.direction.z = raycaster.ray.direction.z;
 
-    const nearCenter = Cartesian3.multiplyByScalar(
-        camera.directionWC,
-        near,
-        pickPerspCenter
-    );
-    Cartesian3.add(position, nearCenter, nearCenter);
-    const xDir = Cartesian3.multiplyByScalar(
-        camera.rightWC,
-        x * near * tanTheta,
-        pickPerspXDir
-    );
-    const yDir = Cartesian3.multiplyByScalar(
-        camera.upWC,
-        y * near * tanPhi,
-        pickPerspYDir
-    );
-    const direction = Cartesian3.add(nearCenter, xDir, result.direction);
-    Cartesian3.add(direction, yDir, direction);
-    Cartesian3.subtract(direction, position, direction);
-    Cartesian3.normalize(direction, direction);
+    result.origin.x = raycaster.ray.origin.x;
+    result.origin.y = raycaster.ray.origin.y;
+    result.origin.z = raycaster.ray.origin.z;
 
     return result;
+
+    // const tanPhi = Math.tan(MathUtils.degToRad(camera.frustum.fov) * 0.5);
+    // const tanTheta = camera.frustum.aspectRatio * tanPhi;
+    // const near = camera.frustum.near;
+
+    // const x = (2.0 / width) * windowPosition.x - 1.0;
+    // const y = (2.0 / height) * (height - windowPosition.y) - 1.0;
+
+    // const position = camera.positionWC;
+    // Cartesian3.clone(position, result.origin);
+
+    // const nearCenter = Cartesian3.multiplyByScalar(
+    //     camera.directionWC,
+    //     near,
+    //     pickPerspCenter
+    // );
+    // Cartesian3.add(position, nearCenter, nearCenter);
+    // const xDir = Cartesian3.multiplyByScalar(
+    //     camera.rightWC,
+    //     x * near * tanTheta,
+    //     pickPerspXDir
+    // );
+    // const yDir = Cartesian3.multiplyByScalar(
+    //     camera.upWC,
+    //     y * near * tanPhi,
+    //     pickPerspYDir
+    // );
+    // const direction = Cartesian3.add(nearCenter, xDir, result.direction);
+    // Cartesian3.add(direction, yDir, direction);
+    // Cartesian3.subtract(direction, position, direction);
+    // Cartesian3.normalize(direction, direction);
+
+    // return result;
 }
 
 const rotateVertScratchP = new Cartesian3();
@@ -1652,7 +1686,7 @@ const scratchToHPRDirection = new Cartesian3();
 const scratchToHPRUp = new Cartesian3();
 const scratchToHPRRight = new Cartesian3();
 
-function directionUpToHeadingPitchRoll (camera: Camera, position: Cartesian3, orientation: any, result?: any) {
+function directionUpToHeadingPitchRoll (camera: Camera, position: Cartesian3, orientation: any, result: hprOptions): hprOptions {
     const direction = Cartesian3.clone(
         orientation.direction,
         scratchToHPRDirection
