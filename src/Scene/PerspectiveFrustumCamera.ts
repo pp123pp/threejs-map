@@ -184,6 +184,18 @@ class PerspectiveFrustumCamera extends PerspectiveCamera {
          */
         this.yOffset = defaultValue(options.yOffset, 0.0) as number;
         this._yOffset = this.yOffset;
+
+        const fov = 60.0;
+
+        // 这里根据横纵比计算fov，防止畸变
+        if (this.aspect > 1) {
+            const hFOV = Math.atan(Math.tan(fov * Math.PI / 360) / this.aspect) * 360 / Math.PI;
+            this.fov = hFOV;
+        } else {
+            this.fov = 2 * Math.atan(Math.tan(fov * Math.PI / 180 / 2) * this.aspect) * 180 / Math.PI;
+        }
+
+        this.updateProjectionMatrix();
     }
 
     get directionWC (): Cartesian3 {
@@ -257,6 +269,12 @@ class PerspectiveFrustumCamera extends PerspectiveCamera {
         const { clientWidth, clientHeight } = container;
 
         this.aspect = clientWidth / clientHeight;
+
+        if (this.aspect > 1) {
+            this.fov = Math.atan(Math.tan(60 * Math.PI / 360) / this.aspect) * 360 / Math.PI;
+        } else {
+            this.fov = 2 * Math.atan(Math.tan(60 * Math.PI / 180 / 2) * this.aspect) * 180 / Math.PI;
+        }
 
         this.updateProjectionMatrix();
 

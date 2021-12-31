@@ -3,8 +3,6 @@ import { fragmentIn, vertexOut, vrayingExp } from './ShaderReplace';
 
 const normal = ShaderLib.normal;
 
-console.log(normal);
-
 const fragmentShader = `
 #define NORMAL
 uniform float opacity;

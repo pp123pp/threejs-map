@@ -226,11 +226,6 @@ class Camera {
          */
         this.frustum = new PerspectiveFrustumCamera(scene, options);
 
-        this.frustum.fov = 60.0;
-
-        const hFOV = Math.atan(Math.tan(60 * Math.PI / 360) / this.frustum.aspect) * 360 / Math.PI;
-        this.frustum.fov = hFOV;
-        this.frustum.updateProjectionMatrix();
         /**
          * The default amount to move the camera when an argument is not
          * provided to the move methods.
@@ -392,6 +387,8 @@ class Camera {
         this.frustum.up.x = value.x;
         this.frustum.up.y = value.y;
         this.frustum.up.z = value.z;
+        // this.frustum.updateMatrixWorld();
+        this.frustum.updateProjectionMatrix();
     }
 
     get transform (): CesiumMatrix4 {
@@ -941,7 +938,9 @@ class Camera {
 
         CesiumMatrix4.multiplyByPoint(inverse, position, this.position);
         CesiumMatrix4.multiplyByPointAsVector(inverse, direction, this.direction);
-        CesiumMatrix4.multiplyByPointAsVector(inverse, up, this.up);
+        CesiumMatrix4.multiplyByPointAsVector(inverse, up, this.frustum.up);
+        this.frustum.updateProjectionMatrix();
+
         Cartesian3.cross(this.direction, this.up, this.right);
 
         updateMembers(this);
@@ -1427,6 +1426,13 @@ function updateMembers (camera: Camera) {
             camera._actualInvTransform
         );
 
+        CesiumMatrix4.copyThreeMatrix4(camera._actualTransform, camera.frustum.matrixWorld);
+        CesiumMatrix4.copyThreeMatrix4(camera._actualInvTransform, camera.frustum.matrixWorldInverse);
+
+        camera.frustum.updateMatrix();
+        // CesiumMatrix4.copyThreeMatrix4(camera._actualTransform, camera.frustum.matrixWorld);
+        // camera.frustum.updateMatrixWorld();
+
         camera._modeChanged = false;
     }
 
@@ -1531,53 +1537,53 @@ function getPickRayPerspective (camera: Camera, windowPosition: Cartesian2, resu
     const width = canvas.clientWidth;
     const height = canvas.clientHeight;
 
-    mouse.x = (windowPosition.x / width) * 2 - 1;
-    mouse.y = -(windowPosition.y / height) * 2 + 1;
+    // mouse.x = (windowPosition.x / width) * 2 - 1;
+    // mouse.y = -(windowPosition.y / height) * 2 + 1;
 
-    raycaster.setFromCamera(mouse, camera.frustum);
+    // raycaster.setFromCamera(mouse, camera.frustum);
 
-    result.direction.x = raycaster.ray.direction.x;
-    result.direction.y = raycaster.ray.direction.y;
-    result.direction.z = raycaster.ray.direction.z;
+    // result.direction.x = raycaster.ray.direction.x;
+    // result.direction.y = raycaster.ray.direction.y;
+    // result.direction.z = raycaster.ray.direction.z;
 
-    result.origin.x = raycaster.ray.origin.x;
-    result.origin.y = raycaster.ray.origin.y;
-    result.origin.z = raycaster.ray.origin.z;
-
-    return result;
-
-    // const tanPhi = Math.tan(MathUtils.degToRad(camera.frustum.fov) * 0.5);
-    // const tanTheta = camera.frustum.aspectRatio * tanPhi;
-    // const near = camera.frustum.near;
-
-    // const x = (2.0 / width) * windowPosition.x - 1.0;
-    // const y = (2.0 / height) * (height - windowPosition.y) - 1.0;
-
-    // const position = camera.positionWC;
-    // Cartesian3.clone(position, result.origin);
-
-    // const nearCenter = Cartesian3.multiplyByScalar(
-    //     camera.directionWC,
-    //     near,
-    //     pickPerspCenter
-    // );
-    // Cartesian3.add(position, nearCenter, nearCenter);
-    // const xDir = Cartesian3.multiplyByScalar(
-    //     camera.rightWC,
-    //     x * near * tanTheta,
-    //     pickPerspXDir
-    // );
-    // const yDir = Cartesian3.multiplyByScalar(
-    //     camera.upWC,
-    //     y * near * tanPhi,
-    //     pickPerspYDir
-    // );
-    // const direction = Cartesian3.add(nearCenter, xDir, result.direction);
-    // Cartesian3.add(direction, yDir, direction);
-    // Cartesian3.subtract(direction, position, direction);
-    // Cartesian3.normalize(direction, direction);
+    // result.origin.x = raycaster.ray.origin.x;
+    // result.origin.y = raycaster.ray.origin.y;
+    // result.origin.z = raycaster.ray.origin.z;
 
     // return result;
+
+    const tanPhi = Math.tan(MathUtils.degToRad(camera.frustum.fov) * 0.5);
+    const tanTheta = camera.frustum.aspectRatio * tanPhi;
+    const near = camera.frustum.near;
+
+    const x = (2.0 / width) * windowPosition.x - 1.0;
+    const y = (2.0 / height) * (height - windowPosition.y) - 1.0;
+
+    const position = camera.positionWC;
+    Cartesian3.clone(position, result.origin);
+
+    const nearCenter = Cartesian3.multiplyByScalar(
+        camera.directionWC,
+        near,
+        pickPerspCenter
+    );
+    Cartesian3.add(position, nearCenter, nearCenter);
+    const xDir = Cartesian3.multiplyByScalar(
+        camera.rightWC,
+        x * near * tanTheta,
+        pickPerspXDir
+    );
+    const yDir = Cartesian3.multiplyByScalar(
+        camera.upWC,
+        y * near * tanPhi,
+        pickPerspYDir
+    );
+    const direction = Cartesian3.add(nearCenter, xDir, result.direction);
+    Cartesian3.add(direction, yDir, direction);
+    Cartesian3.subtract(direction, position, direction);
+    Cartesian3.normalize(direction, direction);
+
+    return result;
 }
 
 const rotateVertScratchP = new Cartesian3();

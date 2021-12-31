@@ -26,10 +26,11 @@ const camera = scene.activeCamera;
 // camera.position.set(3452756.404004388, -26226288.65595444, 18610961.973367725);
 
 // camera.position.set(-742945.7510284233, -6142190.297500091, 6604747.564006202);
-camera.lookAt(0, 0, 0);
+// camera.lookAt(0, 0, 0);
 
 scene.camera.setView({
-    destination: new Cartesian3(-742945.7510284233, -6142190.297500091, 6604747.564006202)
+    // destination: new Cartesian3(-742945.7510284233, -6142190.297500091, 6604747.564006202)
+    destination: new Cartesian3(3452756.404004388, -26226288.65595444, 18610961.973367725)
 });
 
 const axesHelper = new AxesHelper(50000000);
@@ -101,3 +102,5 @@ IntersectionTests.raySphere(
 );
 
 console.log(scratchSphereIntersectionResult);
+
+console.log(ShaderLib.basic);
