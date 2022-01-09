@@ -2262,6 +2262,8 @@ function tilt3DOnTerrain (controller: any, startPosition: any, movement: any) {
 
         camera._setTransform(oldTransform);
     }
+
+    console.log(camera.positionCartographic);
 }
 
 const look3DStartPos = new Cartesian2();
@@ -2437,7 +2439,7 @@ function update3D (controller: any) {
 const scratchAdjustHeightTransform = new CesiumMatrix4();
 const scratchAdjustHeightCartographic = new Cartographic();
 
-function adjustHeightForTerrain (controller: any) {
+function adjustHeightForTerrain (controller: ScreenSpaceCameraController) {
     controller._adjustedHeightForTerrain = true;
 
     const scene = controller._scene;
@@ -2466,7 +2468,7 @@ function adjustHeightForTerrain (controller: any) {
 
     const cartographic = scratchAdjustHeightCartographic;
     if (mode === SceneMode.SCENE3D) {
-        ellipsoid.cartesianToCartographic(camera.position, cartographic);
+        ellipsoid.cartesianToCartographic(camera.positionWC, cartographic);
     } else {
         projection.unproject(camera.position, cartographic);
     }
@@ -2489,7 +2491,7 @@ function adjustHeightForTerrain (controller: any) {
     }
 
     if (defined(transform)) {
-        camera._setTransform(transform);
+        camera._setTransform((transform as CesiumMatrix4));
         if (heightUpdated) {
             Cartesian3.normalize(camera.position, camera.position);
             Cartesian3.negate(camera.position, camera.direction);

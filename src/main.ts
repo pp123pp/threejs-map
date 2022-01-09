@@ -75,11 +75,12 @@ widget.screenSpaceEventHandler.setInputAction((movement: any) => {
     // screenPs.y = event.clientY;
     // const ps = scene.camera.pickEllipsoid(movement.endPosition) as Cartesian3;
 
-    const ray = scene.camera.getPickRay(movement.position);
-    const ps = scene.globe.pickWorldCoordinates(ray, scene, true) as Cartesian3;
-    cube.position.x = ps.x;
-    cube.position.y = ps.y;
-    cube.position.z = ps.z;
+    // const ray = scene.camera.getPickRay(movement.position);
+    // const ps = scene.globe.pickWorldCoordinates(ray, scene, true) as Cartesian3;
+    // cube.position.x = ps.x;
+    // cube.position.y = ps.y;
+    // cube.position.z = ps.z;
+    console.log(scene.camera);
 },
 ScreenSpaceEventType.LEFT_CLICK);
 
@@ -103,4 +104,17 @@ IntersectionTests.raySphere(
 
 console.log(scratchSphereIntersectionResult);
 
-console.log(ShaderLib.basic);
+console.log(ShaderLib.background);
+
+let isAni = false;
+
+(document.getElementById('btn') as HTMLElement).onclick = function () {
+    //
+    isAni = !isAni;
+};
+
+scene.preRender.addEventListener(() => {
+    if (isAni) {
+        scene.camera.twistLeft(0.01);
+    }
+});

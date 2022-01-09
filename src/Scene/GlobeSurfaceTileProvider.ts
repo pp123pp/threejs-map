@@ -335,7 +335,7 @@ function sortTileImageryByLayerIndex (a: any, b: any) {
 
 const createTileUniformMap = (frameState: FrameState, tileProvider: any, surfaceShaderSetOptions: any, quantization: TerrainQuantization) => {
     const material = new TileMaterial({
-        side: DoubleSide
+        // side: DoubleSide
         // wireframe: true
         // depthTest: false
     }, surfaceShaderSetOptions);

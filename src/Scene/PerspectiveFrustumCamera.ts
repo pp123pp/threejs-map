@@ -1,7 +1,9 @@
 import { Cartesian2 } from '@/Core/Cartesian2';
 import { Cartesian3 } from '@/Core/Cartesian3';
 import { Cartographic } from '@/Core/Cartographic';
+import { CesiumMath } from '@/Core/CesiumMath';
 import { CesiumMatrix4 } from '@/Core/CesiumMatrix4';
+import { CesiumQuaternion } from '@/Core/CesiumQuaternion';
 import { CullingVolume } from '@/Core/CullingVolume';
 import { defaultValue } from '@/Core/defaultValue';
 import { defined } from '@/Core/defined';
@@ -10,12 +12,14 @@ import { GeographicProjection } from '@/Core/GeographicProjection';
 import { PerspectiveOffCenterFrustum } from '@/Core/PerspectiveOffCenterFrustum';
 import { Ray } from '@/Core/Ray';
 import { SceneMode } from '@/Core/SceneMode';
-import { Frustum, MathUtils, Matrix4, PerspectiveCamera, Vector3 } from 'three';
+import { Frustum, MathUtils, Matrix4, PerspectiveCamera, Quaternion, Vector3 } from 'three';
 import { Scene } from './Scene';
 
 const worldDirectionCartesian = new Cartesian3();
 
-const worldDirection = new Vector3();
+const directionWC = new Vector3();
+
+const worldDirectionWC_three = new Vector3();
 
 export interface PerspectiveFrustumCameraParameters {
     fov?: number;
@@ -83,6 +87,7 @@ const updateMembers = function (camera: PerspectiveFrustumCamera) {
 };
 
 const scratchCartesian = new Vector3();
+const threeQuaternion = new Quaternion();
 class PerspectiveFrustumCamera extends PerspectiveCamera {
     scene: Scene;
     private _frustum;
@@ -198,11 +203,15 @@ class PerspectiveFrustumCamera extends PerspectiveCamera {
         this.updateProjectionMatrix();
     }
 
+    get worldDirection (): Vector3 {
+        return this.getWorldDirection(worldDirectionWC_three);
+    }
+
     get directionWC (): Cartesian3 {
-        this.getWorldDirection(worldDirection);
-        worldDirectionCartesian.x = worldDirection.x;
-        worldDirectionCartesian.y = worldDirection.y;
-        worldDirectionCartesian.z = worldDirection.z;
+        this.getWorldDirection(directionWC);
+        worldDirectionCartesian.x = directionWC.x;
+        worldDirectionCartesian.y = directionWC.y;
+        worldDirectionCartesian.z = directionWC.z;
         return worldDirectionCartesian;
     }
 
@@ -273,7 +282,8 @@ class PerspectiveFrustumCamera extends PerspectiveCamera {
         if (this.aspect > 1) {
             this.fov = Math.atan(Math.tan(60 * Math.PI / 360) / this.aspect) * 360 / Math.PI;
         } else {
-            this.fov = 2 * Math.atan(Math.tan(60 * Math.PI / 180 / 2) * this.aspect) * 180 / Math.PI;
+            // this.fov = 2 * Math.atan(Math.tan(CesiumMath.toRadians(60) / 2) * this.aspect) * 180 / Math.PI;
+            this.fov = 60;
         }
 
         this.updateProjectionMatrix();
@@ -302,6 +312,15 @@ class PerspectiveFrustumCamera extends PerspectiveCamera {
     ): CullingVolume {
         update(this);
         return this._offCenterFrustum.computeCullingVolume(position, direction, up);
+    }
+
+    applyCesiumQuaternion (quaternion: CesiumQuaternion): void {
+        threeQuaternion.x = quaternion.x;
+        threeQuaternion.y = quaternion.y;
+        threeQuaternion.z = quaternion.z;
+        threeQuaternion.w = quaternion.w;
+
+        this.applyQuaternion(threeQuaternion);
     }
 }
 

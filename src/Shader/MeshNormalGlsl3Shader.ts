@@ -1,5 +1,5 @@
 import { ShaderLib, UniformsUtils } from 'three';
-import { fragmentIn, vertexOut, vrayingExp } from './ShaderReplace';
+import { fragmentIn, vertexOut, varyingExp } from './ShaderReplace';
 
 const normal = ShaderLib.normal;
 
@@ -33,8 +33,8 @@ void main() {
 `;
 
 const MeshNormalGlsl3Shader = {
-    vertexShader: normal.vertexShader.replace(vrayingExp, vertexOut),
-    fragmentShader: fragmentShader.replace(vrayingExp, fragmentIn),
+    vertexShader: normal.vertexShader.replace(varyingExp, vertexOut),
+    fragmentShader: fragmentShader.replace(varyingExp, fragmentIn),
     uniforms: normal.uniforms
 };
 

@@ -14,7 +14,7 @@ class MapRenderer extends WebGLRenderer {
 
         // this.setSize(clientWidth, clientHeight);
         // this.setViewport(0, 0, clientWidth, clientHeight);
-        // this.autoClear = false;
+        this.autoClear = false;
         this.toneMapping = LinearToneMapping;
         this.toneMappingExposure = 1.0;
         this.outputEncoding = sRGBEncoding;

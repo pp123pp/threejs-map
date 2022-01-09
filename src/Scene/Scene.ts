@@ -4,7 +4,7 @@ import { defaultValue } from '../Core/defaultValue';
 import { Event } from '../Core/Event';
 import { SceneMode } from '../Core/SceneMode';
 import * as THREE from 'three';
-import { Mesh, Raycaster, SphereBufferGeometry, Vector2, WebGLRenderer, WebGLRendererParameters } from 'three';
+import { GLSL3, Mesh, Raycaster, ShaderMaterial, SphereBufferGeometry, Vector2, WebGLRenderer, WebGLRendererParameters } from 'three';
 import { Camera } from './Camera';
 // import { Camera } from './CameraCopy';
 import { Context } from './Context';
@@ -30,6 +30,7 @@ import { Cartesian3 } from '@/Core/Cartesian3';
 import { EffectComposerCollection } from './EffectComposerCollection';
 import { PickDepth } from './PickDepth';
 import { Picking } from './Picking';
+import { SkyBox } from './SkyBox';
 
 const raycaster = new Raycaster();
 const mouse = new Vector2();
@@ -253,7 +254,9 @@ function executeCommandsInViewport (firstViewport: boolean, scene:Scene, backgro
     // executeCommands(scene, passState);
     // scene.renderer.clear();
     // scene.renderer.render(scene, scene.activeCamera);
-
+    scene.renderer.autoClear = false;
+    scene.renderer.clear();
+    scene.skyBox.render();
     scene.effectComposerCollection.render();
 }
 
@@ -289,10 +292,13 @@ class Scene extends THREE.Scene {
     effectComposerCollection: EffectComposerCollection;
     _picking: Picking;
     useDepthPicking: boolean;
+    skyBox: SkyBox
     constructor (options: SceneOptions) {
         super();
 
         this._mode = SceneMode.SCENE3D;
+
+        ShaderMaterial.prototype.glslVersion = GLSL3;
 
         // 地图的投影方式
         this._mapProjection = defaultValue(options.mapProjection, new GeographicProjection()) as GeographicProjection;
@@ -403,6 +409,8 @@ class Scene extends THREE.Scene {
 
         // 是否启用深度坐标拾取
         this.useDepthPicking = true;
+
+        this.skyBox = new SkyBox(this);
     }
 
     get pixelRatio (): number {
@@ -484,6 +492,10 @@ class Scene extends THREE.Scene {
         return true;
     }
 
+    get globeHeight (): number {
+        return (this._globeHeight as number);
+    }
+
     requestRender () :void{
         this._renderRequested = true;
     }
@@ -514,6 +526,8 @@ class Scene extends THREE.Scene {
         // this._cameraUnderground = isCameraUnderground(this);
 
         this._screenSpaceCameraController.update();
+        this.camera.update(this._mode);
+        this.camera._updateCameraChanged();
     }
 
     render (time: number): void{

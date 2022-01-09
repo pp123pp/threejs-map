@@ -13,6 +13,7 @@ import { Ellipsoid } from '@/Core/Ellipsoid';
 import { EllipsoidGeodesic } from '@/Core/EllipsoidGeodesic';
 import { Event } from '@/Core/Event';
 import { GeographicProjection } from '@/Core/GeographicProjection';
+import { getTimestamp } from '@/Core/getTimestamp';
 import { HeadingPitchRange } from '@/Core/HeadingPitchRange';
 import { HeadingPitchRoll } from '@/Core/HeadingPitchRoll';
 import { IntersectionTests } from '@/Core/IntersectionTests';
@@ -83,7 +84,15 @@ function updateViewMatrix (camera: Camera) {
         camera._viewMatrix
     );
     CesiumMatrix4.inverseTransformation(camera._viewMatrix, camera._invViewMatrix);
+
+    CesiumMatrix4.copyThreeMatrix4(camera._invViewMatrix, camera.frustum.matrixWorld);
+    // camera.frustum.matrixWorld.decompose(camera.frustum.position, camera.frustum.quaternion, camera.frustum.scale);
+
+    // console.log(camera.frustum.position);
 }
+
+const threeAxis = new Vector3();
+const copyDir = new Cartesian3();
 
 class Camera {
     _scene: Scene;
@@ -838,7 +847,7 @@ class Camera {
      * @see Camera#lookLeft
      * @see Camera#lookRight
      */
-    look (axis: Cartesian3, angle?: number) {
+    look (axis: Cartesian3, angle?: number): void {
     // >>includeStart('debug', pragmas.debug);
         if (!defined(axis)) {
             throw new DeveloperError('axis is required.');
@@ -846,20 +855,32 @@ class Camera {
         // >>includeEnd('debug');
 
         const turnAngle = defaultValue(angle, this.defaultLookAmount) as number;
+
+        threeAxis.x = axis.x;
+        threeAxis.y = axis.y;
+        threeAxis.z = axis.z;
+
         const quaternion = CesiumQuaternion.fromAxisAngle(
             axis,
             -turnAngle,
             lookScratchQuaternion
         );
+        // this.frustum.applyCesiumQuaternion(quaternion);
+        // console.log(quaternion);
         const rotation = CesiumMatrix3.fromQuaternion(quaternion, lookScratchMatrix);
 
         const direction = this.direction;
         const up = this.up;
         const right = this.right;
 
-        CesiumMatrix3.multiplyByVector(rotation, direction, direction);
+        CesiumMatrix3.multiplyByVector(rotation, direction, copyDir);
         CesiumMatrix3.multiplyByVector(rotation, up, up);
         CesiumMatrix3.multiplyByVector(rotation, right, right);
+
+        // console.log(copyDir);
+
+        this.lookAt(copyDir);
+        this.frustum.rotateOnAxis(threeAxis, -turnAngle);
     }
 
     /**
@@ -1117,11 +1138,11 @@ class Camera {
     }
 
     /**
- * Gets the magnitude of the camera position. In 3D, this is the vector magnitude. In 2D and
- * Columbus view, this is the distance to the map.
- *
- * @returns {Number} The magnitude of the position.
- */
+     * Gets the magnitude of the camera position. In 3D, this is the vector magnitude. In 2D and
+     * Columbus view, this is the distance to the map.
+     *
+     * @returns {Number} The magnitude of the position.
+     */
     getMagnitude (): number {
         // if (this._mode === SceneMode.SCENE3D) {
         //     return Cartesian3.magnitude(this.position);
@@ -1134,6 +1155,173 @@ class Camera {
         //     );
         // }
         return Cartesian3.magnitude(this.position);
+    }
+
+    update (mode: SceneMode) {
+        // >>includeStart('debug', pragmas.debug);
+        if (!defined(mode)) {
+            throw new DeveloperError('mode is required.');
+        }
+        if (
+            mode === SceneMode.SCENE2D &&
+            !(this.frustum instanceof OrthographicFrustumCamera)
+        ) {
+            throw new DeveloperError(
+                'An OrthographicOffCenterFrustum is required in 2D.'
+            );
+        }
+        // if (
+        //     (mode === SceneMode.SCENE3D || mode === SceneMode.COLUMBUS_VIEW) &&
+        //     !(this.frustum instanceof PerspectiveFrustum) &&
+        //     !(this.frustum instanceof OrthographicFrustum)
+        // ) {
+        //     throw new DeveloperError(
+        //         'A PerspectiveFrustum or OrthographicFrustum is required in 3D and Columbus view'
+        //     );
+        // }
+        // >>includeEnd('debug');
+
+        let updateFrustum = false;
+        if (mode !== this._mode) {
+            this._mode = mode;
+            this._modeChanged = mode !== SceneMode.MORPHING;
+            updateFrustum = this._mode === SceneMode.SCENE2D;
+        }
+
+        if (updateFrustum) {
+            const frustum = (this._max2Dfrustum = this.frustum.clone());
+
+            // >>includeStart('debug', pragmas.debug);
+            // if (!(frustum instanceof OrthographicOffCenterFrustum)) {
+            //     throw new DeveloperError(
+            //         'The camera frustum is expected to be orthographic for 2D camera control.'
+            //     );
+            // }
+            // >>includeEnd('debug');
+
+            // const maxZoomOut = 2.0;
+            // const ratio = frustum.top / frustum.right;
+            // frustum.right = this._maxCoord.x * maxZoomOut;
+            // frustum.left = -frustum.right;
+            // frustum.top = ratio * frustum.right;
+            // frustum.bottom = -frustum.top;
+        }
+
+        if (this._mode === SceneMode.SCENE2D) {
+            // clampMove2D(this, this.position);
+        }
+    }
+
+    _updateCameraChanged (): void {
+        const camera = this;
+
+        updateCameraDeltas(camera);
+
+        if (camera._changed.numberOfListeners === 0) {
+            return;
+        }
+
+        const percentageChanged = camera.percentageChanged;
+
+        if (camera._mode === SceneMode.SCENE2D) {
+        //     if (!defined(camera._changedFrustum)) {
+        //         camera._changedPosition = Cartesian3.clone(
+        //             camera.position,
+        //             camera._changedPosition
+        //         );
+        //         camera._changedFrustum = camera.frustum.clone();
+        //         return;
+        //     }
+
+            //     const position = camera.position;
+            //     const lastPosition = camera._changedPosition;
+
+            //     const frustum = camera.frustum;
+            //     const lastFrustum = camera._changedFrustum;
+
+            //     const x0 = position.x + frustum.left;
+            //     const x1 = position.x + frustum.right;
+            //     const x2 = lastPosition.x + lastFrustum.left;
+            //     const x3 = lastPosition.x + lastFrustum.right;
+
+            //     const y0 = position.y + frustum.bottom;
+            //     const y1 = position.y + frustum.top;
+            //     const y2 = lastPosition.y + lastFrustum.bottom;
+            //     const y3 = lastPosition.y + lastFrustum.top;
+
+            //     const leftX = Math.max(x0, x2);
+            //     const rightX = Math.min(x1, x3);
+            //     const bottomY = Math.max(y0, y2);
+            //     const topY = Math.min(y1, y3);
+
+            //     let areaPercentage;
+            //     if (leftX >= rightX || bottomY >= y1) {
+            //         areaPercentage = 1.0;
+            //     } else {
+            //         let areaRef = lastFrustum;
+            //         if (x0 < x2 && x1 > x3 && y0 < y2 && y1 > y3) {
+            //             areaRef = frustum;
+            //         }
+            //         areaPercentage =
+            // 1.0 -
+            // ((rightX - leftX) * (topY - bottomY)) /
+            //   ((areaRef.right - areaRef.left) * (areaRef.top - areaRef.bottom));
+            //     }
+
+        //     if (areaPercentage > percentageChanged) {
+        //         camera._changed.raiseEvent(areaPercentage);
+        //         camera._changedPosition = Cartesian3.clone(
+        //             camera.position,
+        //             camera._changedPosition
+        //         );
+        //         camera._changedFrustum = camera.frustum.clone(camera._changedFrustum);
+        //     }
+        //     return;
+        }
+
+        if (!defined(camera._changedDirection)) {
+            camera._changedPosition = Cartesian3.clone(
+                camera.positionWC,
+                camera._changedPosition
+            );
+            camera._changedDirection = Cartesian3.clone(
+                camera.directionWC,
+                camera._changedDirection
+            );
+            return;
+        }
+
+        const dirAngle = CesiumMath.acosClamped(
+            Cartesian3.dot(camera.directionWC, camera._changedDirection)
+        );
+
+        let dirPercentage;
+        if (defined(camera.frustum.fovy)) {
+            dirPercentage = dirAngle / (camera.frustum.fovy * 0.5);
+        } else {
+            dirPercentage = dirAngle;
+        }
+
+        const distance = Cartesian3.distance(
+            camera.positionWC,
+            camera._changedPosition
+        );
+        const heightPercentage = distance / camera.positionCartographic.height;
+
+        if (
+            dirPercentage > percentageChanged ||
+            heightPercentage > percentageChanged
+        ) {
+            camera._changed.raiseEvent(Math.max(dirPercentage, heightPercentage));
+            camera._changedPosition = Cartesian3.clone(
+                camera.positionWC,
+                camera._changedPosition
+            );
+            camera._changedDirection = Cartesian3.clone(
+                camera.directionWC,
+                camera._changedDirection
+            );
+        }
     }
 }
 
@@ -1373,13 +1561,15 @@ function updateMembers (camera: Camera) {
 
     let position = camera._position;
     const positionChanged =
-    !Cartesian3.equals(position, camera.position) || heightChanged;
+        !Cartesian3.equals(position, camera.position) || heightChanged;
+
     if (positionChanged) {
         position = Cartesian3.clone(camera.position, camera._position);
     }
 
     let direction = camera._direction;
     const directionChanged = !Cartesian3.equals(direction, camera.direction);
+
     if (directionChanged) {
         Cartesian3.normalize(camera.direction, camera.direction);
         direction = Cartesian3.clone(camera.direction, camera._direction);
@@ -1764,6 +1954,36 @@ function pickEllipsoid3D (camera: Camera, windowPosition: Cartesian2, ellipsoid 
 
     const t = intersection.start > 0.0 ? intersection.start : intersection.stop;
     return Ray.getPoint(ray, t, result);
+}
+
+function updateCameraDeltas (camera: Camera) {
+    if (!defined(camera._oldPositionWC)) {
+        camera._oldPositionWC = Cartesian3.clone(
+            camera.positionWC,
+            camera._oldPositionWC
+        );
+    } else {
+        camera.positionWCDeltaMagnitudeLastFrame = camera.positionWCDeltaMagnitude;
+        const delta = Cartesian3.subtract(
+            camera.positionWC,
+            (camera._oldPositionWC as Cartesian3),
+            (camera._oldPositionWC as Cartesian3)
+        );
+        camera.positionWCDeltaMagnitude = Cartesian3.magnitude(delta);
+        camera._oldPositionWC = Cartesian3.clone(
+            camera.positionWC,
+            camera._oldPositionWC
+        );
+
+        // Update move timers
+        if (camera.positionWCDeltaMagnitude > 0.0) {
+            camera.timeSinceMoved = 0.0;
+            camera._lastMovedTimestamp = getTimestamp();
+        } else {
+            camera.timeSinceMoved =
+          Math.max(getTimestamp() - camera._lastMovedTimestamp, 0.0) / 1000.0;
+        }
+    }
 }
 
 export { Camera };
