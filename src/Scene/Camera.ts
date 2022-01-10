@@ -103,7 +103,7 @@ class Camera {
     _actualInvTransform: CesiumMatrix4;
     _transformChanged: boolean;
 
-    // position: Cartesian3;
+    position: Cartesian3;
     _position: Cartesian3;
     _positionWC: Cartesian3;
     _positionCartographic: Cartographic;
@@ -118,7 +118,7 @@ class Camera {
     _direction: Cartesian3;
     _directionWC: Cartesian3;
 
-    // up: Cartesian3;
+    up: Cartesian3;
     _up: Cartesian3;
     _upWC: Cartesian3;
 
@@ -168,7 +168,7 @@ class Camera {
          *
          * @type {Cartesian3}
          */
-        // this.position = new Cartesian3();
+        this.position = new Cartesian3();
         this._position = new Cartesian3();
         this._positionWC = new Cartesian3();
         this._positionCartographic = new Cartographic();
@@ -210,7 +210,7 @@ class Camera {
          *
          * @type {Cartesian3}
          */
-        // this.up = new Cartesian3();
+        this.up = new Cartesian3();
         this._up = new Cartesian3();
         this._upWC = new Cartesian3();
 
@@ -378,27 +378,27 @@ class Camera {
         0.0
     );
 
-    get position (): any {
-        return this.frustum.position;
-    }
+    // get position (): any {
+    //     return this.frustum.position;
+    // }
 
-    set position (value: any) {
-        this.position.x = value.x;
-        this.position.y = value.y;
-        this.position.z = value.z;
-    }
+    // set position (value: any) {
+    //     this.position.x = value.x;
+    //     this.position.y = value.y;
+    //     this.position.z = value.z;
+    // }
 
-    get up (): any {
-        return this.frustum.up;
-    }
+    // get up (): any {
+    //     return this.frustum.up;
+    // }
 
-    set up (value: any) {
-        this.frustum.up.x = value.x;
-        this.frustum.up.y = value.y;
-        this.frustum.up.z = value.z;
-        // this.frustum.updateMatrixWorld();
-        this.frustum.updateProjectionMatrix();
-    }
+    // set up (value: any) {
+    //     this.frustum.up.x = value.x;
+    //     this.frustum.up.y = value.y;
+    //     this.frustum.up.z = value.z;
+    //     // this.frustum.updateMatrixWorld();
+    //     this.frustum.updateProjectionMatrix();
+    // }
 
     get transform (): CesiumMatrix4 {
         return this._transform;
@@ -954,6 +954,7 @@ class Camera {
         Cartesian3.cross(this.direction, this.up, this.right);
 
         updateMembers(this);
+        this.frustum.updateProjectionMatrix();
     }
 
     /**
@@ -1177,6 +1178,10 @@ class Camera {
             this._modeChanged = mode !== SceneMode.MORPHING;
             updateFrustum = this._mode === SceneMode.SCENE2D;
         }
+
+        this.frustum.position.x = this.positionWC.x;
+        this.frustum.position.y = this.positionWC.y;
+        this.frustum.position.z = this.positionWC.z;
 
         if (updateFrustum) {
             const frustum = (this._max2Dfrustum = this.frustum.clone());
@@ -1544,6 +1549,174 @@ function rectangleCameraPosition3D (camera: Camera, rectangle: Rectangle, result
 const scratchCartesian = new Cartesian3();
 
 function updateMembers (camera: Camera) {
+    // const mode = camera._mode;
+
+    // const heightChanged = false;
+    // const height = 0.0;
+    // if (mode === SceneMode.SCENE2D) {
+    //     // height = camera.frustum.right - camera.frustum.left;
+    //     // heightChanged = height !== camera._positionCartographic.height;
+    // }
+
+    // let position = camera._position;
+    // const positionChanged =
+    //     !Cartesian3.equals(position, camera.position) || heightChanged;
+
+    // if (positionChanged) {
+    //     position = Cartesian3.clone(camera.position, camera._position);
+    // }
+
+    // let direction = camera._direction;
+    // const directionChanged = !Cartesian3.equals(direction, camera.direction);
+
+    // if (directionChanged) {
+    //     Cartesian3.normalize(camera.direction, camera.direction);
+    //     direction = Cartesian3.clone(camera.direction, camera._direction);
+    //     // camera.lookAt(camera.direction);
+    // }
+
+    // let up = camera._up;
+    // const upChanged = !Cartesian3.equals(up, camera.up);
+    // if (upChanged) {
+    //     Cartesian3.normalize(camera.up, camera.up);
+    //     up = Cartesian3.clone(camera.up, camera._up);
+
+    //     camera.frustum.up.set(camera.up.x, camera.up.y, camera.up.z);
+    //     // camera.frustum.updateProjectionMatrix();
+    // }
+
+    // let right = camera._right;
+    // const rightChanged = !Cartesian3.equals(right, camera.right);
+    // if (rightChanged) {
+    //     Cartesian3.normalize(camera.right, camera.right);
+    //     right = Cartesian3.clone(camera.right, camera._right);
+    // }
+
+    // const transformChanged = camera._transformChanged || camera._modeChanged;
+    // camera._transformChanged = false;
+
+    // if (transformChanged) {
+    //     CesiumMatrix4.inverseTransformation(camera._transform, camera._invTransform);
+
+    //     if (
+    //         camera._mode === SceneMode.COLUMBUS_VIEW ||
+    //         camera._mode === SceneMode.SCENE2D
+    //     ) {
+    //         // if (CesiumMatrix4.equals(CesiumMatrix4.IDENTITY, camera._transform)) {
+    //         //     CesiumMatrix4.clone(Camera.TRANSFORM_2D, camera._actualTransform);
+    //         // } else if (camera._mode === SceneMode.COLUMBUS_VIEW) {
+    //         //     convertTransformForColumbusView(camera);
+    //         // } else {
+    //         //     convertTransformFor2D(camera);
+    //         // }
+    //     } else {
+    //         CesiumMatrix4.clone(camera._transform, camera._actualTransform);
+    //     }
+
+    //     CesiumMatrix4.inverseTransformation(
+    //         camera._actualTransform,
+    //         camera._actualInvTransform
+    //     );
+
+    //     // CesiumMatrix4.copyThreeMatrix4(camera._actualTransform, camera.frustum.matrixWorld);
+    //     // CesiumMatrix4.copyThreeMatrix4(camera._actualInvTransform, camera.frustum.matrixWorldInverse);
+
+    //     // camera.frustum.updateMatrix();
+    //     // CesiumMatrix4.copyThreeMatrix4(camera._actualTransform, camera.frustum.matrixWorld);
+    //     // camera.frustum.updateMatrixWorld();
+
+    //     camera._modeChanged = false;
+    // }
+
+    // const transform = camera._actualTransform;
+
+    // if (positionChanged || transformChanged) {
+    //     camera._positionWC = CesiumMatrix4.multiplyByPoint(
+    //         transform,
+    //         position,
+    //         camera._positionWC
+    //     );
+
+    //     // Compute the Cartographic position of the camera.
+    //     if (mode === SceneMode.SCENE3D || mode === SceneMode.MORPHING) {
+    //         camera._positionCartographic = camera._projection.ellipsoid.cartesianToCartographic(
+    //             camera._positionWC,
+    //             camera._positionCartographic
+    //         ) as Cartographic;
+    //     } else {
+    //         // The camera position is expressed in the 2D coordinate system where the Y axis is to the East,
+    //         // the Z axis is to the North, and the X axis is out of the map.  Express them instead in the ENU axes where
+    //         // X is to the East, Y is to the North, and Z is out of the local horizontal plane.
+    //         const positionENU = scratchCartesian;
+    //         positionENU.x = camera._positionWC.y;
+    //         positionENU.y = camera._positionWC.z;
+    //         positionENU.z = camera._positionWC.x;
+
+    //         // In 2D, the camera height is always 12.7 million meters.
+    //         // The apparent height is equal to half the frustum width.
+    //         if (mode === SceneMode.SCENE2D) {
+    //             positionENU.z = height;
+    //         }
+
+    //         camera._projection.unproject(positionENU, camera._positionCartographic);
+    //     }
+    // }
+
+    // if (directionChanged || upChanged || rightChanged) {
+    //     const det = Cartesian3.dot(
+    //         direction,
+    //         Cartesian3.cross(up, right, scratchCartesian)
+    //     );
+    //     if (Math.abs(1.0 - det) > CesiumMath.EPSILON2) {
+    //         // orthonormalize axes
+    //         const invUpMag = 1.0 / Cartesian3.magnitudeSquared(up);
+    //         const scalar = Cartesian3.dot(up, direction) * invUpMag;
+    //         const w0 = Cartesian3.multiplyByScalar(direction, scalar, scratchCartesian);
+    //         up = Cartesian3.normalize(
+    //             Cartesian3.subtract(up, w0, camera._up),
+    //             camera._up
+    //         );
+    //         Cartesian3.clone(up, camera.up);
+
+    //         right = Cartesian3.cross(direction, up, camera._right);
+    //         Cartesian3.clone(right, camera.right);
+    //     }
+    // }
+
+    // if (directionChanged || transformChanged) {
+    //     camera._directionWC = CesiumMatrix4.multiplyByPointAsVector(
+    //         transform,
+    //         direction,
+    //         camera._directionWC
+    //     );
+    //     Cartesian3.normalize(camera._directionWC, camera._directionWC);
+    // }
+
+    // if (upChanged || transformChanged) {
+    //     camera._upWC = CesiumMatrix4.multiplyByPointAsVector(transform, up, camera._upWC);
+    //     Cartesian3.normalize(camera._upWC, camera._upWC);
+    // }
+
+    // if (rightChanged || transformChanged) {
+    //     camera._rightWC = CesiumMatrix4.multiplyByPointAsVector(
+    //         transform,
+    //         right,
+    //         camera._rightWC
+    //     );
+    //     Cartesian3.normalize(camera._rightWC, camera._rightWC);
+    // }
+
+    // if (
+    //     positionChanged ||
+    //     directionChanged ||
+    //     upChanged ||
+    //     rightChanged ||
+    //     transformChanged
+    // ) {
+    //     updateViewMatrix(camera);
+    // }
+
+    // !---------------------------
     const mode = camera._mode;
 
     const heightChanged = false;
@@ -1555,19 +1728,16 @@ function updateMembers (camera: Camera) {
 
     let position = camera._position;
     const positionChanged =
-        !Cartesian3.equals(position, camera.position) || heightChanged;
-
+      !Cartesian3.equals(position, camera.position) || heightChanged;
     if (positionChanged) {
         position = Cartesian3.clone(camera.position, camera._position);
     }
 
     let direction = camera._direction;
     const directionChanged = !Cartesian3.equals(direction, camera.direction);
-
     if (directionChanged) {
         Cartesian3.normalize(camera.direction, camera.direction);
         direction = Cartesian3.clone(camera.direction, camera._direction);
-        // camera.lookAt(camera.direction);
     }
 
     let up = camera._up;
@@ -1575,6 +1745,9 @@ function updateMembers (camera: Camera) {
     if (upChanged) {
         Cartesian3.normalize(camera.up, camera.up);
         up = Cartesian3.clone(camera.up, camera._up);
+
+        camera.frustum.up.set(camera.up.x, camera.up.y, camera.up.z);
+        camera.frustum.updateProjectionMatrix();
     }
 
     let right = camera._right;
@@ -1597,7 +1770,7 @@ function updateMembers (camera: Camera) {
             // if (CesiumMatrix4.equals(CesiumMatrix4.IDENTITY, camera._transform)) {
             //     CesiumMatrix4.clone(Camera.TRANSFORM_2D, camera._actualTransform);
             // } else if (camera._mode === SceneMode.COLUMBUS_VIEW) {
-            //     convertTransformForColumbusView(camera);
+            //     // convertTransformForColumbusView(camera);
             // } else {
             //     convertTransformFor2D(camera);
             // }
@@ -1609,13 +1782,6 @@ function updateMembers (camera: Camera) {
             camera._actualTransform,
             camera._actualInvTransform
         );
-
-        // CesiumMatrix4.copyThreeMatrix4(camera._actualTransform, camera.frustum.matrixWorld);
-        // CesiumMatrix4.copyThreeMatrix4(camera._actualInvTransform, camera.frustum.matrixWorldInverse);
-
-        // camera.frustum.updateMatrix();
-        // CesiumMatrix4.copyThreeMatrix4(camera._actualTransform, camera.frustum.matrixWorld);
-        // camera.frustum.updateMatrixWorld();
 
         camera._modeChanged = false;
     }
@@ -1631,14 +1797,14 @@ function updateMembers (camera: Camera) {
 
         // Compute the Cartographic position of the camera.
         if (mode === SceneMode.SCENE3D || mode === SceneMode.MORPHING) {
-            camera._positionCartographic = camera._projection.ellipsoid.cartesianToCartographic(
+            camera._positionCartographic = (camera._projection.ellipsoid.cartesianToCartographic(
                 camera._positionWC,
                 camera._positionCartographic
-            ) as Cartographic;
+            ) as Cartographic);
         } else {
-            // The camera position is expressed in the 2D coordinate system where the Y axis is to the East,
-            // the Z axis is to the North, and the X axis is out of the map.  Express them instead in the ENU axes where
-            // X is to the East, Y is to the North, and Z is out of the local horizontal plane.
+        // The camera position is expressed in the 2D coordinate system where the Y axis is to the East,
+        // the Z axis is to the North, and the X axis is out of the map.  Express them instead in the ENU axes where
+        // X is to the East, Y is to the North, and Z is out of the local horizontal plane.
             const positionENU = scratchCartesian;
             positionENU.x = camera._positionWC.y;
             positionENU.y = camera._positionWC.z;
@@ -1660,7 +1826,7 @@ function updateMembers (camera: Camera) {
             Cartesian3.cross(up, right, scratchCartesian)
         );
         if (Math.abs(1.0 - det) > CesiumMath.EPSILON2) {
-            // orthonormalize axes
+        // orthonormalize axes
             const invUpMag = 1.0 / Cartesian3.magnitudeSquared(up);
             const scalar = Cartesian3.dot(up, direction) * invUpMag;
             const w0 = Cartesian3.multiplyByScalar(direction, scalar, scratchCartesian);
@@ -1700,10 +1866,10 @@ function updateMembers (camera: Camera) {
 
     if (
         positionChanged ||
-        directionChanged ||
-        upChanged ||
-        rightChanged ||
-        transformChanged
+      directionChanged ||
+      upChanged ||
+      rightChanged ||
+      transformChanged
     ) {
         updateViewMatrix(camera);
     }

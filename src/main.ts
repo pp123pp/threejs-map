@@ -80,9 +80,9 @@ widget.screenSpaceEventHandler.setInputAction((movement: any) => {
     // cube.position.x = ps.x;
     // cube.position.y = ps.y;
     // cube.position.z = ps.z;
-    console.log(scene.camera);
+    // console.log(scene.camera);
 
-    scene.camera.lookAt(scene.camera.direction);
+    // scene.camera.lookAt(scene.camera.direction);
 },
 ScreenSpaceEventType.LEFT_CLICK);
 
@@ -118,5 +118,6 @@ let isAni = false;
 scene.preRender.addEventListener(() => {
     if (isAni) {
         scene.camera.rotateRight(0.01);
+        scene.camera.rotateUp(0.01);
     }
 });
