@@ -123,6 +123,8 @@ class PerspectiveFrustumCamera extends PerspectiveCamera {
 
     _aspectRatio?: number;
 
+    _cullingVolume: CullingVolume;
+
     constructor (scene: Scene, options: PerspectiveFrustumCameraParameters) {
         super(options.fov, options.aspect, options.near, options.far);
         this.scene = scene;
@@ -200,6 +202,7 @@ class PerspectiveFrustumCamera extends PerspectiveCamera {
             this.fov = 2 * Math.atan(Math.tan(fov * Math.PI / 180 / 2) * this.aspect) * 180 / Math.PI;
         }
 
+        this._cullingVolume = new CullingVolume();
         this.updateProjectionMatrix();
     }
 
@@ -312,6 +315,13 @@ class PerspectiveFrustumCamera extends PerspectiveCamera {
     ): CullingVolume {
         update(this);
         return this._offCenterFrustum.computeCullingVolume(position, direction, up);
+
+        // this.updateProjectionMatrix();
+        // this._projScreenMatrix.multiplyMatrices(this.projectionMatrix, this.matrixWorldInverse);
+        // this._frustum.setFromProjectionMatrix(this._projScreenMatrix);
+
+        // this._cullingVolume.setFromThreeFrustum(this._frustum);
+        // return this._cullingVolume;
     }
 
     applyCesiumQuaternion (quaternion: CesiumQuaternion): void {

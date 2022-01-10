@@ -1,3 +1,4 @@
+import { Frustum } from 'three';
 import { Cartesian3 } from './Cartesian3';
 import { Cartesian4 } from './Cartesian4';
 import { defaultValue } from './defaultValue';
@@ -55,6 +56,21 @@ class CullingVolume {
         }
 
         return intersecting ? Intersect.INTERSECTING : Intersect.INSIDE;
+    }
+
+    setFromThreeFrustum (frustum: Frustum): void {
+        for (let i = 0; i < 6; i++) {
+            const frustumPlane = frustum.planes[i];
+
+            if (!defined(this.planes[i])) {
+                this.planes[i] = new Cartesian4();
+            }
+            const plane = this.planes[i];
+            plane.x = frustumPlane.normal.x;
+            plane.y = frustumPlane.normal.y;
+            plane.z = frustumPlane.normal.z;
+            plane.w = frustumPlane.constant;
+        }
     }
 }
 
