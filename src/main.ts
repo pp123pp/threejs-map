@@ -60,7 +60,7 @@ const geometry = new SphereGeometry(1, 64, 64);
 const material = new MeshNormalGlsl3Material({ side: DoubleSide, wireframe: true });
 const cube = new Mesh(geometry, material);
 scene.add(cube);
-
+// scene.camera.lookAt(scene.camera.direction);
 // console.log(Map);
 // console.log(ShaderLib);
 
@@ -81,6 +81,8 @@ widget.screenSpaceEventHandler.setInputAction((movement: any) => {
     // cube.position.y = ps.y;
     // cube.position.z = ps.z;
     console.log(scene.camera);
+
+    scene.camera.lookAt(scene.camera.direction);
 },
 ScreenSpaceEventType.LEFT_CLICK);
 
@@ -115,6 +117,6 @@ let isAni = false;
 
 scene.preRender.addEventListener(() => {
     if (isAni) {
-        scene.camera.twistLeft(0.01);
+        scene.camera.rotateRight(0.01);
     }
 });

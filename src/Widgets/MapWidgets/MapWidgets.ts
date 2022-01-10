@@ -166,6 +166,8 @@ class MapWidgets {
         this.targetFrameRate = undefined;
 
         this._screenSpaceEventHandler = new ScreenSpaceEventHandler(canvas);
+
+        this._scene.camera.lookAt(this._scene.camera.direction);
     }
 
     get container (): Element {

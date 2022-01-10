@@ -2262,8 +2262,6 @@ function tilt3DOnTerrain (controller: any, startPosition: any, movement: any) {
 
         camera._setTransform(oldTransform);
     }
-
-    console.log(camera.positionCartographic);
 }
 
 const look3DStartPos = new Cartesian2();

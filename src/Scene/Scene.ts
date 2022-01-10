@@ -319,8 +319,8 @@ class Scene extends THREE.Scene {
 
         this._camera.constrainedAxis = Cartesian3.UNIT_Z;
 
-        this.activeCamera.position.set(10, 10, 10);
-        this.activeCamera.lookAt(0, 0, 0);
+        // this.activeCamera.position.set(10, 10, 10);
+        // this.activeCamera.lookAt(0, 0, 0);
 
         /**
          * When <code>true</code>, rendering a frame will only occur when needed as determined by changes within the scene.

@@ -85,7 +85,7 @@ function updateViewMatrix (camera: Camera) {
     );
     CesiumMatrix4.inverseTransformation(camera._viewMatrix, camera._invViewMatrix);
 
-    CesiumMatrix4.copyThreeMatrix4(camera._invViewMatrix, camera.frustum.matrixWorld);
+    // CesiumMatrix4.copyThreeMatrix4(camera._invViewMatrix, camera.frustum.matrixWorld);
     // camera.frustum.matrixWorld.decompose(camera.frustum.position, camera.frustum.quaternion, camera.frustum.scale);
 
     // console.log(camera.frustum.position);
@@ -674,6 +674,8 @@ class Camera {
         if (this._mode === SceneMode.SCENE2D) {
             // clampMove2D(this, cameraPosition);
         }
+
+        // this.lookAt(this.direction);
         this._adjustOrthographicFrustum(true);
     }
 
@@ -855,32 +857,21 @@ class Camera {
         // >>includeEnd('debug');
 
         const turnAngle = defaultValue(angle, this.defaultLookAmount) as number;
-
-        threeAxis.x = axis.x;
-        threeAxis.y = axis.y;
-        threeAxis.z = axis.z;
-
         const quaternion = CesiumQuaternion.fromAxisAngle(
             axis,
             -turnAngle,
             lookScratchQuaternion
         );
-        // this.frustum.applyCesiumQuaternion(quaternion);
-        // console.log(quaternion);
         const rotation = CesiumMatrix3.fromQuaternion(quaternion, lookScratchMatrix);
-
         const direction = this.direction;
         const up = this.up;
         const right = this.right;
 
-        CesiumMatrix3.multiplyByVector(rotation, direction, copyDir);
+        CesiumMatrix3.multiplyByVector(rotation, direction, direction);
         CesiumMatrix3.multiplyByVector(rotation, up, up);
         CesiumMatrix3.multiplyByVector(rotation, right, right);
 
-        // console.log(copyDir);
-
-        this.lookAt(copyDir);
-        this.frustum.rotateOnAxis(threeAxis, -turnAngle);
+        this.frustum.applyCesiumQuaternion(quaternion);
     }
 
     /**
@@ -959,9 +950,7 @@ class Camera {
 
         CesiumMatrix4.multiplyByPoint(inverse, position, this.position);
         CesiumMatrix4.multiplyByPointAsVector(inverse, direction, this.direction);
-        CesiumMatrix4.multiplyByPointAsVector(inverse, up, this.frustum.up);
-        this.frustum.updateProjectionMatrix();
-
+        CesiumMatrix4.multiplyByPointAsVector(inverse, up, this.up);
         Cartesian3.cross(this.direction, this.up, this.right);
 
         updateMembers(this);
@@ -1000,6 +989,7 @@ class Camera {
         Cartesian3.cross(this.right, this.direction, this.up);
 
         this._adjustOrthographicFrustum(false);
+        this.frustum.applyCesiumQuaternion(quaternion);
     }
 
     /**
@@ -1157,7 +1147,7 @@ class Camera {
         return Cartesian3.magnitude(this.position);
     }
 
-    update (mode: SceneMode) {
+    update (mode: SceneMode): void {
         // >>includeStart('debug', pragmas.debug);
         if (!defined(mode)) {
             throw new DeveloperError('mode is required.');
@@ -1347,7 +1337,7 @@ function computeD (direction: Cartesian3, upOrRight: Cartesian3, corner: Cartesi
     return opposite / tanThetaOrPhi - Cartesian3.dot(direction, corner);
 }
 
-function rectangleCameraPosition3D (camera: Camera, rectangle: Rectangle, result: any, updateCamera?: any) {
+function rectangleCameraPosition3D (camera: Camera, rectangle: Rectangle, result: any, updateCamera?: boolean) {
     const ellipsoid = camera._projection.ellipsoid;
     const cameraRF = updateCamera ? camera : defaultRF;
 
@@ -1458,8 +1448,12 @@ function rectangleCameraPosition3D (camera: Camera, rectangle: Rectangle, result
     Cartesian3.subtract(northCenter, center, northCenter);
     Cartesian3.subtract(southCenter, center, southCenter);
 
+    // 可视矩形中心点在地球上的法线
     const direction = ellipsoid.geodeticSurfaceNormal(center, cameraRF.direction) as Cartesian3;
+
+    // 去反，计算相机方向
     Cartesian3.negate(direction, direction);
+
     const right = Cartesian3.cross(direction, Cartesian3.UNIT_Z, cameraRF.right);
     Cartesian3.normalize(right, right);
     const up = Cartesian3.cross(right, direction, cameraRF.up);
@@ -1573,7 +1567,7 @@ function updateMembers (camera: Camera) {
     if (directionChanged) {
         Cartesian3.normalize(camera.direction, camera.direction);
         direction = Cartesian3.clone(camera.direction, camera._direction);
-        camera.lookAt(camera._direction);
+        // camera.lookAt(camera.direction);
     }
 
     let up = camera._up;
@@ -1616,10 +1610,10 @@ function updateMembers (camera: Camera) {
             camera._actualInvTransform
         );
 
-        CesiumMatrix4.copyThreeMatrix4(camera._actualTransform, camera.frustum.matrixWorld);
-        CesiumMatrix4.copyThreeMatrix4(camera._actualInvTransform, camera.frustum.matrixWorldInverse);
+        // CesiumMatrix4.copyThreeMatrix4(camera._actualTransform, camera.frustum.matrixWorld);
+        // CesiumMatrix4.copyThreeMatrix4(camera._actualInvTransform, camera.frustum.matrixWorldInverse);
 
-        camera.frustum.updateMatrix();
+        // camera.frustum.updateMatrix();
         // CesiumMatrix4.copyThreeMatrix4(camera._actualTransform, camera.frustum.matrixWorld);
         // camera.frustum.updateMatrixWorld();
 
@@ -1727,53 +1721,53 @@ function getPickRayPerspective (camera: Camera, windowPosition: Cartesian2, resu
     const width = canvas.clientWidth;
     const height = canvas.clientHeight;
 
-    // mouse.x = (windowPosition.x / width) * 2 - 1;
-    // mouse.y = -(windowPosition.y / height) * 2 + 1;
+    mouse.x = (windowPosition.x / width) * 2 - 1;
+    mouse.y = -(windowPosition.y / height) * 2 + 1;
 
-    // raycaster.setFromCamera(mouse, camera.frustum);
+    raycaster.setFromCamera(mouse, camera.frustum);
 
-    // result.direction.x = raycaster.ray.direction.x;
-    // result.direction.y = raycaster.ray.direction.y;
-    // result.direction.z = raycaster.ray.direction.z;
+    result.direction.x = raycaster.ray.direction.x;
+    result.direction.y = raycaster.ray.direction.y;
+    result.direction.z = raycaster.ray.direction.z;
 
-    // result.origin.x = raycaster.ray.origin.x;
-    // result.origin.y = raycaster.ray.origin.y;
-    // result.origin.z = raycaster.ray.origin.z;
-
-    // return result;
-
-    const tanPhi = Math.tan(MathUtils.degToRad(camera.frustum.fov) * 0.5);
-    const tanTheta = camera.frustum.aspectRatio * tanPhi;
-    const near = camera.frustum.near;
-
-    const x = (2.0 / width) * windowPosition.x - 1.0;
-    const y = (2.0 / height) * (height - windowPosition.y) - 1.0;
-
-    const position = camera.positionWC;
-    Cartesian3.clone(position, result.origin);
-
-    const nearCenter = Cartesian3.multiplyByScalar(
-        camera.directionWC,
-        near,
-        pickPerspCenter
-    );
-    Cartesian3.add(position, nearCenter, nearCenter);
-    const xDir = Cartesian3.multiplyByScalar(
-        camera.rightWC,
-        x * near * tanTheta,
-        pickPerspXDir
-    );
-    const yDir = Cartesian3.multiplyByScalar(
-        camera.upWC,
-        y * near * tanPhi,
-        pickPerspYDir
-    );
-    const direction = Cartesian3.add(nearCenter, xDir, result.direction);
-    Cartesian3.add(direction, yDir, direction);
-    Cartesian3.subtract(direction, position, direction);
-    Cartesian3.normalize(direction, direction);
+    result.origin.x = raycaster.ray.origin.x;
+    result.origin.y = raycaster.ray.origin.y;
+    result.origin.z = raycaster.ray.origin.z;
 
     return result;
+
+    // const tanPhi = Math.tan(MathUtils.degToRad(camera.frustum.fov) * 0.5);
+    // const tanTheta = camera.frustum.aspectRatio * tanPhi;
+    // const near = camera.frustum.near;
+
+    // const x = (2.0 / width) * windowPosition.x - 1.0;
+    // const y = (2.0 / height) * (height - windowPosition.y) - 1.0;
+
+    // const position = camera.positionWC;
+    // Cartesian3.clone(position, result.origin);
+
+    // const nearCenter = Cartesian3.multiplyByScalar(
+    //     camera.directionWC,
+    //     near,
+    //     pickPerspCenter
+    // );
+    // Cartesian3.add(position, nearCenter, nearCenter);
+    // const xDir = Cartesian3.multiplyByScalar(
+    //     camera.rightWC,
+    //     x * near * tanTheta,
+    //     pickPerspXDir
+    // );
+    // const yDir = Cartesian3.multiplyByScalar(
+    //     camera.upWC,
+    //     y * near * tanPhi,
+    //     pickPerspYDir
+    // );
+    // const direction = Cartesian3.add(nearCenter, xDir, result.direction);
+    // Cartesian3.add(direction, yDir, direction);
+    // Cartesian3.subtract(direction, position, direction);
+    // Cartesian3.normalize(direction, direction);
+
+    // return result;
 }
 
 const rotateVertScratchP = new Cartesian3();
@@ -1784,11 +1778,11 @@ function rotateVertical (camera: Camera, angle: number) {
     const position = camera.position;
     if (
         defined(camera.constrainedAxis) &&
-    !Cartesian3.equalsEpsilon(
-        camera.position,
-        Cartesian3.ZERO,
-        CesiumMath.EPSILON2
-    )
+        !Cartesian3.equalsEpsilon(
+            camera.position,
+            Cartesian3.ZERO,
+            CesiumMath.EPSILON2
+        )
     ) {
         const p = Cartesian3.normalize(position, rotateVertScratchP);
         const northParallel = Cartesian3.equalsEpsilon(
