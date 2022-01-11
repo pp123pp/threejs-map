@@ -151,6 +151,7 @@ class TileMaterial extends ShaderMaterial {
         this.fragmentShader = fragmentShader;
         this.defines.TEXTURE_UNITS = shaderSetOptions.numberOfDayTextures;
         this.glslVersion = GLSL3;
+        this.defines.APPLY_GAMMA = '';
 
         // this.side = DoubleSide;
         // this.wireframe = true;
@@ -377,7 +378,7 @@ class TileMaterial extends ShaderMaterial {
                     0.0,
                     0.0,
                     0.0,
-                    0.0,
+                    2.2,
                     0.0
                 );
         
@@ -396,6 +397,11 @@ class TileMaterial extends ShaderMaterial {
             gColor = computeDayColor(u_initialColor, clamp(v_textureCoordinates, 0.0, 1.0));
             gDepth = packDepthToRGBA( fragCoordZ );
             gNormal = vec4(1.0);
+
+            #if defined( TONE_MAPPING )
+                gColor.rgb = toneMapping( gColor.rgb );
+            #endif
+                gColor = linearToOutputTexel( gColor );
         }
         `;
 

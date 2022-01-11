@@ -4,12 +4,13 @@ import { defaultValue } from '../Core/defaultValue';
 import { Event } from '../Core/Event';
 import { SceneMode } from '../Core/SceneMode';
 import * as THREE from 'three';
-import { GLSL3, Mesh, Raycaster, ShaderMaterial, SphereBufferGeometry, Vector2, WebGLRenderer, WebGLRendererParameters } from 'three';
+import { ACESFilmicToneMapping, GLSL3, LinearToneMapping, Mesh, Raycaster, ShaderMaterial, SphereBufferGeometry, sRGBEncoding, Vector2, WebGLRenderer, WebGLRendererParameters } from 'three';
 import { Camera } from './Camera';
 // import { Camera } from './CameraCopy';
 import { Context } from './Context';
 import { FrameState, PassesInterface } from './FrameState';
-import { MapRenderer, RenderStateParameters } from './MapRenderer';
+import { RenderStateParameters } from './MapRenderer';
+
 import { Pass } from './../Renderer/Pass';
 import { PerspectiveFrustumCamera } from './PerspectiveFrustumCamera';
 import { CesiumColor } from '../Core/CesiumColor';
@@ -31,6 +32,7 @@ import { EffectComposerCollection } from './EffectComposerCollection';
 import { PickDepth } from './PickDepth';
 import { Picking } from './Picking';
 import { SkyBox } from './SkyBox';
+import { MapRenderer } from '@/Renderer/MapRenderer';
 
 const raycaster = new Raycaster();
 const mouse = new Vector2();
@@ -310,6 +312,8 @@ class Scene extends THREE.Scene {
         this.preRender = new Event();
 
         this.renderer = new MapRenderer(options.renderState);
+        this.renderer.toneMapping = LinearToneMapping;
+        this.renderer.outputEncoding = sRGBEncoding;
 
         this._camera = new Camera(this, {
             aspect: this.drawingBufferSize.width / this.drawingBufferSize.height,
@@ -370,7 +374,9 @@ class Scene extends THREE.Scene {
 
         this._canvas = this.renderer.domElement as HTMLCanvasElement;
         this._context = new Context(this);
-        this.renderer.setRenderTarget(this._context.sceneFrameBuffer);
+        const sceneFrameBuffer = this._context.sceneFrameBuffer;
+
+        this.renderer.setRenderTarget(sceneFrameBuffer);
         this._computeEngine = new ComputeEngine(this, this._context);
 
         this._globeHeight = undefined;

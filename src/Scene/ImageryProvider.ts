@@ -1,3 +1,4 @@
+import { DefaultProxy } from '@/Core/DefaultProxy';
 import { defined } from '@/Core/defined';
 import { DeveloperError } from '@/Core/DeveloperError';
 import { Resource } from '@/Core/Resource';
@@ -117,6 +118,7 @@ class ImageryProvider {
  */
     static loadImage (imageryProvider: any, url: any): any {
         const resource = Resource.createIfNeeded(url);
+        // resource.proxy = new DefaultProxy('/google/');
 
         // if (ktx2Regex.test(resource.url)) {
         //     return loadKTX2(resource);

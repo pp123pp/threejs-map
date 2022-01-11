@@ -152,6 +152,7 @@ class MapWidgets {
         let globe = options.globe;
         if (!defined(globe)) {
             globe = new Globe(ellipsoid);
+            // globe.visible = false;
         }
 
         this._scene.globe = (globe as Globe);

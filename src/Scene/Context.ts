@@ -1,6 +1,7 @@
 import { Cartesian2 } from '@/Core/Cartesian2';
 import { FloatType, NearestFilter, Texture, WebGLMultipleRenderTargets } from 'three';
 import { generateUUID } from 'three/src/math/MathUtils';
+import { ContextLimits } from './ContextLimits';
 import { Scene } from './Scene';
 
 class Context {
@@ -31,11 +32,19 @@ class Context {
             sceneFrameBuffer.texture[i].type = FloatType;
         }
 
+        // debugger;
+        // sceneFrameBuffer.texture[0].encoding = scene.renderer.outputEncoding;
+
         sceneFrameBuffer.texture[0].name = 'color';
         sceneFrameBuffer.texture[1].name = 'depth';
         sceneFrameBuffer.texture[2].name = 'normal';
 
+        // (sceneFrameBuffer.texture as any).isTexture = true;
+        // (sceneFrameBuffer.texture as any).encoding = scene.renderer.outputEncoding;
+
         this.sceneFrameBuffer = sceneFrameBuffer;
+
+        ContextLimits._maxAnisotropy = scene.renderer.capabilities.getMaxAnisotropy();
     }
 
     get id (): string {

@@ -686,9 +686,9 @@ class Resource {
         // 4. It doesn't have request headers and we preferBlob is false
         if (
             !xhrBlobSupported ||
-      this.isDataUri ||
-      this.isBlobUri ||
-      (!this.hasHeaders && !preferBlob)
+            this.isDataUri ||
+            this.isBlobUri ||
+            (!this.hasHeaders && !preferBlob)
         ) {
             return fetchImage({
                 resource: this,

@@ -23,6 +23,7 @@ import { ComputeCommand } from '@/Renderer/ComputeCommand';
 import { Request } from '@/Core/Request';
 import { WebMercatorTilingScheme } from './WebMercatorTilingScheme';
 import { WebMapTileServiceImageryProvider } from './WebMapTileServiceImageryProvider';
+import { ContextLimits } from './ContextLimits';
 
 const imageryBoundsScratch = new Rectangle();
 const tileImageryBoundsScratch = new Rectangle();
@@ -636,7 +637,9 @@ class ImageryLayer {
                 return failure();
             }
 
-            imagery.image = new CanvasTexture(image);
+            const texture = new CanvasTexture(image);
+            texture.anisotropy = ContextLimits.maxAnisotropy;
+            imagery.image = texture;
             imagery.state = ImageryState.RECEIVED;
             imagery.request = undefined;
 
