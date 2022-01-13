@@ -150,7 +150,7 @@ class TileMaterial extends ShaderMaterial {
         this.vertexShader = vertexShader;
         this.fragmentShader = fragmentShader;
         this.defines.TEXTURE_UNITS = shaderSetOptions.numberOfDayTextures;
-        this.glslVersion = GLSL3;
+        // this.glslVersion = GLSL3;
         this.defines.APPLY_GAMMA = '';
 
         // this.side = DoubleSide;
@@ -273,10 +273,6 @@ class TileMaterial extends ShaderMaterial {
         #include <common>
         #include <packing>
         #include <logdepthbuf_pars_fragment>
-        
-        layout(location = 0) out vec4 gColor;
-        layout(location = 1) out vec4 gDepth;
-        layout(location = 2) out vec4 gNormal;
 
         in vec3 v_textureCoordinates;
         in vec2 vHighPrecisionZW;
@@ -390,18 +386,13 @@ class TileMaterial extends ShaderMaterial {
         
         void main(void){
             #include <logdepthbuf_fragment>
-        
-            float fragCoordZ = 0.5 * vHighPrecisionZW[0] / vHighPrecisionZW[1] + 0.5;
-
             
-            gColor = computeDayColor(u_initialColor, clamp(v_textureCoordinates, 0.0, 1.0));
-            gDepth = packDepthToRGBA( fragCoordZ );
-            gNormal = vec4(1.0);
+            gl_FragColor = computeDayColor(u_initialColor, clamp(v_textureCoordinates, 0.0, 1.0));
 
             #if defined( TONE_MAPPING )
-                gColor.rgb = toneMapping( gColor.rgb );
+                gl_FragColor.rgb = toneMapping( gl_FragColor.rgb );
             #endif
-                gColor = linearToOutputTexel( gColor );
+                gl_FragColor = linearToOutputTexel( gl_FragColor );
         }
         `;
 

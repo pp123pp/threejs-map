@@ -1,34 +1,19 @@
-import { AxesHelper, DoubleSide, Mesh, MeshNormalMaterial, REVISION, ShaderChunk, ShaderLib, SphereGeometry, Vector2 } from 'three';
-import { CameraEventType } from './Core/CameraEventType';
-import { MeshNormalGlsl3Material, ScreenSpaceEventType, TileCoordinatesImageryProvider, WebMapTileServiceImageryProvider } from './Map';
-import { Scene } from './Scene/Scene';
-import './Widgets/MapWidgets/CesiumWidget.css';
-import { MapWidgets } from './Widgets/MapWidgets/MapWidgets';
-import { when } from './ThirdParty/when';
-import { Cartesian3 } from './Core/Cartesian3';
-
-import * as Map from './Map';
-import { IntersectionTests } from './Core/IntersectionTests';
-import { Ray } from './Core/Ray';
+import { AxesHelper, DoubleSide, Mesh, MeshNormalMaterial, ShaderLib, SphereGeometry } from 'three';
 import { BoundingSphere } from './Core/BoundingSphere';
 import { Cartesian2 } from './Core/Cartesian2';
+import { Cartesian3 } from './Core/Cartesian3';
+import { IntersectionTests } from './Core/IntersectionTests';
+import { Ray } from './Core/Ray';
+import { ScreenSpaceEventType, WebMapTileServiceImageryProvider } from './Map';
+import { Scene } from './Scene/Scene';
 import { UrlTemplateImageryProvider } from './Scene/UrlTemplateImageryProvider';
-import { WebMercatorTilingScheme } from './Scene/WebMercatorTilingScheme';
-
-// const a = document.querySelector('#app');
-// console.log(a);
+import './Widgets/MapWidgets/CesiumWidget.css';
+import { MapWidgets } from './Widgets/MapWidgets/MapWidgets';
 
 const widget = new MapWidgets('app', {});
-console.log(widget);
 
 const scene: Scene = widget.scene;
 const camera = scene.activeCamera;
-
-// camera.position.set(6378137 * 2, 6378137 * 2, 6378137 * 2);
-// camera.position.set(3452756.404004388, -26226288.65595444, 18610961.973367725);
-
-// camera.position.set(-742945.7510284233, -6142190.297500091, 6604747.564006202);
-// camera.lookAt(0, 0, 0);
 
 scene.camera.setView({
     // destination: new Cartesian3(-742945.7510284233, -6142190.297500091, 6604747.564006202)
@@ -36,7 +21,7 @@ scene.camera.setView({
 });
 
 const axesHelper = new AxesHelper(50000000);
-// scene.add(axesHelper);
+scene.add(axesHelper);
 // console.log(CameraEventType);
 
 const mapToken = '39d358c825ec7e59142958656c0a6864';// 盈嘉企业开发者秘钥
@@ -71,7 +56,7 @@ const urlTemplateImageryProvide = new UrlTemplateImageryProvider({
 
 console.log(urlTemplateImageryProvide.proxy);
 const geometry = new SphereGeometry(1, 64, 64);
-const material = new MeshNormalGlsl3Material({ side: DoubleSide, wireframe: true });
+const material = new MeshNormalMaterial({ side: DoubleSide, wireframe: true });
 const cube = new Mesh(geometry, material);
 scene.add(cube);
 // scene.camera.lookAt(scene.camera.direction);
@@ -89,11 +74,11 @@ widget.screenSpaceEventHandler.setInputAction((movement: any) => {
     // screenPs.y = event.clientY;
     // const ps = scene.camera.pickEllipsoid(movement.endPosition) as Cartesian3;
 
-    // const ray = scene.camera.getPickRay(movement.position);
-    // const ps = scene.globe.pickWorldCoordinates(ray, scene, true) as Cartesian3;
-    // cube.position.x = ps.x;
-    // cube.position.y = ps.y;
-    // cube.position.z = ps.z;
+    const ray = scene.camera.getPickRay(movement.position);
+    const ps = scene.globe.pickWorldCoordinates(ray, scene, true) as Cartesian3;
+    cube.position.x = ps.x;
+    cube.position.y = ps.y;
+    cube.position.z = ps.z;
     // console.log(scene.camera);
 
     // scene.camera.lookAt(scene.camera.direction);

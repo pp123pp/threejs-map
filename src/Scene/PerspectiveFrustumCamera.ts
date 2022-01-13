@@ -1,7 +1,5 @@
-import { Cartesian2 } from '@/Core/Cartesian2';
 import { Cartesian3 } from '@/Core/Cartesian3';
 import { Cartographic } from '@/Core/Cartographic';
-import { CesiumMath } from '@/Core/CesiumMath';
 import { CesiumMatrix4 } from '@/Core/CesiumMatrix4';
 import { CesiumQuaternion } from '@/Core/CesiumQuaternion';
 import { CullingVolume } from '@/Core/CullingVolume';
@@ -10,7 +8,6 @@ import { defined } from '@/Core/defined';
 import { DeveloperError } from '@/Core/DeveloperError';
 import { GeographicProjection } from '@/Core/GeographicProjection';
 import { PerspectiveOffCenterFrustum } from '@/Core/PerspectiveOffCenterFrustum';
-import { Ray } from '@/Core/Ray';
 import { SceneMode } from '@/Core/SceneMode';
 import { Frustum, MathUtils, Matrix4, PerspectiveCamera, Quaternion, Vector3 } from 'three';
 import { Scene } from './Scene';

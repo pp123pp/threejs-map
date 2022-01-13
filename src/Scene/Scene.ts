@@ -1,43 +1,31 @@
 
+import { Cartesian2 } from '@/Core/Cartesian2';
+import { Cartesian3 } from '@/Core/Cartesian3';
+import { defined } from '@/Core/defined';
+import { RequestScheduler } from '@/Core/RequestScheduler';
+import { TweenCollection } from '@/Core/TweenCollection';
+import * as THREE from 'three';
+import { GLSL3, LinearToneMapping, Mesh, Raycaster, ShaderMaterial, SphereBufferGeometry, sRGBEncoding, Vector2 } from 'three';
+import { CesiumColor } from '../Core/CesiumColor';
 import { incrementWrap } from '../Core/CesiumMath';
 import { defaultValue } from '../Core/defaultValue';
 import { Event } from '../Core/Event';
-import { SceneMode } from '../Core/SceneMode';
-import * as THREE from 'three';
-import { ACESFilmicToneMapping, GLSL3, LinearToneMapping, Mesh, Raycaster, ShaderMaterial, SphereBufferGeometry, sRGBEncoding, Vector2, WebGLRenderer, WebGLRendererParameters } from 'three';
-import { Camera } from './Camera';
-// import { Camera } from './CameraCopy';
-import { Context } from './Context';
-import { FrameState, PassesInterface } from './FrameState';
-import { RenderStateParameters } from './MapRenderer';
-
-import { Pass } from './../Renderer/Pass';
-import { PerspectiveFrustumCamera } from './PerspectiveFrustumCamera';
-import { CesiumColor } from '../Core/CesiumColor';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { GeographicProjection } from '../Core/GeographicProjection';
-import { Globe } from './Globe';
+import { SceneMode } from '../Core/SceneMode';
 import { ComputeEngine } from '../Renderer/ComputeEngine';
-import { ComputeCommand } from '../Renderer/ComputeCommand';
-import { PrimitiveCollection } from './PrimitiveCollection';
-import { defined } from '@/Core/defined';
-import { ImageryLayerCollection } from './ImageryLayerCollection';
-import { RenderCollection } from './RenderCollection';
-import { RequestScheduler } from '@/Core/RequestScheduler';
-import { ScreenSpaceCameraController } from './ScreenSpaceCameraController';
-import { TweenCollection } from '@/Core/TweenCollection';
-import { Cartesian2 } from '@/Core/Cartesian2';
-import { Cartesian3 } from '@/Core/Cartesian3';
+import { Camera } from './Camera';
+import { Context } from './Context';
 import { EffectComposerCollection } from './EffectComposerCollection';
-import { PickDepth } from './PickDepth';
+import { FrameState, PassesInterface } from './FrameState';
+import { Globe } from './Globe';
+import { ImageryLayerCollection } from './ImageryLayerCollection';
+import { MapRenderer, RenderStateParameters } from './MapRenderer';
+import { PerspectiveFrustumCamera } from './PerspectiveFrustumCamera';
 import { Picking } from './Picking';
+import { PrimitiveCollection } from './PrimitiveCollection';
+import { RenderCollection } from './RenderCollection';
+import { ScreenSpaceCameraController } from './ScreenSpaceCameraController';
 import { SkyBox } from './SkyBox';
-import { MapRenderer } from '@/Renderer/MapRenderer';
-
-const raycaster = new Raycaster();
-const mouse = new Vector2();
-
-const pickEarth = new Mesh(new SphereBufferGeometry(6378137, 32, 32));
 
 interface SceneOptions {
     renderState?: RenderStateParameters;

@@ -1,1 +1,1 @@
-export { MeshNormalGlsl3Material } from './MeshNormalGlsl3Material';
+export { TileMaterial } from './TileMaterial';

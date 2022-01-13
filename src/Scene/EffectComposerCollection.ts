@@ -1,7 +1,7 @@
 import { RGBShiftMaterial } from '@/Material/Pass/RGBShiftMaterial';
-import { ShaderPass } from '@/Renderer/ShaderPass';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass';
 import { Scene } from './Scene';
 
 class EffectComposerCollection {
@@ -17,7 +17,7 @@ class EffectComposerCollection {
 
         const effect2 = new ShaderPass(new RGBShiftMaterial());
         effect2.uniforms.amount.value = 0.0015;
-        this.mainEffectComposer.addPass(effect2);
+        // this.mainEffectComposer.addPass(effect2);
     }
 
     setSize (container: Element): void {

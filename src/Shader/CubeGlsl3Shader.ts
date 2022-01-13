@@ -4,12 +4,9 @@ import { fragmentIn, varyingExp, vertexOut } from './ShaderReplace';
 
 const cube = ShaderLib.cube;
 
-// console.log(ShaderChunk.envmap_fragment);
+console.log(ShaderLib.cube.fragmentShader);
 
 const fragmentShader = `
-layout(location = 0) out vec4 gColor;
-layout(location = 1) out vec4 gDepth;
-layout(location = 2) out vec4 gNormal;
 
 #include <envmap_common_pars_fragment>
 uniform float opacity;
@@ -19,14 +16,10 @@ varying vec3 vWorldDirection;
 void main() {
     vec3 vReflect = vWorldDirection;
     ${envmap_fragment}
-    gColor = envColor;
-    gColor.a *= opacity;
-    gNormal = vec4( 1.0);
-    gDepth = vec4(1.0);
-    #if defined( TONE_MAPPING )
-        gColor.rgb = toneMapping( gColor.rgb );
-    #endif
-        gColor = linearToOutputTexel( gColor );
+    gl_FragColor = envColor;
+    gl_FragColor.a *= opacity;
+    #include <tonemapping_fragment>
+    #include <encodings_fragment>
     
 }`;
 cube.vertexShader = cube.vertexShader.replace(varyingExp, vertexOut);
