@@ -1,5 +1,5 @@
 module.exports = {
-    productionSourceMap: true,
+    productionSourceMap: false,
     publicPath: process.env.NODE_ENV === 'production' ? '/public/' : './',
     /* 输出文件目录：在npm run build时，生成文件的目录名称 */
     outputDir: 'dist',

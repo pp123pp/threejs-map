@@ -1,10 +1,8 @@
-import { ShaderChunk, ShaderLib } from 'three';
+import { ShaderLib } from 'three';
 import { envmap_fragment } from './envmap_fragment';
 import { fragmentIn, varyingExp, vertexOut } from './ShaderReplace';
 
 const cube = ShaderLib.cube;
-
-console.log(ShaderLib.cube.fragmentShader);
 
 const fragmentShader = `
 

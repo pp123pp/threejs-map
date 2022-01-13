@@ -268,7 +268,7 @@ TileCoordinatesImageryProvider.prototype.requestImage = function (x: any, y: any
 
     canvas.levelId = `${level}/${x}/${y}`;
 
-    return new CanvasTexture(canvas);
+    return canvas;
 };
 
 /**

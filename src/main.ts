@@ -4,7 +4,7 @@ import { Cartesian2 } from './Core/Cartesian2';
 import { Cartesian3 } from './Core/Cartesian3';
 import { IntersectionTests } from './Core/IntersectionTests';
 import { Ray } from './Core/Ray';
-import { ScreenSpaceEventType, WebMapTileServiceImageryProvider } from './Map';
+import { ScreenSpaceEventType, TileCoordinatesImageryProvider, WebMapTileServiceImageryProvider } from './Map';
 import { Scene } from './Scene/Scene';
 import { UrlTemplateImageryProvider } from './Scene/UrlTemplateImageryProvider';
 import './Widgets/MapWidgets/CesiumWidget.css';
@@ -34,6 +34,8 @@ scene.imageryLayers.addImageryProvider(new WebMapTileServiceImageryProvider({
     // 影像底图
     url: 'https://{s}.tianditu.gov.cn/img_w/wmts?SERVICE=WMTS&REQUEST=GetTile&version=1.0.0&LAYER=img&tileMatrixSet=w&TileMatrix={TileMatrix}&TileRow={TileRow}&TileCol={TileCol}&style=default&tk=' + mapToken,
     subdomains: ['t0', 't1', 't2', 't3', 't4', 't5', 't6', 't7'],
+    // url: 'https://{s}.aerial.maps.ls.hereapi.com/maptile/2.1/maptile/newest/satellite.day/{TileMatrix}/{TileCol}/{TileRow}/512/png8?apikey=J0IJdYzKDYS3nHVDDEWETIqK3nAcxqW42vz7xeSq61M',
+    // subdomains: ['1', '2', '3', '4'],
     maximumLevel: 17, // 定义最大缩放级别
     layer: 'tdtImgLayer',
     style: 'default',
@@ -41,7 +43,19 @@ scene.imageryLayers.addImageryProvider(new WebMapTileServiceImageryProvider({
     tileMatrixSetID: 'GoogleMapsCompatible' // 使用谷歌的瓦片切片方式
 }));
 
-// scene.imageryLayers.addImageryProvider(new (TileCoordinatesImageryProvider as any)());
+scene.imageryLayers.addImageryProvider(new WebMapTileServiceImageryProvider({
+    // 调用影响中文注记服务
+    url: 'http://{s}.tianditu.gov.cn/cva_w/wmts?service=wmts&request=GetTile&version=1.0.0' +
+                 '&LAYER=cva&tileMatrixSet=w&TileMatrix={TileMatrix}&TileRow={TileRow}&TileCol={TileCol}' +
+                 '&style=default.jpg&tk=' + mapToken,
+    layer: 'cia_w',
+    style: 'default',
+    format: 'tiles',
+    tileMatrixSetID: 'GoogleMapsCompatible',
+    subdomains: ['t0', 't1', 't2', 't3', 't4', 't5', 't6', 't7'],
+    minimumLevel: 0,
+    maximumLevel: 18
+}));
 
 const urlTemplateImageryProvide = new UrlTemplateImageryProvider({
     // url: 'http://www.google.cn/maps/vt?lyrs=s@800&x={x}&y={y}&z={z}'
@@ -53,6 +67,8 @@ const urlTemplateImageryProvide = new UrlTemplateImageryProvider({
 // scene.imageryLayers.addImageryProvider(
 //     urlTemplateImageryProvide
 // );
+
+scene.imageryLayers.addImageryProvider(new (TileCoordinatesImageryProvider as any)());
 
 console.log(urlTemplateImageryProvide.proxy);
 const geometry = new SphereGeometry(1, 64, 64);
@@ -121,4 +137,4 @@ scene.preRender.addEventListener(() => {
     }
 });
 
-scene.renderer.toneMappingExposure = 2;
+scene.renderer.toneMappingExposure = 1.2;
