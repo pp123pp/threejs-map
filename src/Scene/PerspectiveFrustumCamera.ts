@@ -332,15 +332,23 @@ class PerspectiveFrustumCamera extends PerspectiveCamera {
 
         this.applyQuaternion(threeQuaternion);
     }
+
+    setMatrix (matrix: Matrix4): void {
+        if (this.matrixAutoUpdate) this.updateMatrix();
+
+        this.matrix.copy(matrix);
+
+        this.matrix.decompose(this.position, this.quaternion, this.scale);
+    }
 }
 
 function update (frustum: PerspectiveFrustumCamera) {
     // >>includeStart('debug', pragmas.debug);
     if (
         !defined(frustum.fov) ||
-      !defined(frustum.aspectRatio) ||
-      !defined(frustum.near) ||
-      !defined(frustum.far)
+        !defined(frustum.aspectRatio) ||
+        !defined(frustum.near) ||
+        !defined(frustum.far)
     ) {
         throw new DeveloperError(
             'fov, aspectRatio, near, or far parameters are not set.'

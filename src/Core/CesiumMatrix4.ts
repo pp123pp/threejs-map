@@ -512,31 +512,8 @@ class CesiumMatrix4 {
         return result;
     }
 
-    static copyThreeMatrix4 (matrix: CesiumMatrix4, threeMatrix: Matrix4): Matrix4 {
-        if (!defined(matrix[0])) {
-            debugger;
-        }
-
-        if (!defined(threeMatrix.elements[0])) {
-            debugger;
-        }
-        threeMatrix.elements[0] = matrix[0];
-        threeMatrix.elements[1] = matrix[1];
-        threeMatrix.elements[2] = matrix[2];
-        threeMatrix.elements[3] = matrix[3];
-        threeMatrix.elements[4] = matrix[4];
-        threeMatrix.elements[5] = matrix[5];
-        threeMatrix.elements[6] = matrix[6];
-        threeMatrix.elements[7] = matrix[7];
-        threeMatrix.elements[8] = matrix[8];
-        threeMatrix.elements[9] = matrix[9];
-        threeMatrix.elements[10] = matrix[10];
-        threeMatrix.elements[11] = matrix[11];
-        threeMatrix.elements[12] = matrix[12];
-        threeMatrix.elements[13] = matrix[13];
-        threeMatrix.elements[14] = matrix[14];
-        threeMatrix.elements[15] = matrix[15];
-
+    static transformToThreeMatrix4 (matrix: CesiumMatrix4, threeMatrix: Matrix4): Matrix4 {
+        CesiumMatrix4.toArray(matrix, threeMatrix.elements);
         return threeMatrix;
     }
 

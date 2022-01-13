@@ -45,28 +45,29 @@ const mapToken = '39d358c825ec7e59142958656c0a6864';// 盈嘉企业开发者秘�
 // '5f5ced578c88ac399b0691415c56a9d7',
 // 'a1da75892570d7add77b51f40a1d72c4'
 
-// scene.imageryLayers.addImageryProvider(new WebMapTileServiceImageryProvider({
-//     // 影像底图
-//     url: 'https://{s}.tianditu.gov.cn/img_w/wmts?SERVICE=WMTS&REQUEST=GetTile&version=1.0.0&LAYER=img&tileMatrixSet=w&TileMatrix={TileMatrix}&TileRow={TileRow}&TileCol={TileCol}&style=default&tk=' + mapToken,
-//     subdomains: ['t0', 't1', 't2', 't3', 't4', 't5', 't6', 't7'],
-//     maximumLevel: 17, // 定义最大缩放级别
-//     layer: 'tdtImgLayer',
-//     style: 'default',
-//     format: 'image/jpeg',
-//     tileMatrixSetID: 'GoogleMapsCompatible' // 使用谷歌的瓦片切片方式
-// }));
+scene.imageryLayers.addImageryProvider(new WebMapTileServiceImageryProvider({
+    // 影像底图
+    url: 'https://{s}.tianditu.gov.cn/img_w/wmts?SERVICE=WMTS&REQUEST=GetTile&version=1.0.0&LAYER=img&tileMatrixSet=w&TileMatrix={TileMatrix}&TileRow={TileRow}&TileCol={TileCol}&style=default&tk=' + mapToken,
+    subdomains: ['t0', 't1', 't2', 't3', 't4', 't5', 't6', 't7'],
+    maximumLevel: 17, // 定义最大缩放级别
+    layer: 'tdtImgLayer',
+    style: 'default',
+    format: 'image/jpeg',
+    tileMatrixSetID: 'GoogleMapsCompatible' // 使用谷歌的瓦片切片方式
+}));
 
 // scene.imageryLayers.addImageryProvider(new (TileCoordinatesImageryProvider as any)());
 
 const urlTemplateImageryProvide = new UrlTemplateImageryProvider({
-    url: 'http://www.google.cn/maps/vt?lyrs=s@800&x={x}&y={y}&z={z}',
-    tilingScheme: new WebMercatorTilingScheme({}),
-    minimumLevel: 1,
-    maximumLevel: 20
+    // url: 'http://www.google.cn/maps/vt?lyrs=s@800&x={x}&y={y}&z={z}'
+    // tilingScheme: new WebMercatorTilingScheme({}),
+    // minimumLevel: 1,
+    // maximumLevel: 20
+    url: 'https://map.geoq.cn/arcgis/rest/services/ChinaOnlineStreetPurplishBlue/MapServer/tile/{z}/{y}/{x}'
 });
-scene.imageryLayers.addImageryProvider(
-    urlTemplateImageryProvide
-);
+// scene.imageryLayers.addImageryProvider(
+//     urlTemplateImageryProvide
+// );
 
 console.log(urlTemplateImageryProvide.proxy);
 const geometry = new SphereGeometry(1, 64, 64);
@@ -131,9 +132,8 @@ let isAni = false;
 scene.preRender.addEventListener(() => {
     if (isAni) {
         scene.camera.rotateRight(0.01);
-        scene.camera.rotateUp(0.01);
+        // scene.camera.rotateUp(0.01);
     }
 });
 
-console.log(ShaderLib.basic.fragmentShader);
-console.log(ShaderChunk.output_fragment);
+scene.renderer.toneMappingExposure = 2;

@@ -23,6 +23,7 @@ import { SceneTransforms } from '@/Core/SceneTransforms';
 import { TerrainExaggeration } from '@/Core/TerrainExaggeration';
 import { Transforms } from '@/Core/Transforms';
 import { TweenCollection, Tween } from '@/Core/TweenCollection';
+import { Matrix4 } from 'three';
 import CameraEventAggregator from './CameraEventAggregator';
 import { Globe } from './Globe';
 import { OrthographicFrustumCamera } from './OrthographicFrustumCamera';
@@ -1946,6 +1947,11 @@ const tilt3DMatrix = new CesiumMatrix3();
 const tilt3DCart = new Cartographic();
 const tilt3DLookUp = new Cartesian3();
 
+const mo = {
+    endPosition: new Cartesian2(1409, 97),
+    startPosition: new Cartesian2(1409, 97)
+};
+
 function tilt3D (controller: any, startPosition: any, movement: any) {
     const scene = controller._scene;
     const camera = scene.camera;
@@ -1953,6 +1959,8 @@ function tilt3D (controller: any, startPosition: any, movement: any) {
     if (!CesiumMatrix4.equals(camera.transform, CesiumMatrix4.IDENTITY)) {
         return;
     }
+
+    // movement = mo;
 
     if (defined(movement.angleAndHeight)) {
         movement = movement.angleAndHeight;
@@ -1990,6 +1998,9 @@ function tilt3D (controller: any, startPosition: any, movement: any) {
 }
 
 const tilt3DOnEllipsoidCartographic = new Cartographic();
+
+const scratchThreeMatrix = new Matrix4();
+const scratchThreeMatrix2 = new Matrix4();
 
 function tilt3DOnEllipsoid (controller: ScreenSpaceCameraController, startPosition: any, movement: any) {
     const ellipsoid = controller._ellipsoid;
@@ -2061,10 +2072,17 @@ function tilt3DOnEllipsoid (controller: ScreenSpaceCameraController, startPositi
 
     const oldTransform = CesiumMatrix4.clone(camera.transform, tilt3DOldTransform);
     camera._setTransform(transform);
+    // camera.frustum.setMatrix(CesiumMatrix4.transformToThreeMatrix4(transform, scratchThreeMatrix));
+    // CesiumMatrix4.transformToThreeMatrix4(transform, scratchThreeMatrix);
+
+    // scratchThreeMatrix.decompose(camera.frustum.position, camera.frustum.quaternion, camera.frustum.scale);
 
     rotate3D(controller, startPosition, movement, Cartesian3.UNIT_Z);
 
     camera._setTransform(oldTransform);
+    // camera.frustum.setMatrix(CesiumMatrix4.transformToThreeMatrix4(oldTransform, scratchThreeMatrix));
+    // CesiumMatrix4.transformToThreeMatrix4(oldTransform, scratchThreeMatrix2);
+    // scratchThreeMatrix2.decompose(camera.frustum.position, camera.frustum.quaternion, camera.frustum.scale);
     controller._globe = oldGlobe;
     controller._ellipsoid = oldEllipsoid;
 

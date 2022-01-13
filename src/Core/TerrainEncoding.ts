@@ -237,7 +237,6 @@ class TerrainEncoding {
         }
 
         return this._threeMatrix4;
-        // return CesiumMatrix4.copyThreeMatrix4(this.matrix, threeMatrix4);
     }
 
     encode (
