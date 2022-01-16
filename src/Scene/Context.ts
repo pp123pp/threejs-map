@@ -17,6 +17,7 @@ class Context {
     _shaderCache = new ShaderCache(this)
     constructor (scene: Scene) {
         this.scene = scene;
+        const renderer = scene.renderer;
 
         const bufferSize = scene.drawingBufferSize;
 
@@ -26,7 +27,8 @@ class Context {
 
         this.sceneFrameBuffer = sceneFrameBuffer;
 
-        ContextLimits._maxAnisotropy = scene.renderer.capabilities.getMaxAnisotropy();
+        ContextLimits._maxAnisotropy = renderer.capabilities.getMaxAnisotropy();
+        ContextLimits._maximumTextureImageUnits = renderer.capabilities.maxTextures;
     }
 
     get id (): string {

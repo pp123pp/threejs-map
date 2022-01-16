@@ -18,6 +18,7 @@ import { Context } from './Context';
 import { EffectComposerCollection } from './EffectComposerCollection';
 import { FrameState, PassesInterface } from './FrameState';
 import { Globe } from './Globe';
+import { GlobeTranslucencyState } from './GlobeTranslucencyState';
 import { ImageryLayerCollection } from './ImageryLayerCollection';
 import { MapRenderer, RenderStateParameters } from './MapRenderer';
 import { PerspectiveFrustumCamera } from './PerspectiveFrustumCamera';
@@ -251,24 +252,36 @@ function executeCommandsInViewport (firstViewport: boolean, scene:Scene, backgro
 }
 
 class Scene extends THREE.Scene {
-    _primitives: PrimitiveCollection
+    _primitives = new PrimitiveCollection();
     readonly renderer: MapRenderer;
     _frameState: FrameState;
-    _renderRequested: boolean;
-    protected _shaderFrameCount: number;
+    _renderRequested = true;
+    protected _shaderFrameCount = 0;
     protected _context: Context;
-    protected _mode: SceneMode;
+    protected _mode = SceneMode.SCENE3D;
     readonly _camera: Camera;
     requestRenderMode: boolean;
-    readonly renderError: Event;
-    readonly postUpdate: Event;
-    readonly preRender: Event;
-    readonly rethrowRenderErrors: boolean;
-    backgroundColor: CesiumColor;
+    readonly renderError = new Event();
+    readonly postUpdate = new Event();
+    readonly preRender = new Event();
+
+    /**
+     * Exceptions occurring in <code>render</code> are always caught in order to raise the
+     * <code>renderError</code> event.  If this property is true, the error is rethrown
+     * after the event is raised.  If this property is false, the <code>render</code> function
+     * returns normally after raising the event.
+     *
+     * @type {Boolean}
+     * @default false
+     */
+    readonly rethrowRenderErrors = false;
+    backgroundColor = new CesiumColor(1.0, 0.0, 0.0, 1.0);
     readonly _screenSpaceCameraController: any;
     _mapProjection: GeographicProjection;
     _canvas: HTMLCanvasElement;
     _globe: Globe | undefined;
+    _globeTranslucencyState = new GlobeTranslucencyState();
+
     _computeEngine: ComputeEngine;
     _removeGlobeCallbacks: any[];
     _renderCollection: RenderCollection;
@@ -286,18 +299,8 @@ class Scene extends THREE.Scene {
     constructor (options: SceneOptions) {
         super();
 
-        this._mode = SceneMode.SCENE3D;
-
-        ShaderMaterial.prototype.glslVersion = GLSL3;
-
         // 地图的投影方式
         this._mapProjection = defaultValue(options.mapProjection, new GeographicProjection()) as GeographicProjection;
-
-        this._primitives = new PrimitiveCollection();
-
-        this.renderError = new Event();
-        this.postUpdate = new Event();
-        this.preRender = new Event();
 
         this.renderer = new MapRenderer(options.renderState);
         this.renderer.toneMapping = LinearToneMapping;
@@ -328,8 +331,6 @@ class Scene extends THREE.Scene {
          * @default false
          */
         this.requestRenderMode = defaultValue(options.requestRenderMode, false) as boolean;
-        this._renderRequested = true;
-        this._shaderFrameCount = 0;
 
         /**
          * If {@link Scene#requestRenderMode} is <code>true</code>, this value defines the maximum change in
@@ -372,21 +373,6 @@ class Scene extends THREE.Scene {
 
         this._frameState = new FrameState(this);
         this._removeGlobeCallbacks = [];
-
-        /**
-         * Exceptions occurring in <code>render</code> are always caught in order to raise the
-         * <code>renderError</code> event.  If this property is true, the error is rethrown
-         * after the event is raised.  If this property is false, the <code>render</code> function
-         * returns normally after raising the event.
-         *
-         * @type {Boolean}
-         * @default false
-         */
-        this.rethrowRenderErrors = false;
-
-        this.backgroundColor = new CesiumColor(1.0, 0.0, 0.0, 1.0);
-
-        // this._computeCommandList = [];
 
         this._renderCollection = new RenderCollection();
 
@@ -593,6 +579,7 @@ class Scene extends THREE.Scene {
             camera.directionWC,
             camera.upWC
         );
+        frameState.globeTranslucencyState = this._globeTranslucencyState;
 
         this.clearPasses(frameState.passes);
     }

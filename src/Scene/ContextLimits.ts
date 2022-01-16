@@ -3,6 +3,12 @@ const ContextLimits = {
 
     get maxAnisotropy (): number {
         return ContextLimits._maxAnisotropy;
+    },
+
+    _maximumTextureImageUnits: 0,
+
+    get maximumTextureImageUnits (): number {
+        return ContextLimits._maximumTextureImageUnits;
     }
 };
 

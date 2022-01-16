@@ -70,18 +70,18 @@ class CesiumColor {
      * @param {Color} [result] The object to store the result in, if undefined a new instance will be created.
      * @returns {Color} The modified result parameter or a new instance if result was undefined. (Returns undefined if color is undefined)
      */
-    static clone (color: any, result: any): any {
+    static clone (color: CesiumColor, result?: CesiumColor): CesiumColor | undefined {
         if (!defined(color)) {
             return undefined;
         }
         if (!defined(result)) {
             return new CesiumColor(color.red, color.green, color.blue, color.alpha);
         }
-        result.red = color.red;
-        result.green = color.green;
-        result.blue = color.blue;
-        result.alpha = color.alpha;
-        return result;
+        (result as CesiumColor).red = color.red;
+        (result as CesiumColor).green = color.green;
+        (result as CesiumColor).blue = color.blue;
+        (result as CesiumColor).alpha = color.alpha;
+        return (result as CesiumColor);
     }
 
     /**
@@ -218,20 +218,47 @@ class CesiumColor {
     }
 
     /**
+     * An immutable Color instance initialized to CSS transparent.
+     * <span class="colorSwath" style="background: transparent;"></span>
+     *
+     * @constant
+     * @type {Color}
+     */
+    static TRANSPARENT = Object.freeze(new CesiumColor(0, 0, 0, 0));
+
+    /**
+     * An immutable Color instance initialized to CSS color #000000
+     * <span class="colorSwath" style="background: #000000;"></span>
+     *
+     * @constant
+     * @type {Color}
+     */
+    static BLACK = Object.freeze(CesiumColor.fromCssColorString('#000000') as CesiumColor);
+
+    /**
+     * An immutable Color instance initialized to CSS color #FFFFFF
+     * <span class="colorSwath" style="background: #FFFFFF;"></span>
+     *
+     * @constant
+     * @type {Color}
+     */
+     static WHITE = Object.freeze(CesiumColor.fromCssColorString('#FFFFFF') as CesiumColor);
+
+     /**
      * Creates a string containing the CSS color value for this color.
      *
      * @returns {String} The CSS equivalent of this color.
      *
      * @see {@link http://www.w3.org/TR/css3-color/#rgba-color|CSS RGB or RGBA color values}
      */
-    toCssColorString (): string {
-        const red = CesiumColor.floatToByte(this.red);
-        const green = CesiumColor.floatToByte(this.green);
-        const blue = CesiumColor.floatToByte(this.blue);
-        if (this.alpha === 1) {
-            return 'rgb(' + red + ',' + green + ',' + blue + ')';
-        }
-        return 'rgba(' + red + ',' + green + ',' + blue + ',' + this.alpha + ')';
-    }
+     toCssColorString (): string {
+         const red = CesiumColor.floatToByte(this.red);
+         const green = CesiumColor.floatToByte(this.green);
+         const blue = CesiumColor.floatToByte(this.blue);
+         if (this.alpha === 1) {
+             return 'rgb(' + red + ',' + green + ',' + blue + ')';
+         }
+         return 'rgba(' + red + ',' + green + ',' + blue + ',' + this.alpha + ')';
+     }
 }
 export { CesiumColor };
