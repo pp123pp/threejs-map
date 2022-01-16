@@ -306,7 +306,7 @@ class Scene extends THREE.Scene {
         this._camera = new Camera(this, {
             aspect: this.drawingBufferSize.width / this.drawingBufferSize.height,
             near: 0.1,
-            far: 100000000
+            far: 10000000000
         });
 
         this._camera.constrainedAxis = Cartesian3.UNIT_Z;

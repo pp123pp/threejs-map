@@ -28,14 +28,12 @@ precision mediump float;
 precision mediump int;
 
 uniform sampler2D u_texture;
-
+uniform vec4 u_randomColor;
 varying vec2 v_textureCoordinates;
 
 void main()
 {
     gl_FragColor = texture2D(u_texture, v_textureCoordinates);
-
-    // gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
 }
 `;
 class GeographicReprojectMaterial extends RawShaderMaterial {
@@ -53,10 +51,6 @@ class GeographicReprojectMaterial extends RawShaderMaterial {
         this.vertexShader = vs;
         this.fragmentShader = fs;
         this.side = DoubleSide;
-
-        // this.onBeforeCompile = (shader) => {
-        //     console.log(shader);
-        // };
     }
 
     get texture ():Texture {

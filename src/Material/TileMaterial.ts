@@ -1,4 +1,5 @@
 
+import { CesiumMatrix4 } from '@/Core/CesiumMatrix4';
 import { defined } from '@/Core/defined';
 import { Rectangle } from '@/Core/Rectangle';
 import { ShaderMaterial, Vector2, Vector4, Matrix4, Vector3, RawShaderMaterial, GLSL3, DoubleSide } from 'three';
@@ -24,9 +25,10 @@ const vertexShader = `
 
 uniform vec4 u_tileRectangle;
 uniform vec3 rtc;
+uniform mat4 u_modifiedModelViewProjection;
 
-out vec3 v_textureCoordinates;
-out vec2 vHighPrecisionZW;
+varying vec3 v_textureCoordinates;
+varying vec2 vHighPrecisionZW;
 
 float get2DGeographicYPositionFraction(vec2 textureCoordinates)
 {
@@ -113,8 +115,10 @@ void main(){
 
     // gl_Position = getPosition(transformed, height, textureCoordinates);
 
-    gl_Position = projectionMatrix * modelViewMatrix *  vec4( transformed, 1.0 );
+    // gl_Position = projectionMatrix * modelViewMatrix *  vec4( transformed, 1.0 );
     
+    gl_Position = u_modifiedModelViewProjection * vec4(position, 1.0);
+
     v_textureCoordinates = vec3(textureCoordinates, webMercatorT);
    
 
@@ -224,22 +228,22 @@ class TileMaterial extends ShaderMaterial {
         this.uniforms.rtc.value.copy(value);
     }
 
-    get tileRectangle (): Rectangle {
+    get tileRectangle (): Vector4 {
         return this.uniforms.u_tileRectangle.value;
     }
 
-    set tileRectangle (value: Rectangle) {
+    set tileRectangle (value: Vector4) {
         if (!defined(value)) {
             return;
         }
         this.uniforms.u_tileRectangle.value.copy(value);
     }
 
-    get minMaxHeight (): number {
+    get minMaxHeight (): Vector2 {
         return this.uniforms.u_minMaxHeight.value;
     }
 
-    set minMaxHeight (value: number) {
+    set minMaxHeight (value: Vector2) {
         if (!defined(value)) {
             return;
         }
@@ -268,14 +272,22 @@ class TileMaterial extends ShaderMaterial {
         this.uniforms.u_center3D.value.copy(value);
     }
 
+    set modifiedModelViewProjectionScratch (value: Matrix4) {
+        this.modifiedModelViewProjectionScratch.copy(value);
+    }
+
+    get modifiedModelViewProjectionScratch (): Matrix4 {
+        return this.uniforms.u_modifiedModelViewProjection.value;
+    }
+
     createFragmentShader (options: any): string {
         const fragmentShader = `
         #include <common>
         #include <packing>
         #include <logdepthbuf_pars_fragment>
 
-        in vec3 v_textureCoordinates;
-        in vec2 vHighPrecisionZW;
+        varying vec3 v_textureCoordinates;
+        varying vec2 vHighPrecisionZW;
         uniform vec4 u_initialColor;
         uniform vec4 diffuse;
         
@@ -389,10 +401,11 @@ class TileMaterial extends ShaderMaterial {
             
             gl_FragColor = computeDayColor(u_initialColor, clamp(v_textureCoordinates, 0.0, 1.0));
 
-            #if defined( TONE_MAPPING )
-                gl_FragColor.rgb = toneMapping( gl_FragColor.rgb );
-            #endif
-                gl_FragColor = linearToOutputTexel( gl_FragColor );
+            #include <tonemapping_fragment>
+            #include <encodings_fragment>
+            #include <fog_fragment>
+            #include <premultiplied_alpha_fragment>
+            #include <dithering_fragment>
         }
         `;
 

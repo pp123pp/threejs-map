@@ -24,6 +24,7 @@ import { Request } from '@/Core/Request';
 import { WebMercatorTilingScheme } from './WebMercatorTilingScheme';
 import { WebMapTileServiceImageryProvider } from './WebMapTileServiceImageryProvider';
 import { ContextLimits } from './ContextLimits';
+import { WebMercatorProjection } from '@/Core/WebMercatorProjection';
 
 const imageryBoundsScratch = new Rectangle();
 const tileImageryBoundsScratch = new Rectangle();
@@ -383,7 +384,12 @@ class ImageryLayer {
         //                           tile.rectangle.north < WebMercatorProjection.MaximumLatitude &&
         //                           tile.rectangle.south > -WebMercatorProjection.MaximumLatitude;
 
-        const useWebMercatorT = false;
+        // 重投影
+        // const useWebMercatorT = false;
+        const useWebMercatorT =
+        imageryProvider.tilingScheme.projection instanceof WebMercatorProjection &&
+        tile.rectangle.north < WebMercatorProjection.MaximumLatitude &&
+        tile.rectangle.south > -WebMercatorProjection.MaximumLatitude;
 
         // Compute the rectangle of the imagery from this imageryProvider that overlaps
         // the geometry tile.  The ImageryProvider and ImageryLayer both have the
@@ -756,7 +762,15 @@ class ImageryLayer {
 
         // imagery.texture = image;
 
-        imagery.texture = image;
+        // imagery.texture = image;
+
+        if (
+            imageryProvider.tilingScheme.projection instanceof WebMercatorProjection
+        ) {
+            imagery.textureWebMercator = image;
+        } else {
+            imagery.texture = image;
+        }
         imagery.image = undefined;
         imagery.state = ImageryState.TEXTURE_LOADED;
     }
@@ -801,6 +815,7 @@ class ImageryLayer {
                     imagery.releaseReference();
                 }
             });
+
             this._reprojectComputeCommands.push(computeCommand);
         } else {
             if (needGeographicProjection) {

@@ -77,16 +77,15 @@ class TileImagery {
         let closestAncestorThatNeedsLoading;
         while (
             defined(ancestor) &&
-      (ancestor.state !== ImageryState.READY ||
-        (!this.useWebMercatorT && !defined(ancestor.texture)))
+            (ancestor.state !== ImageryState.READY ||
+            (!this.useWebMercatorT && !defined(ancestor.texture)))
         ) {
             if (
                 ancestor.state !== ImageryState.FAILED &&
-        ancestor.state !== ImageryState.INVALID
+                ancestor.state !== ImageryState.INVALID
             ) {
                 // ancestor is still loading
-                closestAncestorThatNeedsLoading =
-          closestAncestorThatNeedsLoading || ancestor;
+                closestAncestorThatNeedsLoading = closestAncestorThatNeedsLoading || ancestor;
             }
             ancestor = ancestor.parent;
         }
@@ -109,7 +108,7 @@ class TileImagery {
 
         if (
             loadingImagery.state === ImageryState.FAILED ||
-      loadingImagery.state === ImageryState.INVALID
+            loadingImagery.state === ImageryState.INVALID
         ) {
             // The imagery tile is failed or invalid, so we'd like to use an ancestor instead.
             if (defined(closestAncestorThatNeedsLoading)) {

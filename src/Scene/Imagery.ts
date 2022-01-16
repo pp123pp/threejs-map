@@ -120,16 +120,6 @@ class Imagery {
             );
         }
     }
-
-    /**
-     * Cancels re-projection commands queued for the next frame.
-     *
-     * @private
-     * @returns {undefined}
-     */
-    // cancelReprojections () {
-    //     this._reprojectComputeCommands.length = 0;
-    // }
 }
 
 export { Imagery };

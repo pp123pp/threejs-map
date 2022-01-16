@@ -18,6 +18,8 @@ const directionWC = new Vector3();
 
 const worldDirectionWC_three = new Vector3();
 
+const cesiumProjectMatrix = new CesiumMatrix4();
+
 export interface PerspectiveFrustumCameraParameters {
     fov?: number;
     aspect?: number;
@@ -274,6 +276,10 @@ class PerspectiveFrustumCamera extends PerspectiveCamera {
         this.aspect = value;
     }
 
+    get cesiumProjectMatrix (): CesiumMatrix4 {
+        return CesiumMatrix4.setFromThreeMatrix4(this.projectionMatrix, cesiumProjectMatrix);
+    }
+
     resize (container: Element): void {
         const { clientWidth, clientHeight } = container;
 
@@ -310,15 +316,15 @@ class PerspectiveFrustumCamera extends PerspectiveCamera {
         direction: Cartesian3,
         up: Cartesian3
     ): CullingVolume {
-        // update(this);
-        // return this._offCenterFrustum.computeCullingVolume(position, direction, up);
+        update(this);
+        return this._offCenterFrustum.computeCullingVolume(position, direction, up);
 
-        this.updateProjectionMatrix();
-        this._projScreenMatrix.multiplyMatrices(this.projectionMatrix, this.matrixWorldInverse);
-        this._frustum.setFromProjectionMatrix(this._projScreenMatrix);
+        // this.updateProjectionMatrix();
+        // this._projScreenMatrix.multiplyMatrices(this.projectionMatrix, this.matrixWorldInverse);
+        // this._frustum.setFromProjectionMatrix(this._projScreenMatrix);
 
-        this._cullingVolume.setFromThreeFrustum(this._frustum);
-        return this._cullingVolume;
+        // this._cullingVolume.setFromThreeFrustum(this._frustum);
+        // return this._cullingVolume;
     }
 
     applyCesiumQuaternion (quaternion: CesiumQuaternion): void {

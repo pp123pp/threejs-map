@@ -6,6 +6,7 @@ import { Cartesian4 } from '@/Core/Cartesian4';
 import { Cartographic } from '@/Core/Cartographic';
 import { CesiumColor } from '@/Core/CesiumColor';
 import { CesiumMath } from '@/Core/CesiumMath';
+import { CesiumMatrix4 } from '@/Core/CesiumMatrix4';
 import { defaultValue } from '@/Core/defaultValue';
 import { defined } from '@/Core/defined';
 import { DeveloperError } from '@/Core/DeveloperError';
@@ -300,12 +301,13 @@ function isUndergroundVisible (tileProvider:GlobeSurfaceTileProvider, frameState
 
     return false;
 }
-
+const modifiedModelViewProjectionScratch = new CesiumMatrix4();
 const otherPassesInitialColor = new Vector4(0.0, 0.0, 0.0, 0.0);
 const tileRectangleScratch = new Vector4();
 const rtcScratch = new Vector3();
 const southwestScratch = new Vector3();
 const northeastScratch = new Vector3();
+const centerEyeScratch = new Cartesian3();
 
 const surfaceShaderSetOptionsScratch : {
     frameState?: FrameState,
@@ -333,7 +335,7 @@ function sortTileImageryByLayerIndex (a: any, b: any) {
     return aImagery.imageryLayer._layerIndex - bImagery.imageryLayer._layerIndex;
 }
 
-const createTileUniformMap = (frameState: FrameState, tileProvider: any, surfaceShaderSetOptions: any, quantization: TerrainQuantization) => {
+const createTileUniformMap = (frameState: FrameState, tileProvider: any, surfaceShaderSetOptions: any, quantization: TerrainQuantization): TileMaterial => {
     const material = new TileMaterial({
         // side: DoubleSide
         // wireframe: true
@@ -430,8 +432,8 @@ const addDrawCommandsForTile = (tileProvider: any, tile: any, frameState: FrameS
     do {
         let numberOfDayTextures = 0;
 
-        let command;
-        let uniformMap;
+        let command: DrawMeshCommand;
+        let uniformMap: TileMaterial;
 
         const dayTextures = [];
         const dayTextureTranslationAndScale = [];
@@ -495,13 +497,32 @@ const addDrawCommandsForTile = (tileProvider: any, tile: any, frameState: FrameS
 
         command.owner = tile;
 
-        if (frameState.mode === SceneMode.COLUMBUS_VIEW) {
-            command.position.set(rtc.y, rtc.z, rtc.x);
-        } else if (frameState.mode === SceneMode.SCENE3D) {
-            command.position.set(rtc.x, rtc.y, rtc.z);
-        }
+        // if (frameState.mode === SceneMode.COLUMBUS_VIEW) {
+        //     command.position.set(rtc.y, rtc.z, rtc.x);
+        // } else if (frameState.mode === SceneMode.SCENE3D) {
+        //     command.position.set(rtc.x, rtc.y, rtc.z);
+        // }
 
-        command.updateMatrixWorld();
+        const viewMatrix = frameState.camera.viewMatrix;
+        const projectionMatrix = frameState.camera.frustum.cesiumProjectMatrix;
+        const centerEye = CesiumMatrix4.multiplyByPoint(
+            viewMatrix,
+            rtc,
+            centerEyeScratch
+        );
+        CesiumMatrix4.setTranslation(
+            viewMatrix,
+            centerEye,
+            modifiedModelViewProjectionScratch
+        );
+        CesiumMatrix4.multiply(
+            projectionMatrix,
+            modifiedModelViewProjectionScratch,
+            modifiedModelViewProjectionScratch
+        );
+        // uniformMap.modifiedModelViewProjectionScratch = modifiedModelViewProjectionScratch;
+
+        CesiumMatrix4.transformToThreeMatrix4(modifiedModelViewProjectionScratch, uniformMap.modifiedModelViewProjectionScratch);
 
         uniformMap.tileRectangle = tileRectangle;
 
@@ -518,29 +539,19 @@ const addDrawCommandsForTile = (tileProvider: any, tile: any, frameState: FrameS
 
         if (frameState.mode !== SceneMode.SCENE3D) {
             BoundingSphere.fromRectangleWithHeights2D(tile.rectangle, frameState.mapProjection, surfaceTile.minimumHeight, surfaceTile.maximumHeight, boundingVolume);
-            // Vector3.fromElements(boundingVolume.center.z, boundingVolume.center.x, boundingVolume.center.y, boundingVolume.center);
 
-            Cartesian3.fromElements(boundingVolume.center.x, boundingVolume.center.y, boundingVolume.center.z, boundingVolume.center);
+            const center = (boundingVolume as BoundingSphere).center;
+            Cartesian3.fromElements(center.x, center.y, center.z, center);
 
             if (frameState.mode === SceneMode.MORPHING) {
-                boundingVolume = BoundingSphere.union(surfaceTile.boundingSphere3D, boundingVolume, boundingVolume);
+                boundingVolume = BoundingSphere.union(surfaceTile.boundingSphere3D, (boundingVolume as BoundingSphere), boundingVolume);
             }
         } else {
             command.boundingVolume = BoundingSphere.clone(surfaceTile.boundingSphere3D, boundingVolume);
             command.orientedBoundingBox = OrientedBoundingBox.clone(surfaceTile.orientedBoundingBox, orientedBoundingBox);
         }
 
-        // if (defined(command.boundingVolume)) {
-        //     let sphere = getDebugBoundingSphere(command.boundingVolume, CesiumColor.RED);
-        //     sphere._levelId = tile.levelId;
-        //     frameState.commandList.push(sphere);
-        // }
-
         frameState.commandList.push(command);
-
-        // if (uniformMap.defines.TEXTURE_UNITS !== uniformMap.dayTextures.length) {
-        //     debugger;
-        // }
 
         initialColor = otherPassesInitialColor;
     } while (imageryIndex < imageryLen);

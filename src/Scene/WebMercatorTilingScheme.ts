@@ -246,5 +246,34 @@ class WebMercatorTilingScheme {
         nativeRectangle.north = northeast.latitude;
         return nativeRectangle;
     }
+
+    /**
+     * Transforms a rectangle specified in geodetic radians to the native coordinate system
+     * of this tiling scheme.
+     *
+     * @param {Rectangle} rectangle The rectangle to transform.
+     * @param {Rectangle} [result] The instance to which to copy the result, or undefined if a new instance
+     *        should be created.
+     * @returns {Rectangle} The specified 'result', or a new object containing the native rectangle if 'result'
+     *          is undefined.
+     */
+    rectangleToNativeRectangle (
+        rectangle: Rectangle,
+        result?: Rectangle
+    ): Rectangle {
+        const projection = this._projection;
+        const southwest = projection.project(Rectangle.southwest(rectangle));
+        const northeast = projection.project(Rectangle.northeast(rectangle));
+
+        if (!defined(result)) {
+            return new Rectangle(southwest.x, southwest.y, northeast.x, northeast.y);
+        }
+
+        (result as Rectangle).west = southwest.x;
+        (result as Rectangle).south = southwest.y;
+        (result as Rectangle).east = northeast.x;
+        (result as Rectangle).north = northeast.y;
+        return (result as Rectangle);
+    }
 }
 export { WebMercatorTilingScheme };

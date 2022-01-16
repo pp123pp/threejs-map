@@ -517,6 +517,11 @@ class CesiumMatrix4 {
         return threeMatrix;
     }
 
+    static setFromThreeMatrix4 (threeMatrix4: Matrix4, cesiumMatrix4: CesiumMatrix4): CesiumMatrix4 {
+        CesiumMatrix4.toArray(threeMatrix4.elements, cesiumMatrix4 as number[]);
+        return cesiumMatrix4;
+    }
+
     /**
      * Compares the provided matrices componentwise and returns
      * <code>true</code> if they are equal, <code>false</code> otherwise.

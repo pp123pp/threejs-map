@@ -3,7 +3,7 @@ import { GeographicReprojectMaterial } from '@/Material/GeographicReprojectMater
 import { ComputeCommand } from '@/Renderer/ComputeCommand';
 import { ComputedShaderPass } from '@/Renderer/ComputedShaderPass';
 import { Context } from '@/Scene/Context';
-import { Texture, WebGLRenderTarget } from 'three';
+import { Texture, Vector4, WebGLRenderTarget } from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer';
 import { MapRenderer } from '../Scene/MapRenderer';
 import { Scene } from '../Scene/Scene';
@@ -76,6 +76,7 @@ class ComputeEngine {
         computedShaderPass.fsQuad._mesh.frustumCulled = false;
         (computedShaderPass.material as GeographicReprojectMaterial).uniforms.u_texture.value = (computeCommand.material as any).texture;
         (computedShaderPass.material as GeographicReprojectMaterial).textureDimensions = (computeCommand.material as any).textureDimensions;
+
         (this.effectComposer as EffectComposer).render();
 
         (computedShaderPass.material as GeographicReprojectMaterial).uniforms.u_texture.value.dispose();
