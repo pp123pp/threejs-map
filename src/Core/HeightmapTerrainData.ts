@@ -204,20 +204,22 @@ class HeightmapTerrainData {
             // Free memory received from server after mesh is created.
             that._buffer = undefined;
             return that._mesh;
+        }, () => {
+            debugger;
         });
     }
 
     /**
- * @param {Object} options Object with the following properties:
- * @param {TilingScheme} options.tilingScheme The tiling scheme to which this tile belongs.
- * @param {Number} options.x The X coordinate of the tile for which to create the terrain data.
- * @param {Number} options.y The Y coordinate of the tile for which to create the terrain data.
- * @param {Number} options.level The level of the tile for which to create the terrain data.
- * @param {Number} [options.exaggeration=1.0] The scale used to exaggerate the terrain.
- * @param {Number} [options.exaggerationRelativeHeight=0.0] The height relative to which terrain is exaggerated.
- *
- * @private
- */
+     * @param {Object} options Object with the following properties:
+     * @param {TilingScheme} options.tilingScheme The tiling scheme to which this tile belongs.
+     * @param {Number} options.x The X coordinate of the tile for which to create the terrain data.
+     * @param {Number} options.y The Y coordinate of the tile for which to create the terrain data.
+     * @param {Number} options.level The level of the tile for which to create the terrain data.
+     * @param {Number} [options.exaggeration=1.0] The scale used to exaggerate the terrain.
+     * @param {Number} [options.exaggerationRelativeHeight=0.0] The height relative to which terrain is exaggerated.
+     *
+     * @private
+     */
     _createMeshSync (options?: any) {
         const tilingScheme = options.tilingScheme;
         const x = options.x;

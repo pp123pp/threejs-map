@@ -155,7 +155,7 @@ class PerspectiveFrustumCamera extends PerspectiveCamera {
         this._sseDenominator = 0.0;
         this._projection = scene.mapProjection;
 
-        this.transform = CesiumMatrix4.clone(CesiumMatrix4.IDENTITY);
+        this.transform = CesiumMatrix4.clone(CesiumMatrix4.IDENTITY) as CesiumMatrix4;
 
         /**
          * The up direction of the camera.

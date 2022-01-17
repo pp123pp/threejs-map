@@ -2070,7 +2070,7 @@ function tilt3DOnEllipsoid (controller: ScreenSpaceCameraController, startPositi
     controller._rotateFactor = 1.0;
     controller._rotateRateRangeAdjustment = 1.0;
 
-    const oldTransform = CesiumMatrix4.clone(camera.transform, tilt3DOldTransform);
+    const oldTransform = CesiumMatrix4.clone(camera.transform, tilt3DOldTransform) as CesiumMatrix4;
     camera._setTransform(transform);
     // camera.frustum.setMatrix(CesiumMatrix4.transformToThreeMatrix4(transform, scratchThreeMatrix));
     // CesiumMatrix4.transformToThreeMatrix4(transform, scratchThreeMatrix);

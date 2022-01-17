@@ -1,6 +1,7 @@
 import { BoundingSphere } from './BoundingSphere';
 import { Cartesian3 } from './Cartesian3';
 import { defaultValue } from './defaultValue';
+import { defined } from './defined';
 import { OrientedBoundingBox } from './OrientedBoundingBox';
 import { TerrainEncoding } from './TerrainEncoding';
 
@@ -149,6 +150,10 @@ class TerrainMesh {
          * @type {TerrainEncoding}
          */
         this.encoding = encoding;
+
+        if (!defined(encoding?.matrix)) {
+            debugger;
+        }
 
         /**
          * The indices of the vertices on the Western edge of the tile, ordered from South to North (clockwise).
