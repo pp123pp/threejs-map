@@ -4,6 +4,8 @@ import { defaultValue } from '@/Core/defaultValue';
 import { defined } from '@/Core/defined';
 import { DeveloperError } from '@/Core/DeveloperError';
 import { Context } from '@/Scene/Context';
+import CzmBuiltins from '@/Shader/Builtin/CzmBuiltins';
+import AutomaticUniforms from './AutomaticUniforms';
 import modernizeShader from './modernizeShader';
 
 function removeComments (source: string) {
@@ -389,6 +391,29 @@ class ShaderSource {
       '}';
 
         return renamedFS + '\n' + pickMain;
+    }
+}
+
+/**
+ * For ShaderProgram testing
+ * @private
+ */
+
+// combine automatic uniforms and Cesium built-ins
+for (const builtinName in CzmBuiltins) {
+    if (CzmBuiltins.hasOwnProperty(builtinName)) {
+        ShaderSource._czmBuiltinsAndUniforms[builtinName] =
+       CzmBuiltins[builtinName];
+    }
+}
+for (const uniformName in AutomaticUniforms) {
+    if (AutomaticUniforms.hasOwnProperty(uniformName)) {
+        const uniform = AutomaticUniforms[uniformName];
+        if (typeof uniform.getDeclaration === 'function') {
+            ShaderSource._czmBuiltinsAndUniforms[
+                uniformName
+            ] = uniform.getDeclaration(uniformName);
+        }
     }
 }
 

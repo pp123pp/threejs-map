@@ -112,9 +112,9 @@ const modernizeShader = (source: string, isFragmentShader: boolean) => {
         }
     }
 
-    if (!foundVersion) {
-        splitSource.splice(0, 0, versionThree);
-    }
+    // if (!foundVersion) {
+    //     splitSource.splice(0, 0, versionThree);
+    // }
 
     splitSource.splice(1, 0, webgl2DefineMacro);
 

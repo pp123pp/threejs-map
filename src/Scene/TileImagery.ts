@@ -1,6 +1,7 @@
 /* eslint-disable no-mixed-operators */
 
 import { defined } from '@/Core/defined';
+import { Vector4 } from 'three';
 import { Cartesian4 } from './../Core/Cartesian4';
 
 import { FrameState } from './FrameState';
@@ -14,12 +15,40 @@ class TileImagery {
     textureCoordinateRectangle: Cartesian4 | undefined;
     textureTranslationAndScale: Cartesian4 | undefined;
     useWebMercatorT: boolean | undefined;
+
+    _textureCoordinateRectangle_vector4 = new Vector4();
+    _textureTranslationAndScale_vector4 = new Vector4();
     constructor (imagery:Imagery, textureCoordinateRectangle?: Cartesian4, useWebMercatorT?: boolean) {
         this.readyImagery = undefined;
         this.loadingImagery = imagery;
         this.textureCoordinateRectangle = textureCoordinateRectangle;
+
         this.textureTranslationAndScale = undefined;
         this.useWebMercatorT = useWebMercatorT;
+    }
+
+    get textureCoordinateRectangle_vector4 (): Vector4 {
+        const textureCoordinateRectangle = this.textureCoordinateRectangle as Cartesian4;
+        this._textureCoordinateRectangle_vector4.set(
+            textureCoordinateRectangle.x,
+            textureCoordinateRectangle.y,
+            textureCoordinateRectangle.z,
+            textureCoordinateRectangle.w
+        );
+
+        return this._textureCoordinateRectangle_vector4;
+    }
+
+    get textureTranslationAndScale_vector4 (): Vector4 {
+        const textureTranslationAndScale = this.textureTranslationAndScale as Cartesian4;
+        this._textureTranslationAndScale_vector4.set(
+            textureTranslationAndScale.x,
+            textureTranslationAndScale.y,
+            textureTranslationAndScale.z,
+            textureTranslationAndScale.w
+        );
+
+        return this._textureTranslationAndScale_vector4;
     }
 
     /**
