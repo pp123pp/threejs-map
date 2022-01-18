@@ -242,113 +242,113 @@ class GlobeSurfaceShaderSet {
                 imageryCutoutDefine
             );
 
-            if (applyBrightness) {
-                fs.defines.push('APPLY_BRIGHTNESS');
-            }
-            if (applyContrast) {
-                fs.defines.push('APPLY_CONTRAST');
-            }
-            if (applyHue) {
-                fs.defines.push('APPLY_HUE');
-            }
-            if (applySaturation) {
-                fs.defines.push('APPLY_SATURATION');
-            }
-            if (applyGamma) {
-                fs.defines.push('APPLY_GAMMA');
-            }
-            if (applyAlpha) {
-                fs.defines.push('APPLY_ALPHA');
-            }
-            if (applyDayNightAlpha) {
-                fs.defines.push('APPLY_DAY_NIGHT_ALPHA');
-            }
-            if (showReflectiveOcean) {
-                fs.defines.push('SHOW_REFLECTIVE_OCEAN');
-                vs.defines.push('SHOW_REFLECTIVE_OCEAN');
-            }
-            if (showOceanWaves) {
-                fs.defines.push('SHOW_OCEAN_WAVES');
-            }
-            if (colorToAlpha) {
-                fs.defines.push('APPLY_COLOR_TO_ALPHA');
-            }
-            if (showUndergroundColor) {
-                vs.defines.push('UNDERGROUND_COLOR');
-                fs.defines.push('UNDERGROUND_COLOR');
-            }
-            if (translucent) {
-                vs.defines.push('TRANSLUCENT');
-                fs.defines.push('TRANSLUCENT');
-            }
-            if (enableLighting) {
-                if (hasVertexNormals) {
-                    vs.defines.push('ENABLE_VERTEX_LIGHTING');
-                    fs.defines.push('ENABLE_VERTEX_LIGHTING');
-                } else {
-                    vs.defines.push('ENABLE_DAYNIGHT_SHADING');
-                    fs.defines.push('ENABLE_DAYNIGHT_SHADING');
-                }
-            }
+            // if (applyBrightness) {
+            //     fs.defines.push('APPLY_BRIGHTNESS');
+            // }
+            // if (applyContrast) {
+            //     fs.defines.push('APPLY_CONTRAST');
+            // }
+            // if (applyHue) {
+            //     fs.defines.push('APPLY_HUE');
+            // }
+            // if (applySaturation) {
+            //     fs.defines.push('APPLY_SATURATION');
+            // }
+            // if (applyGamma) {
+            //     fs.defines.push('APPLY_GAMMA');
+            // }
+            // if (applyAlpha) {
+            //     fs.defines.push('APPLY_ALPHA');
+            // }
+            // if (applyDayNightAlpha) {
+            //     fs.defines.push('APPLY_DAY_NIGHT_ALPHA');
+            // }
+            // if (showReflectiveOcean) {
+            //     fs.defines.push('SHOW_REFLECTIVE_OCEAN');
+            //     vs.defines.push('SHOW_REFLECTIVE_OCEAN');
+            // }
+            // if (showOceanWaves) {
+            //     fs.defines.push('SHOW_OCEAN_WAVES');
+            // }
+            // if (colorToAlpha) {
+            //     fs.defines.push('APPLY_COLOR_TO_ALPHA');
+            // }
+            // if (showUndergroundColor) {
+            //     vs.defines.push('UNDERGROUND_COLOR');
+            //     fs.defines.push('UNDERGROUND_COLOR');
+            // }
+            // if (translucent) {
+            //     vs.defines.push('TRANSLUCENT');
+            //     fs.defines.push('TRANSLUCENT');
+            // }
+            // if (enableLighting) {
+            //     if (hasVertexNormals) {
+            //         vs.defines.push('ENABLE_VERTEX_LIGHTING');
+            //         fs.defines.push('ENABLE_VERTEX_LIGHTING');
+            //     } else {
+            //         vs.defines.push('ENABLE_DAYNIGHT_SHADING');
+            //         fs.defines.push('ENABLE_DAYNIGHT_SHADING');
+            //     }
+            // }
 
-            if (dynamicAtmosphereLighting) {
-                fs.defines.push('DYNAMIC_ATMOSPHERE_LIGHTING');
-                if (dynamicAtmosphereLightingFromSun) {
-                    fs.defines.push('DYNAMIC_ATMOSPHERE_LIGHTING_FROM_SUN');
-                }
-            }
+            // if (dynamicAtmosphereLighting) {
+            //     fs.defines.push('DYNAMIC_ATMOSPHERE_LIGHTING');
+            //     if (dynamicAtmosphereLightingFromSun) {
+            //         fs.defines.push('DYNAMIC_ATMOSPHERE_LIGHTING_FROM_SUN');
+            //     }
+            // }
 
-            if (showGroundAtmosphere) {
-                vs.defines.push('GROUND_ATMOSPHERE');
-                fs.defines.push('GROUND_ATMOSPHERE');
-                if (perFragmentGroundAtmosphere) {
-                    fs.defines.push('PER_FRAGMENT_GROUND_ATMOSPHERE');
-                }
-            }
+            // if (showGroundAtmosphere) {
+            //     vs.defines.push('GROUND_ATMOSPHERE');
+            //     fs.defines.push('GROUND_ATMOSPHERE');
+            //     if (perFragmentGroundAtmosphere) {
+            //         fs.defines.push('PER_FRAGMENT_GROUND_ATMOSPHERE');
+            //     }
+            // }
 
             vs.defines.push('INCLUDE_WEB_MERCATOR_Y');
             fs.defines.push('INCLUDE_WEB_MERCATOR_Y');
 
-            if (enableFog) {
-                vs.defines.push('FOG');
-                fs.defines.push('FOG');
-            }
+            // if (enableFog) {
+            //     vs.defines.push('FOG');
+            //     fs.defines.push('FOG');
+            // }
 
-            if (applySplit) {
-                fs.defines.push('APPLY_SPLIT');
-            }
+            // if (applySplit) {
+            //     fs.defines.push('APPLY_SPLIT');
+            // }
 
-            if (enableClippingPlanes) {
-                fs.defines.push('ENABLE_CLIPPING_PLANES');
-            }
+            // if (enableClippingPlanes) {
+            //     fs.defines.push('ENABLE_CLIPPING_PLANES');
+            // }
 
-            if (colorCorrect) {
-                fs.defines.push('COLOR_CORRECT');
-            }
+            // if (colorCorrect) {
+            //     fs.defines.push('COLOR_CORRECT');
+            // }
 
-            if (highlightFillTile) {
-                fs.defines.push('HIGHLIGHT_FILL_TILE');
-            }
+            // if (highlightFillTile) {
+            //     fs.defines.push('HIGHLIGHT_FILL_TILE');
+            // }
 
-            if (hasGeodeticSurfaceNormals) {
-                vs.defines.push('GEODETIC_SURFACE_NORMALS');
-            }
+            // if (hasGeodeticSurfaceNormals) {
+            //     vs.defines.push('GEODETIC_SURFACE_NORMALS');
+            // }
 
-            if (hasExaggeration) {
-                vs.defines.push('EXAGGERATION');
-            }
+            // if (hasExaggeration) {
+            //     vs.defines.push('EXAGGERATION');
+            // }
 
             let computeDayColor =
-            `
-            vec4 computeDayColor(vec4 initialColor, vec3 textureCoordinates, float nightBlend)
-            {
-                vec4 color = initialColor;`;
+            '\
+          vec4 computeDayColor(vec4 initialColor, vec3 textureCoordinates, float nightBlend)\n\
+          {\n\
+              vec4 color = initialColor;\n';
 
             if (hasImageryLayerCutout) {
                 computeDayColor +=
-                    `
-                    vec4 cutoutAndColorResult;
-                    bool texelUnclipped;`;
+              '\
+              vec4 cutoutAndColorResult;\n\
+              bool texelUnclipped;\n';
             }
 
             for (let i = 0; i < numberOfDayTextures; ++i) {

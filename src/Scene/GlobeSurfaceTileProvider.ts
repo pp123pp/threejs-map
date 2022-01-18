@@ -432,7 +432,7 @@ const createTileUniformMap = (frameState: FrameState, globeSurfaceTileProvider: 
                 modifiedModelViewProjectionScratch
             );
 
-            CesiumMatrix4.transformToThreeMatrix4(modifiedModelViewScratch, this.properties_three.modifiedModelViewProjection);
+            CesiumMatrix4.transformToThreeMatrix4(modifiedModelViewProjectionScratch, this.properties_three.modifiedModelViewProjection);
             return this.properties_three.modifiedModelViewProjection;
         },
         u_dayTextures: function () {
@@ -660,6 +660,7 @@ const setUniform = (command: DrawMeshCommand, uniformMap: any) => {
     uniforms.u_localizedTranslucencyRectangle.value = uniformMap.u_translucencyRectangle();
     uniforms.u_minMaxHeight.value = uniformMap.u_minMaxHeight();
     uniforms.u_modifiedModelView.value = uniformMap.u_modifiedModelView();
+    // uniforms.u_modifiedModelViewProjection.value = uniformMap.u_modifiedModelViewProjection();
     uniforms.u_nightFadeDistance.value = uniformMap.u_nightFadeDistance();
     uniforms.u_oceanNormalMap.value = uniformMap.u_oceanNormalMap();
     uniforms.u_scaleAndBias.value = uniformMap.u_scaleAndBias();
@@ -723,6 +724,197 @@ const surfaceShaderSetOptionsScratch: any = {
 
 const defaultUndergroundColor = CesiumColor.TRANSPARENT;
 const defaultundergroundColorAlphaByDistance = new NearFarScalar();
+
+// const addDrawCommandsForTile = (tileProvider: any, tile: any, frameState: FrameState) => {
+//     const surfaceTile = tile.data;
+
+//     if (!defined(surfaceTile.vertexArray)) {
+//         if (surfaceTile.fill === undefined) {
+//             // No fill was created for this tile, probably because this tile is not connected to
+//             // any renderable tiles. So create a simple tile in the middle of the tile's possible
+//             // height range.
+//             surfaceTile.fill = new (TerrainFillMesh as any)(tile);
+//         }
+//         surfaceTile.fill.update(tileProvider, frameState);
+//     }
+
+//     const mesh = surfaceTile.renderedMesh;
+//     let rtc = mesh.center;
+//     const encoding = mesh.encoding;
+
+//     // Not used in 3D.
+//     const tileRectangle = tileRectangleScratch;
+
+//     const useWebMercatorProjection = false;
+
+//     if (frameState.mode !== SceneMode.SCENE3D) {
+//         const projection = frameState.mapProjection;
+//         const southwest = projection.project(Rectangle.southwest(tile.rectangle), southwestScratch);
+//         const northeast = projection.project(Rectangle.northeast(tile.rectangle), northeastScratch);
+
+//         tileRectangle.x = southwest.x;
+//         tileRectangle.y = southwest.y;
+//         tileRectangle.z = northeast.x;
+//         tileRectangle.w = northeast.y;
+
+//         // In 2D and Columbus View, use the center of the tile for RTC rendering.
+//         if (frameState.mode !== SceneMode.MORPHING) {
+//             rtc = rtcScratch;
+//             rtc.x = 0.0;
+//             rtc.y = (tileRectangle.z + tileRectangle.x) * 0.5;
+//             rtc.z = (tileRectangle.w + tileRectangle.y) * 0.5;
+//             tileRectangle.x -= rtc.y;
+//             tileRectangle.y -= rtc.z;
+//             tileRectangle.z -= rtc.y;
+//             tileRectangle.w -= rtc.z;
+//         }
+//     }
+
+//     const surfaceShaderSetOptions = surfaceShaderSetOptionsScratch;
+//     surfaceShaderSetOptions.frameState = frameState;
+//     surfaceShaderSetOptions.surfaceTile = surfaceTile;
+
+//     const quantization = encoding.quantization;
+//     surfaceShaderSetOptions.enableLighting = tileProvider.enableLighting;
+//     surfaceShaderSetOptions.useWebMercatorProjection = useWebMercatorProjection;
+
+//     const tileImageryCollection = surfaceTile.imagery;
+//     let imageryIndex = 0;
+//     const imageryLen = tileImageryCollection.length;
+
+//     let initialColor = tileProvider._firstPassInitialColor;
+
+//     do {
+//         let numberOfDayTextures = 0;
+
+//         let command: DrawMeshCommand;
+//         let uniformMap: TileMaterial;
+
+//         const dayTextures = [];
+//         const dayTextureTranslationAndScale = [];
+//         const dayTextureTexCoordsRectangle = [];
+//         while (imageryIndex < imageryLen) {
+//             const tileImagery = tileImageryCollection[imageryIndex];
+//             const imagery = tileImagery.readyImagery;
+//             ++imageryIndex;
+
+//             if (!defined(imagery)) {
+//                 continue;
+//             }
+
+//             const texture = tileImagery.useWebMercatorT
+//                 ? imagery.textureWebMercator
+//                 : imagery.texture;
+
+//             const imageryLayer = imagery.imageryLayer;
+
+//             if (!defined(tileImagery.textureTranslationAndScale)) {
+//                 tileImagery.textureTranslationAndScale = imageryLayer._calculateTextureTranslationAndScale(tile, tileImagery);
+//             }
+
+//             dayTextures[numberOfDayTextures] = texture;
+//             dayTextureTranslationAndScale[numberOfDayTextures] = tileImagery.textureTranslationAndScale;
+//             dayTextureTexCoordsRectangle[numberOfDayTextures] = tileImagery.textureCoordinateRectangle;
+
+//             ++numberOfDayTextures;
+//         }
+
+//         surfaceShaderSetOptions.numberOfDayTextures = dayTextures.length;
+
+//         if (tileProvider._drawCommands.length <= tileProvider._usedDrawCommands) {
+//             command = new DrawMeshCommand();
+//             command.owner = tile;
+//             command.frustumCulled = false;
+//             command.boundingVolume = new BoundingSphere();
+//             command.orientedBoundingBox = undefined;
+
+//             uniformMap = createTileUniformMap(frameState, tileProvider, surfaceShaderSetOptions, quantization);
+
+//             tileProvider._drawCommands.push(command);
+//             tileProvider._uniformMaps.push(uniformMap);
+//         } else {
+//             command = tileProvider._drawCommands[tileProvider._usedDrawCommands];
+//             uniformMap = tileProvider._uniformMaps[tileProvider._usedDrawCommands];
+//         }
+
+//         if (uniformMap.defines.TEXTURE_UNITS !== uniformMap.dayTextures.length || imageryLen !== uniformMap.dayTextures.length || quantization === TerrainQuantization.BITS12 && !defined(uniformMap.defines.QUANTIZATION_BITS12)) {
+//             uniformMap.dispose();
+//             uniformMap = createTileUniformMap(frameState, tileProvider, surfaceShaderSetOptions, quantization);
+//         }
+
+//         ++tileProvider._usedDrawCommands;
+
+//         uniformMap.dayTextures = dayTextures;
+//         uniformMap.dayTextureTranslationAndScale = dayTextureTranslationAndScale;
+//         uniformMap.dayTextureTexCoordsRectangle = dayTextureTexCoordsRectangle;
+
+//         Cartesian4.clone(initialColor, uniformMap.initialColor);
+
+//         command.owner = tile;
+
+//         // if (frameState.mode === SceneMode.COLUMBUS_VIEW) {
+//         //     command.position.set(rtc.y, rtc.z, rtc.x);
+//         // } else if (frameState.mode === SceneMode.SCENE3D) {
+//         //     command.position.set(rtc.x, rtc.y, rtc.z);
+//         // }
+
+//         const viewMatrix = frameState.camera.viewMatrix;
+//         const projectionMatrix = frameState.camera.frustum.cesiumProjectMatrix;
+//         const centerEye = CesiumMatrix4.multiplyByPoint(
+//             viewMatrix,
+//             rtc,
+//             centerEyeScratch
+//         );
+//         CesiumMatrix4.setTranslation(
+//             viewMatrix,
+//             centerEye,
+//             modifiedModelViewProjectionScratch
+//         );
+//         CesiumMatrix4.multiply(
+//             projectionMatrix,
+//             modifiedModelViewProjectionScratch,
+//             modifiedModelViewProjectionScratch
+//         );
+
+//         CesiumMatrix4.transformToThreeMatrix4(modifiedModelViewProjectionScratch, uniformMap.modifiedModelViewProjectionScratch);
+
+//         uniformMap.tileRectangle.set(
+//             tileRectangle.x,
+//             tileRectangle.y,
+//             tileRectangle.z,
+//             tileRectangle.w
+//         );
+
+//         uniformMap.minMaxHeight.x = encoding.minimumHeight;
+//         uniformMap.minMaxHeight.y = encoding.maximumHeight;
+
+//         uniformMap.scaleAndBias = encoding.threeMatrix4;
+
+//         command.geometry = mesh.geometry;
+//         command.material = uniformMap;
+
+//         let boundingVolume = command.boundingVolume;
+//         const orientedBoundingBox = command.orientedBoundingBox;
+
+//         if (frameState.mode !== SceneMode.SCENE3D) {
+//             BoundingSphere.fromRectangleWithHeights2D(tile.rectangle, frameState.mapProjection, surfaceTile.minimumHeight, surfaceTile.maximumHeight, boundingVolume);
+
+//             const center = (boundingVolume as BoundingSphere).center;
+//             Cartesian3.fromElements(center.x, center.y, center.z, center);
+
+//             if (frameState.mode === SceneMode.MORPHING) {
+//                 boundingVolume = BoundingSphere.union(surfaceTile.boundingSphere3D, (boundingVolume as BoundingSphere), boundingVolume);
+//             }
+//         } else {
+//             command.boundingVolume = BoundingSphere.clone(surfaceTile.boundingSphere3D, boundingVolume);
+//             command.orientedBoundingBox = OrientedBoundingBox.clone(surfaceTile.orientedBoundingBox, orientedBoundingBox);
+//         }
+
+//         frameState.commandList.push(command);
+
+//         initialColor = otherPassesInitialColor;
+//     } while (imageryIndex < imageryLen);
+// };
 
 const addDrawCommandsForTile = (tileProvider: GlobeSurfaceTileProvider, tile: any, frameState: FrameState) => {
     const surfaceTile = tile.data;
@@ -1445,6 +1637,28 @@ const addDrawCommandsForTile = (tileProvider: GlobeSurfaceTileProvider, tile: an
         (command.material as GlobeSurfaceTileMaterial).vertexShader = shaderProgram._vertexShaderText;
         (command.material as GlobeSurfaceTileMaterial).fragmentShader = shaderProgram._fragmentShaderText;
         setUniform(command, uniformMap);
+
+        const viewMatrix = frameState.camera.viewMatrix;
+        const projectionMatrix = frameState.camera.frustum.cesiumProjectMatrix;
+        const centerEye = CesiumMatrix4.multiplyByPoint(
+            viewMatrix,
+            rtc,
+            centerEyeScratch
+        );
+        CesiumMatrix4.setTranslation(
+            viewMatrix,
+            centerEye,
+            modifiedModelViewProjectionScratch
+        );
+        CesiumMatrix4.multiply(
+            projectionMatrix,
+            modifiedModelViewProjectionScratch,
+            modifiedModelViewProjectionScratch
+        );
+        // uniformMap.modifiedModelViewProjectionScratch = modifiedModelViewProjectionScratch;
+
+        CesiumMatrix4.transformToThreeMatrix4(modifiedModelViewProjectionScratch, (command.material as GlobeSurfaceTileMaterial).uniforms.u_modifiedModelViewProjection.value);
+
         pushCommand(command, frameState);
 
         // renderState = otherPassesRenderState;

@@ -151,10 +151,6 @@ class TerrainMesh {
          */
         this.encoding = encoding;
 
-        if (!defined(encoding?.matrix)) {
-            debugger;
-        }
-
         /**
          * The indices of the vertices on the Western edge of the tile, ordered from South to North (clockwise).
          * @type {Number[]}

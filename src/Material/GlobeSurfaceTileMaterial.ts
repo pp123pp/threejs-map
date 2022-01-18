@@ -1,7 +1,7 @@
 import { CesiumColor } from '@/Core/CesiumColor';
-import { GLSL3, Matrix4, RawShaderMaterial, Vector2, Vector3, Vector4 } from 'three';
+import { GLSL3, Matrix4, RawShaderMaterial, ShaderMaterial, Vector2, Vector3, Vector4 } from 'three';
 
-class GlobeSurfaceTileMaterial extends RawShaderMaterial {
+class GlobeSurfaceTileMaterial extends ShaderMaterial {
     lights = false;
     fog = false;
     constructor (parameters = {}) {
@@ -36,6 +36,7 @@ class GlobeSurfaceTileMaterial extends RawShaderMaterial {
             u_localizedTranslucencyRectangle: { value: new Vector4() },
             u_minMaxHeight: { value: new Vector4() },
             u_modifiedModelView: { value: new Matrix4() },
+            u_modifiedModelViewProjection: { value: new Matrix4() },
             u_nightFadeDistance: { value: new Vector2() },
             u_oceanNormalMap: { value: undefined },
             // u_rtc: { value: new Vector3() },
@@ -51,7 +52,8 @@ class GlobeSurfaceTileMaterial extends RawShaderMaterial {
             u_zoomedOutOceanSpecularIntensity: { value: 0.4 }
         };
 
-        this.glslVersion = GLSL3;
+        // this.wireframe = true;
+        // this.glslVersion = GLSL3;
     }
 }
 
