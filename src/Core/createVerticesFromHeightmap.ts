@@ -1,8 +1,6 @@
 
 import HeightmapTessellator from './HeightmapTessellator';
-
 import Lerc from './../ThirdParty/LercDecode';
-
 import { Ellipsoid } from './Ellipsoid';
 import { Rectangle } from './Rectangle';
 import { HeightmapEncoding } from './HeightmapEncoding';

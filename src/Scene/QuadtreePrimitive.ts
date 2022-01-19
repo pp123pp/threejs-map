@@ -35,12 +35,12 @@ function updateTileLoadProgress (primitive: any, frameState: FrameState) {
         currentLoadQueueLength !== primitive._lastTileLoadQueueLength ||
       primitive._tilesInvalidated
     ) {
-        frameState.afterRender.push(
-            Event.prototype.raiseEvent.bind(
-                primitive._tileLoadProgressEvent,
-                currentLoadQueueLength
-            )
-        );
+        // frameState.afterRender.push(
+        //     Event.prototype.raiseEvent.bind(
+        //         primitive._tileLoadProgressEvent,
+        //         currentLoadQueueLength
+        //     )
+        // );
         primitive._lastTileLoadQueueLength = currentLoadQueueLength;
     }
 

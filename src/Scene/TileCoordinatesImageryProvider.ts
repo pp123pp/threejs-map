@@ -246,11 +246,11 @@ TileCoordinatesImageryProvider.prototype.getTileCredits = function (x: any, y: a
      *          should be retried later.  The resolved image may be either an
      *          Image or a Canvas DOM object.
      */
-TileCoordinatesImageryProvider.prototype.requestImage = function (x: any, y: any, level: any, request?: any) {
-    const canvas: any = document.createElement('canvas');
+TileCoordinatesImageryProvider.prototype.requestImage = function (x: number, y: number, level: number): HTMLCanvasElement {
+    const canvas = document.createElement('canvas');
     canvas.width = 256;
     canvas.height = 256;
-    const context: any = canvas.getContext('2d');
+    const context = canvas.getContext('2d') as CanvasRenderingContext2D;
 
     const cssColor = this._color.toCssColorString();
 
@@ -258,16 +258,12 @@ TileCoordinatesImageryProvider.prototype.requestImage = function (x: any, y: any
     context.lineWidth = 2;
     context.strokeRect(1, 1, 255, 255);
 
-    const label = 'L' + level + 'X' + x + 'Y' + y;
     context.font = 'bold 25px Arial';
     context.textAlign = 'center';
-    context.fillStyle = 'black';
-    context.fillText(label, 127, 127);
     context.fillStyle = cssColor;
-    context.fillText(label, 124, 124);
-
-    canvas.levelId = `${level}/${x}/${y}`;
-
+    context.fillText('L: ' + level, 124, 86);
+    context.fillText('X: ' + x, 124, 136);
+    context.fillText('Y: ' + y, 124, 186);
     return canvas;
 };
 

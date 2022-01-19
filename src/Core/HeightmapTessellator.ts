@@ -1,20 +1,3 @@
-// import AxisAlignedBoundingBox from './AxisAlignedBoundingBox';
-// import BoundingSphere from './BoundingSphere';
-// import Cartesian2 from './Cartesian2';
-// import Cartesian3 from './Cartesian3';
-// import defaultValue from './defaultValue';
-// import defined from './defined';
-// import DeveloperError from './DeveloperError';
-// import Ellipsoid from './Ellipsoid';
-// import EllipsoidalOccluder from './EllipsoidalOccluder';
-// import CesiumMath from './Math';
-// import Matrix4 from './Matrix4';
-// import OrientedBoundingBox from './OrientedBoundingBox';
-// import Rectangle from './Rectangle';
-// import TerrainEncoding from './TerrainEncoding';
-// import Transforms from './Transforms';
-// import WebMercatorProjection from './WebMercatorProjection';
-
 import { AxisAlignedBoundingBox } from './AxisAlignedBoundingBox';
 import { BoundingSphere } from './BoundingSphere';
 import { Cartesian2 } from './Cartesian2';
@@ -39,13 +22,13 @@ import { WebMercatorProjection } from './WebMercatorProjection';
  *
  * @private
  */
-const HeightmapTessellator:{[name: string]: any} = {};
+const HeightmapTessellator:any = {};
 
 /**
- * The default structure of a heightmap, as given to {@link HeightmapTessellator.computeVertices}.
- *
- * @constant
- */
+  * The default structure of a heightmap, as given to {@link HeightmapTessellator.computeVertices}.
+  *
+  * @constant
+  */
 HeightmapTessellator.DEFAULT_STRUCTURE = Object.freeze({
     heightScale: 1.0,
     heightOffset: 0.0,
@@ -61,76 +44,76 @@ const minimumScratch = new Cartesian3();
 const maximumScratch = new Cartesian3();
 
 /**
- * Fills an array of vertices from a heightmap image.
- *
- * @param {Object} options Object with the following properties:
- * @param {Int8Array|Uint8Array|Int16Array|Uint16Array|Int32Array|Uint32Array|Float32Array|Float64Array} options.heightmap The heightmap to tessellate.
- * @param {Number} options.width The width of the heightmap, in height samples.
- * @param {Number} options.height The height of the heightmap, in height samples.
- * @param {Number} options.skirtHeight The height of skirts to drape at the edges of the heightmap.
- * @param {Rectangle} options.nativeRectangle A rectangle in the native coordinates of the heightmap's projection.  For
- *                 a heightmap with a geographic projection, this is degrees.  For the web mercator
- *                 projection, this is meters.
- * @param {Number} [options.exaggeration=1.0] The scale used to exaggerate the terrain.
- * @param {Number} [options.exaggerationRelativeHeight=0.0] The height from which terrain is exaggerated.
- * @param {Rectangle} [options.rectangle] The rectangle covered by the heightmap, in geodetic coordinates with north, south, east and
- *                 west properties in radians.  Either rectangle or nativeRectangle must be provided.  If both
- *                 are provided, they're assumed to be consistent.
- * @param {Boolean} [options.isGeographic=true] True if the heightmap uses a {@link GeographicProjection}, or false if it uses
- *                  a {@link WebMercatorProjection}.
- * @param {Cartesian3} [options.relativeToCenter=Cartesian3.ZERO] The positions will be computed as <code>Cartesian3.subtract(worldPosition, relativeToCenter)</code>.
- * @param {Ellipsoid} [options.ellipsoid=Ellipsoid.WGS84] The ellipsoid to which the heightmap applies.
- * @param {Object} [options.structure] An object describing the structure of the height data.
- * @param {Number} [options.structure.heightScale=1.0] The factor by which to multiply height samples in order to obtain
- *                 the height above the heightOffset, in meters.  The heightOffset is added to the resulting
- *                 height after multiplying by the scale.
- * @param {Number} [options.structure.heightOffset=0.0] The offset to add to the scaled height to obtain the final
- *                 height in meters.  The offset is added after the height sample is multiplied by the
- *                 heightScale.
- * @param {Number} [options.structure.elementsPerHeight=1] The number of elements in the buffer that make up a single height
- *                 sample.  This is usually 1, indicating that each element is a separate height sample.  If
- *                 it is greater than 1, that number of elements together form the height sample, which is
- *                 computed according to the structure.elementMultiplier and structure.isBigEndian properties.
- * @param {Number} [options.structure.stride=1] The number of elements to skip to get from the first element of
- *                 one height to the first element of the next height.
- * @param {Number} [options.structure.elementMultiplier=256.0] The multiplier used to compute the height value when the
- *                 stride property is greater than 1.  For example, if the stride is 4 and the strideMultiplier
- *                 is 256, the height is computed as follows:
- *                 `height = buffer[index] + buffer[index + 1] * 256 + buffer[index + 2] * 256 * 256 + buffer[index + 3] * 256 * 256 * 256`
- *                 This is assuming that the isBigEndian property is false.  If it is true, the order of the
- *                 elements is reversed.
- * @param {Number} [options.structure.lowestEncodedHeight] The lowest value that can be stored in the height buffer.  Any heights that are lower
- *                 than this value after encoding with the `heightScale` and `heightOffset` are clamped to this value.  For example, if the height
- *                 buffer is a `Uint16Array`, this value should be 0 because a `Uint16Array` cannot store negative numbers.  If this parameter is
- *                 not specified, no minimum value is enforced.
- * @param {Number} [options.structure.highestEncodedHeight] The highest value that can be stored in the height buffer.  Any heights that are higher
- *                 than this value after encoding with the `heightScale` and `heightOffset` are clamped to this value.  For example, if the height
- *                 buffer is a `Uint16Array`, this value should be `256 * 256 - 1` or 65535 because a `Uint16Array` cannot store numbers larger
- *                 than 65535.  If this parameter is not specified, no maximum value is enforced.
- * @param {Boolean} [options.structure.isBigEndian=false] Indicates endianness of the elements in the buffer when the
- *                  stride property is greater than 1.  If this property is false, the first element is the
- *                  low-order element.  If it is true, the first element is the high-order element.
- *
- * @example
- * var width = 5;
- * var height = 5;
- * var statistics = Cesium.HeightmapTessellator.computeVertices({
- *     heightmap : [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0],
- *     width : width,
- *     height : height,
- *     skirtHeight : 0.0,
- *     nativeRectangle : {
- *         west : 10.0,
- *         east : 20.0,
- *         south : 30.0,
- *         north : 40.0
- *     }
- * });
- *
- * var encoding = statistics.encoding;
- * var position = encoding.decodePosition(statistics.vertices, index);
- */
-HeightmapTessellator.computeVertices = function (options:any) {
+  * Fills an array of vertices from a heightmap image.
+  *
+  * @param {Object} options Object with the following properties:
+  * @param {Int8Array|Uint8Array|Int16Array|Uint16Array|Int32Array|Uint32Array|Float32Array|Float64Array} options.heightmap The heightmap to tessellate.
+  * @param {Number} options.width The width of the heightmap, in height samples.
+  * @param {Number} options.height The height of the heightmap, in height samples.
+  * @param {Number} options.skirtHeight The height of skirts to drape at the edges of the heightmap.
+  * @param {Rectangle} options.nativeRectangle A rectangle in the native coordinates of the heightmap's projection.  For
+  *                 a heightmap with a geographic projection, this is degrees.  For the web mercator
+  *                 projection, this is meters.
+  * @param {Number} [options.exaggeration=1.0] The scale used to exaggerate the terrain.
+  * @param {Number} [options.exaggerationRelativeHeight=0.0] The height from which terrain is exaggerated.
+  * @param {Rectangle} [options.rectangle] The rectangle covered by the heightmap, in geodetic coordinates with north, south, east and
+  *                 west properties in radians.  Either rectangle or nativeRectangle must be provided.  If both
+  *                 are provided, they're assumed to be consistent.
+  * @param {Boolean} [options.isGeographic=true] True if the heightmap uses a {@link GeographicProjection}, or false if it uses
+  *                  a {@link WebMercatorProjection}.
+  * @param {Cartesian3} [options.relativeToCenter=Cartesian3.ZERO] The positions will be computed as <code>Cartesian3.subtract(worldPosition, relativeToCenter)</code>.
+  * @param {Ellipsoid} [options.ellipsoid=Ellipsoid.WGS84] The ellipsoid to which the heightmap applies.
+  * @param {Object} [options.structure] An object describing the structure of the height data.
+  * @param {Number} [options.structure.heightScale=1.0] The factor by which to multiply height samples in order to obtain
+  *                 the height above the heightOffset, in meters.  The heightOffset is added to the resulting
+  *                 height after multiplying by the scale.
+  * @param {Number} [options.structure.heightOffset=0.0] The offset to add to the scaled height to obtain the final
+  *                 height in meters.  The offset is added after the height sample is multiplied by the
+  *                 heightScale.
+  * @param {Number} [options.structure.elementsPerHeight=1] The number of elements in the buffer that make up a single height
+  *                 sample.  This is usually 1, indicating that each element is a separate height sample.  If
+  *                 it is greater than 1, that number of elements together form the height sample, which is
+  *                 computed according to the structure.elementMultiplier and structure.isBigEndian properties.
+  * @param {Number} [options.structure.stride=1] The number of elements to skip to get from the first element of
+  *                 one height to the first element of the next height.
+  * @param {Number} [options.structure.elementMultiplier=256.0] The multiplier used to compute the height value when the
+  *                 stride property is greater than 1.  For example, if the stride is 4 and the strideMultiplier
+  *                 is 256, the height is computed as follows:
+  *                 `height = buffer[index] + buffer[index + 1] * 256 + buffer[index + 2] * 256 * 256 + buffer[index + 3] * 256 * 256 * 256`
+  *                 This is assuming that the isBigEndian property is false.  If it is true, the order of the
+  *                 elements is reversed.
+  * @param {Number} [options.structure.lowestEncodedHeight] The lowest value that can be stored in the height buffer.  Any heights that are lower
+  *                 than this value after encoding with the `heightScale` and `heightOffset` are clamped to this value.  For example, if the height
+  *                 buffer is a `Uint16Array`, this value should be 0 because a `Uint16Array` cannot store negative numbers.  If this parameter is
+  *                 not specified, no minimum value is enforced.
+  * @param {Number} [options.structure.highestEncodedHeight] The highest value that can be stored in the height buffer.  Any heights that are higher
+  *                 than this value after encoding with the `heightScale` and `heightOffset` are clamped to this value.  For example, if the height
+  *                 buffer is a `Uint16Array`, this value should be `256 * 256 - 1` or 65535 because a `Uint16Array` cannot store numbers larger
+  *                 than 65535.  If this parameter is not specified, no maximum value is enforced.
+  * @param {Boolean} [options.structure.isBigEndian=false] Indicates endianness of the elements in the buffer when the
+  *                  stride property is greater than 1.  If this property is false, the first element is the
+  *                  low-order element.  If it is true, the first element is the high-order element.
+  *
+  * @example
+  * var width = 5;
+  * var height = 5;
+  * var statistics = Cesium.HeightmapTessellator.computeVertices({
+  *     heightmap : [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0],
+  *     width : width,
+  *     height : height,
+  *     skirtHeight : 0.0,
+  *     nativeRectangle : {
+  *         west : 10.0,
+  *         east : 20.0,
+  *         south : 30.0,
+  *         north : 40.0
+  *     }
+  * });
+  *
+  * var encoding = statistics.encoding;
+  * var position = encoding.decodePosition(statistics.vertices, index);
+  */
+HeightmapTessellator.computeVertices = function (options: any) {
     // >>includeStart('debug', pragmas.debug);
     if (!defined(options) || !defined(options.heightmap)) {
         throw new DeveloperError('options.heightmap is required.');
@@ -171,7 +154,7 @@ HeightmapTessellator.computeVertices = function (options:any) {
     const oneOverGlobeSemimajorAxis = 1.0 / ellipsoid.maximumRadius;
 
     const nativeRectangle = Rectangle.clone(options.nativeRectangle) as Rectangle;
-    const rectangle = Rectangle.clone(options.rectangle) as Rectangle;
+    const rectangle = Rectangle.clone(options.rectangle);
 
     let geographicWest;
     let geographicSouth;
@@ -187,18 +170,18 @@ HeightmapTessellator.computeVertices = function (options:any) {
         } else {
             geographicWest = nativeRectangle.west * oneOverGlobeSemimajorAxis;
             geographicSouth =
-        piOverTwo -
-        2.0 * atan(exp(-nativeRectangle.south * oneOverGlobeSemimajorAxis));
+         piOverTwo -
+         2.0 * atan(exp(-nativeRectangle.south * oneOverGlobeSemimajorAxis));
             geographicEast = nativeRectangle.east * oneOverGlobeSemimajorAxis;
             geographicNorth =
-        piOverTwo -
-        2.0 * atan(exp(-nativeRectangle.north * oneOverGlobeSemimajorAxis));
+         piOverTwo -
+         2.0 * atan(exp(-nativeRectangle.north * oneOverGlobeSemimajorAxis));
         }
     } else {
-        geographicWest = rectangle.west;
-        geographicSouth = rectangle.south;
-        geographicEast = rectangle.east;
-        geographicNorth = rectangle.north;
+        geographicWest = (rectangle as Rectangle).west;
+        geographicSouth = (rectangle as Rectangle).south;
+        geographicEast = (rectangle as Rectangle).east;
+        geographicNorth = (rectangle as Rectangle).north;
     }
 
     let relativeToCenter = options.relativeToCenter;
@@ -265,16 +248,16 @@ HeightmapTessellator.computeVertices = function (options:any) {
     const fromENU = Transforms.eastNorthUpToFixedFrame(relativeToCenter, ellipsoid);
     const toENU = Matrix4.inverseTransformation(fromENU, matrix4Scratch);
 
-    let southMercatorY: any;
-    let oneOverMercatorHeight: any;
+    let southMercatorY;
+    let oneOverMercatorHeight;
     if (includeWebMercatorT) {
         southMercatorY = WebMercatorProjection.geodeticLatitudeToMercatorAngle(
             geographicSouth
         );
         oneOverMercatorHeight =
-      1.0 /
-      (WebMercatorProjection.geodeticLatitudeToMercatorAngle(geographicNorth) -
-        southMercatorY);
+       1.0 /
+       (WebMercatorProjection.geodeticLatitudeToMercatorAngle(geographicNorth) -
+         southMercatorY);
     }
 
     const minimum = minimumScratch;
@@ -328,7 +311,7 @@ HeightmapTessellator.computeVertices = function (options:any) {
 
         if (!isGeographic) {
             latitude =
-        piOverTwo - 2.0 * atan(exp(-latitude * oneOverGlobeSemimajorAxis));
+         piOverTwo - 2.0 * atan(exp(-latitude * oneOverGlobeSemimajorAxis));
         } else {
             latitude = toRadians(latitude);
         }
@@ -353,9 +336,9 @@ HeightmapTessellator.computeVertices = function (options:any) {
         let webMercatorT;
         if (includeWebMercatorT) {
             webMercatorT =
-        (WebMercatorProjection.geodeticLatitudeToMercatorAngle(latitude) -
-          southMercatorY) *
-        oneOverMercatorHeight;
+         (WebMercatorProjection.geodeticLatitudeToMercatorAngle(latitude) -
+           (southMercatorY as number)) *
+         (oneOverMercatorHeight as number);
         }
 
         for (let colIndex = startCol; colIndex < endCol; ++colIndex) {
@@ -383,8 +366,8 @@ HeightmapTessellator.computeVertices = function (options:any) {
                         ++elementOffset
                     ) {
                         heightSample =
-              heightSample * elementMultiplier +
-              heightmap[terrainOffset + elementOffset];
+               heightSample * elementMultiplier +
+               heightmap[terrainOffset + elementOffset];
                     }
                 } else {
                     for (
@@ -393,8 +376,8 @@ HeightmapTessellator.computeVertices = function (options:any) {
                         --elementOffset
                     ) {
                         heightSample =
-              heightSample * elementMultiplier +
-              heightmap[terrainOffset + elementOffset];
+               heightSample * elementMultiplier +
+               heightmap[terrainOffset + elementOffset];
                     }
                 }
             }
@@ -422,7 +405,7 @@ HeightmapTessellator.computeVertices = function (options:any) {
                 const isEastEdge = colIndex === endCol - 1;
                 const isEdge = isNorthEdge || isSouthEdge || isWestEdge || isEastEdge;
                 const isCorner =
-          (isNorthEdge || isSouthEdge) && (isWestEdge || isEastEdge);
+           (isNorthEdge || isSouthEdge) && (isWestEdge || isEastEdge);
                 if (isCorner) {
                     // Don't generate skirts on the corners.
                     continue;
@@ -490,7 +473,7 @@ HeightmapTessellator.computeVertices = function (options:any) {
     let orientedBoundingBox;
     if (defined(rectangle)) {
         orientedBoundingBox = OrientedBoundingBox.fromRectangle(
-            rectangle,
+            (rectangle as Rectangle),
             minimumHeight,
             maximumHeight,
             ellipsoid

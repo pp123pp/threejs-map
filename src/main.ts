@@ -22,9 +22,7 @@ const camera = scene.activeCamera;
 
 scene.camera.setView({
     // destination: new Cartesian3(-742945.7510284233, -6142190.297500091, 6604747.564006202)
-    destination: new Cartesian3(720788.1922255766
-        , -5160602.436697017
-        , 3837563.1171764936)
+    destination: new Cartesian3(720788.1922255766, -5160602.436697017, 3837563.1171764936)
 });
 
 const axesHelper = new AxesHelper(50000000);
@@ -75,7 +73,7 @@ const urlTemplateImageryProvide = new UrlTemplateImageryProvider({
 //     urlTemplateImageryProvide
 // );
 
-// scene.imageryLayers.addImageryProvider(new (TileCoordinatesImageryProvider as any)());
+scene.imageryLayers.addImageryProvider(new (TileCoordinatesImageryProvider as any)());
 
 console.log(urlTemplateImageryProvide.proxy);
 const geometry = new SphereGeometry(1, 64, 64);

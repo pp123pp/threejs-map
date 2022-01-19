@@ -341,14 +341,13 @@ const createTileUniformMap = (frameState: FrameState, tileProvider: any, surface
         // wireframe: true
         // depthTest: false
     }, surfaceShaderSetOptions);
-
+    material.defines.INCLUDE_WEB_MERCATOR_Y = '';
     if (quantization === TerrainQuantization.NONE) {
-        material.defines.INCLUDE_WEB_MERCATOR_Y = '';
         return material;
     }
 
     material.defines.QUANTIZATION_BITS12 = '';
-    material.defines.INCLUDE_WEB_MERCATOR_Y = '';
+
     return material;
 };
 
@@ -384,36 +383,13 @@ const addDrawCommandsForTile = (tileProvider: any, tile: any, frameState: FrameS
     }
 
     const mesh = surfaceTile.renderedMesh;
-    let rtc = mesh.center;
+    const rtc = mesh.center;
     const encoding = mesh.encoding;
 
     // Not used in 3D.
     const tileRectangle = tileRectangleScratch;
 
     const useWebMercatorProjection = false;
-
-    if (frameState.mode !== SceneMode.SCENE3D) {
-        const projection = frameState.mapProjection;
-        const southwest = projection.project(Rectangle.southwest(tile.rectangle), southwestScratch);
-        const northeast = projection.project(Rectangle.northeast(tile.rectangle), northeastScratch);
-
-        tileRectangle.x = southwest.x;
-        tileRectangle.y = southwest.y;
-        tileRectangle.z = northeast.x;
-        tileRectangle.w = northeast.y;
-
-        // In 2D and Columbus View, use the center of the tile for RTC rendering.
-        if (frameState.mode !== SceneMode.MORPHING) {
-            rtc = rtcScratch;
-            rtc.x = 0.0;
-            rtc.y = (tileRectangle.z + tileRectangle.x) * 0.5;
-            rtc.z = (tileRectangle.w + tileRectangle.y) * 0.5;
-            tileRectangle.x -= rtc.y;
-            tileRectangle.y -= rtc.z;
-            tileRectangle.z -= rtc.y;
-            tileRectangle.w -= rtc.z;
-        }
-    }
 
     const surfaceShaderSetOptions = surfaceShaderSetOptionsScratch;
     surfaceShaderSetOptions.frameState = frameState;
@@ -482,7 +458,11 @@ const addDrawCommandsForTile = (tileProvider: any, tile: any, frameState: FrameS
             uniformMap = tileProvider._uniformMaps[tileProvider._usedDrawCommands];
         }
 
-        if (uniformMap.defines.TEXTURE_UNITS !== uniformMap.dayTextures.length || imageryLen !== uniformMap.dayTextures.length || quantization === TerrainQuantization.BITS12 && !defined(uniformMap.defines.QUANTIZATION_BITS12)) {
+        if (uniformMap.defines.TEXTURE_UNITS !== uniformMap.dayTextures.length ||
+            imageryLen !== uniformMap.dayTextures.length ||
+            quantization === TerrainQuantization.BITS12 && !defined(uniformMap.defines.QUANTIZATION_BITS12) ||
+            quantization === TerrainQuantization.NONE && defined(uniformMap.defines.QUANTIZATION_BITS12)
+        ) {
             uniformMap.dispose();
             uniformMap = createTileUniformMap(frameState, tileProvider, surfaceShaderSetOptions, quantization);
         }
@@ -496,12 +476,6 @@ const addDrawCommandsForTile = (tileProvider: any, tile: any, frameState: FrameS
         Cartesian4.clone(initialColor, uniformMap.initialColor);
 
         command.owner = tile;
-
-        // if (frameState.mode === SceneMode.COLUMBUS_VIEW) {
-        //     command.position.set(rtc.y, rtc.z, rtc.x);
-        // } else if (frameState.mode === SceneMode.SCENE3D) {
-        //     command.position.set(rtc.x, rtc.y, rtc.z);
-        // }
 
         const viewMatrix = frameState.camera.viewMatrix;
         const projectionMatrix = frameState.camera.frustum.cesiumProjectMatrix;
@@ -520,7 +494,6 @@ const addDrawCommandsForTile = (tileProvider: any, tile: any, frameState: FrameS
             modifiedModelViewProjectionScratch,
             modifiedModelViewProjectionScratch
         );
-        // uniformMap.modifiedModelViewProjectionScratch = modifiedModelViewProjectionScratch;
 
         CesiumMatrix4.transformToThreeMatrix4(modifiedModelViewProjectionScratch, uniformMap.modifiedModelViewProjectionScratch);
 
@@ -533,6 +506,10 @@ const addDrawCommandsForTile = (tileProvider: any, tile: any, frameState: FrameS
 
         command.geometry = mesh.geometry;
         command.material = uniformMap;
+
+        if (defined(uniformMap.defines.QUANTIZATION_BITS12) === !defined(mesh.geometry.attributes.compressed0)) {
+            debugger;
+        }
 
         let boundingVolume = command.boundingVolume;
         const orientedBoundingBox = command.orientedBoundingBox;

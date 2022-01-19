@@ -2,7 +2,7 @@
 import { CesiumMatrix4 } from '@/Core/CesiumMatrix4';
 import { defined } from '@/Core/defined';
 import { Rectangle } from '@/Core/Rectangle';
-import { ShaderMaterial, Vector2, Vector4, Matrix4, Vector3, RawShaderMaterial, GLSL3, DoubleSide } from 'three';
+import { ShaderMaterial, Vector2, Vector4, Matrix4, Vector3, RawShaderMaterial, GLSL3, DoubleSide, Texture } from 'three';
 
 const vertexShader = `
 
@@ -162,7 +162,7 @@ class TileMaterial extends ShaderMaterial {
         // this.depthWrite = false;
     }
 
-    get dayTextures () {
+    get dayTextures (): Texture[] {
         return this.uniforms.u_dayTextures.value;
     }
 

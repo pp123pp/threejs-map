@@ -36,9 +36,9 @@ interface SceneOptions {
 
 const requestRenderAfterFrame = function (scene: Scene) {
     return function () {
-        scene.frameState.afterRender.push(function () {
-            scene.requestRender();
-        });
+        // scene.frameState.afterRender.push(function () {
+        //     scene.requestRender();
+        // });
     };
 };
 
