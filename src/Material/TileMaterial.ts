@@ -157,6 +157,8 @@ class TileMaterial extends ShaderMaterial {
         // this.glslVersion = GLSL3;
         this.defines.APPLY_GAMMA = '';
 
+        this.defines.GROUND_ATMOSPHERE = '';
+
         // this.side = DoubleSide;
         // this.wireframe = true;
         // this.depthWrite = false;

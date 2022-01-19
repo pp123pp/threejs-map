@@ -20,10 +20,10 @@ const camera = scene.activeCamera;
 //     destination: new Cartesian3(3452756.404004388, -26226288.65595444, 18610961.973367725)
 // });
 
-scene.camera.setView({
-    // destination: new Cartesian3(-742945.7510284233, -6142190.297500091, 6604747.564006202)
-    destination: new Cartesian3(720788.1922255766, -5160602.436697017, 3837563.1171764936)
-});
+// scene.camera.setView({
+//     // destination: new Cartesian3(-742945.7510284233, -6142190.297500091, 6604747.564006202)
+//     destination: new Cartesian3(720788.1922255766, -5160602.436697017, 3837563.1171764936)
+// });
 
 const axesHelper = new AxesHelper(50000000);
 scene.add(axesHelper);
@@ -48,19 +48,19 @@ scene.imageryLayers.addImageryProvider(new WebMapTileServiceImageryProvider({
     tileMatrixSetID: 'GoogleMapsCompatible' // 使用谷歌的瓦片切片方式
 }));
 
-// scene.imageryLayers.addImageryProvider(new WebMapTileServiceImageryProvider({
-//     // 调用影响中文注记服务
-//     url: 'http://{s}.tianditu.gov.cn/cva_w/wmts?service=wmts&request=GetTile&version=1.0.0' +
-//                  '&LAYER=cva&tileMatrixSet=w&TileMatrix={TileMatrix}&TileRow={TileRow}&TileCol={TileCol}' +
-//                  '&style=default.jpg&tk=' + mapToken,
-//     layer: 'cia_w',
-//     style: 'default',
-//     format: 'tiles',
-//     tileMatrixSetID: 'GoogleMapsCompatible',
-//     subdomains: ['t0', 't1', 't2', 't3', 't4', 't5', 't6', 't7'],
-//     minimumLevel: 0,
-//     maximumLevel: 18
-// }));
+scene.imageryLayers.addImageryProvider(new WebMapTileServiceImageryProvider({
+    // 调用影响中文注记服务
+    url: 'http://{s}.tianditu.gov.cn/cva_w/wmts?service=wmts&request=GetTile&version=1.0.0' +
+                 '&LAYER=cva&tileMatrixSet=w&TileMatrix={TileMatrix}&TileRow={TileRow}&TileCol={TileCol}' +
+                 '&style=default.jpg&tk=' + mapToken,
+    layer: 'cia_w',
+    style: 'default',
+    format: 'tiles',
+    tileMatrixSetID: 'GoogleMapsCompatible',
+    subdomains: ['t0', 't1', 't2', 't3', 't4', 't5', 't6', 't7'],
+    minimumLevel: 0,
+    maximumLevel: 18
+}));
 
 const urlTemplateImageryProvide = new UrlTemplateImageryProvider({
     // url: 'http://www.google.cn/maps/vt?lyrs=s@800&x={x}&y={y}&z={z}'
@@ -73,7 +73,7 @@ const urlTemplateImageryProvide = new UrlTemplateImageryProvider({
 //     urlTemplateImageryProvide
 // );
 
-scene.imageryLayers.addImageryProvider(new (TileCoordinatesImageryProvider as any)());
+// scene.imageryLayers.addImageryProvider(new (TileCoordinatesImageryProvider as any)());
 
 console.log(urlTemplateImageryProvide.proxy);
 const geometry = new SphereGeometry(1, 64, 64);
