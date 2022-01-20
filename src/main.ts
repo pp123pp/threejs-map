@@ -50,7 +50,7 @@ scene.imageryLayers.addImageryProvider(new WebMapTileServiceImageryProvider({
 
 scene.imageryLayers.addImageryProvider(new WebMapTileServiceImageryProvider({
     // 调用影响中文注记服务
-    url: 'http://{s}.tianditu.gov.cn/cva_w/wmts?service=wmts&request=GetTile&version=1.0.0' +
+    url: 'https://{s}.tianditu.gov.cn/cva_w/wmts?service=wmts&request=GetTile&version=1.0.0' +
                  '&LAYER=cva&tileMatrixSet=w&TileMatrix={TileMatrix}&TileRow={TileRow}&TileCol={TileCol}' +
                  '&style=default.jpg&tk=' + mapToken,
     layer: 'cia_w',
@@ -67,7 +67,7 @@ const urlTemplateImageryProvide = new UrlTemplateImageryProvider({
     // tilingScheme: new WebMercatorTilingScheme({}),
     // minimumLevel: 1,
     // maximumLevel: 20
-    url: 'https://map.geoq.cn/arcgis/rest/services/ChinaOnlineStreetPurplishBlue/MapServer/tile/{z}/{y}/{x}'
+    url: 'https://map.geoq.cn/a rcgis/rest/services/ChinaOnlineStreetPurplishBlue/MapServer/tile/{z}/{y}/{x}'
 });
 // scene.imageryLayers.addImageryProvider(
 //     urlTemplateImageryProvide
@@ -128,18 +128,18 @@ console.log(scratchSphereIntersectionResult);
 
 console.log(ShaderLib.basic);
 
-let isAni = false;
+// let isAni = false;
 
-(document.getElementById('btn') as HTMLElement).onclick = function () {
-    //
-    isAni = !isAni;
-};
+// (document.getElementById('btn') as HTMLElement).onclick = function () {
+//     //
+//     isAni = !isAni;
+// };
 
-scene.preRender.addEventListener(() => {
-    if (isAni) {
-        scene.camera.rotateRight(0.01);
-        // scene.camera.rotateUp(0.01);
-    }
-});
+// scene.preRender.addEventListener(() => {
+//     if (isAni) {
+//         scene.camera.rotateRight(0.01);
+//         // scene.camera.rotateUp(0.01);
+//     }
+// });
 
 scene.renderer.toneMappingExposure = 1.2;
