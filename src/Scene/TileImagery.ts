@@ -1,8 +1,5 @@
-/* eslint-disable no-mixed-operators */
-
 import { defined } from '@/Core/defined';
 import { Cartesian4 } from './../Core/Cartesian4';
-
 import { FrameState } from './FrameState';
 import { Imagery } from './Imagery';
 import { ImageryState } from './ImageryState';

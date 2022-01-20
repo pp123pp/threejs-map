@@ -47,14 +47,9 @@ class WebMercatorTilingScheme {
         options = defaultValue(options, defaultValue.EMPTY_OBJECT) as any;
         this._ellipsoid = defaultValue(options.ellipsoid, Ellipsoid.WGS84) as Ellipsoid;
 
-        this._numberOfLevelZeroTilesX = defaultValue(
-            options.numberOfLevelZeroTilesX,
-            1
-        ) as number;
-        this._numberOfLevelZeroTilesY = defaultValue(
-            options.numberOfLevelZeroTilesY,
-            1
-        ) as number;
+        this._numberOfLevelZeroTilesX = defaultValue(options.numberOfLevelZeroTilesX, 1) as number;
+
+        this._numberOfLevelZeroTilesY = defaultValue(options.numberOfLevelZeroTilesY, 1) as number;
 
         this._projection = new WebMercatorProjection(this._ellipsoid);
 
@@ -76,8 +71,8 @@ class WebMercatorTilingScheme {
             );
         }
 
-        const southwest = this._projection.unproject(this._rectangleSouthwestInMeters as any);
-        const northeast = this._projection.unproject(this._rectangleNortheastInMeters as any);
+        const southwest = this._projection.unproject(this._rectangleSouthwestInMeters);
+        const northeast = this._projection.unproject(this._rectangleNortheastInMeters);
         this._rectangle = new Rectangle(
             southwest.longitude,
             southwest.latitude,

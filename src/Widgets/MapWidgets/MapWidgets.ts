@@ -183,7 +183,7 @@ class MapWidgets {
         return this._scene;
     }
 
-    get camera (): any {
+    get camera (): Camera {
         return this.scene.camera;
     }
 

@@ -511,22 +511,10 @@ const addDrawCommandsForTile = (tileProvider: any, tile: any, frameState: FrameS
             debugger;
         }
 
-        let boundingVolume = command.boundingVolume;
+        const boundingVolume = command.boundingVolume;
         const orientedBoundingBox = command.orientedBoundingBox;
-
-        if (frameState.mode !== SceneMode.SCENE3D) {
-            BoundingSphere.fromRectangleWithHeights2D(tile.rectangle, frameState.mapProjection, surfaceTile.minimumHeight, surfaceTile.maximumHeight, boundingVolume);
-
-            const center = (boundingVolume as BoundingSphere).center;
-            Cartesian3.fromElements(center.x, center.y, center.z, center);
-
-            if (frameState.mode === SceneMode.MORPHING) {
-                boundingVolume = BoundingSphere.union(surfaceTile.boundingSphere3D, (boundingVolume as BoundingSphere), boundingVolume);
-            }
-        } else {
-            command.boundingVolume = BoundingSphere.clone(surfaceTile.boundingSphere3D, boundingVolume);
-            command.orientedBoundingBox = OrientedBoundingBox.clone(surfaceTile.orientedBoundingBox, orientedBoundingBox);
-        }
+        command.boundingVolume = BoundingSphere.clone(surfaceTile.boundingSphere3D, boundingVolume);
+        command.orientedBoundingBox = OrientedBoundingBox.clone(surfaceTile.orientedBoundingBox, orientedBoundingBox);
 
         frameState.commandList.push(command);
 
@@ -1081,23 +1069,20 @@ class GlobeSurfaceTileProvider {
      *
      * @returns {Number} The distance from the camera to the closest point on the tile, in meters.
      */
-    computeDistanceToTile (
-        tile:QuadtreeTile,
-        frameState:FrameState
-    ): number {
-    // The distance should be:
-    // 1. the actual distance to the tight-fitting bounding volume, or
-    // 2. a distance that is equal to or greater than the actual distance to the tight-fitting bounding volume.
-    //
-    // When we don't know the min/max heights for a tile, but we do know the min/max of an ancestor tile, we can
-    // build a tight-fitting bounding volume horizontally, but not vertically. The min/max heights from the
-    // ancestor will likely form a volume that is much bigger than it needs to be. This means that the volume may
-    // be deemed to be much closer to the camera than it really is, causing us to select tiles that are too detailed.
-    // Loading too-detailed tiles is super expensive, so we don't want to do that. We don't know where the child
-    // tile really lies within the parent range of heights, but we _do_ know the child tile can't be any closer than
-    // the ancestor height surface (min or max) that is _farthest away_ from the camera. So if we compute distance
-    // based on that conservative metric, we may end up loading tiles that are not detailed enough, but that's much
-    // better (faster) than loading tiles that are too detailed.
+    computeDistanceToTile (tile:QuadtreeTile, frameState:FrameState): number {
+        // The distance should be:
+        // 1. the actual distance to the tight-fitting bounding volume, or
+        // 2. a distance that is equal to or greater than the actual distance to the tight-fitting bounding volume.
+        //
+        // When we don't know the min/max heights for a tile, but we do know the min/max of an ancestor tile, we can
+        // build a tight-fitting bounding volume horizontally, but not vertically. The min/max heights from the
+        // ancestor will likely form a volume that is much bigger than it needs to be. This means that the volume may
+        // be deemed to be much closer to the camera than it really is, causing us to select tiles that are too detailed.
+        // Loading too-detailed tiles is super expensive, so we don't want to do that. We don't know where the child
+        // tile really lies within the parent range of heights, but we _do_ know the child tile can't be any closer than
+        // the ancestor height surface (min or max) that is _farthest away_ from the camera. So if we compute distance
+        // based on that conservative metric, we may end up loading tiles that are not detailed enough, but that's much
+        // better (faster) than loading tiles that are too detailed.
 
         updateTileBoundingRegion(tile, this, frameState);
 
@@ -1286,11 +1271,11 @@ class GlobeSurfaceTileProvider {
     }
 
     /**
- * Determines the priority for loading this tile. Lower priority values load sooner.
- * @param {QuadtreeTile} tile The tile.
- * @param {FrameState} frameState The frame state.
- * @returns {Number} The load priority value.
- */
+     * Determines the priority for loading this tile. Lower priority values load sooner.
+     * @param {QuadtreeTile} tile The tile.
+     * @param {FrameState} frameState The frame state.
+     * @returns {Number} The load priority value.
+     */
     computeTileLoadPriority (
         tile: QuadtreeTile,
         frameState: FrameState

@@ -1,18 +1,14 @@
-/* eslint-disable no-plusplus */
-/* eslint-disable valid-jsdoc */
 import { Object3DCollection } from '@/Core/Object3DCollection';
 import { Frustum } from 'three';
 
 import { FrameState } from './FrameState.js';
 
 class RenderCollection extends Object3DCollection {
-    frustum?: Frustum
+    frustum?: Frustum = undefined
     // 用于做裁剪的视锥体
-    constructor () {
-        super();
-
-        this.frustum = undefined;
-    }
+    // constructor () {
+    //     super();
+    // }
 
     addPickCommands (commandList: any): void {
         for (let i = 0, len = commandList.length; i < len; i++) {
