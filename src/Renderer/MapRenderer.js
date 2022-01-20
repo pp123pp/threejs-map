@@ -1,46 +1,10 @@
 import {
-    Frustum,
-    LinearEncoding,
-    Matrix4,
-    Renderer,
-    TextureEncoding,
-    ToneMapping,
-    Vector3,
-    Vector4,
-    WebGLDebug,
-    WebGLRendererParameters,
-    NoToneMapping,
-    WebGLRenderer,
-    Box3,
-    BufferGeometry,
-    Camera,
-    Color,
-    ColorRepresentation,
-    CullFace,
-    DataTexture2DArray,
-    DataTexture3D,
-    Material,
-    ShadowMapType,
-    Texture,
-    Vector2,
-    WebGLMultipleRenderTargets,
-    XRAnimationLoopCallback,
-    REVISION,
-    HalfFloatType,
-    UnsignedByteType,
-    LinearMipmapLinearFilter,
-    NearestFilter,
-    ClampToEdgeWrapping,
-    DoubleSide,
-    BackSide,
-    FrontSide,
-    FloatType,
-    RGBAFormat
+    BackSide, ClampToEdgeWrapping,
+    DoubleSide, FloatType, FrontSide, Frustum, HalfFloatType, LinearEncoding, LinearMipmapLinearFilter, Matrix4, NearestFilter, NoToneMapping, REVISION, RGBAFormat, UnsignedByteType, Vector2, Vector3,
+    Vector4
 } from 'three';
 import { WebGLAnimation } from 'three/src/renderers/webgl/WebGLAnimation';
 import { WebGLAttributes } from 'three/src/renderers/webgl/WebGLAttributes';
-// import { WebGLBackground } from 'three/src/renderers/webgl/WebGLBackground';
-import { WebGLBackground } from './WebGL/WebGLBackground';
 import { WebGLBindingStates } from 'three/src/renderers/webgl/WebGLBindingStates';
 import { WebGLBufferRenderer } from 'three/src/renderers/webgl/WebGLBufferRenderer';
 import { WebGLCapabilities } from 'three/src/renderers/webgl/WebGLCapabilities';
@@ -51,33 +15,31 @@ import { WebGLExtensions } from 'three/src/renderers/webgl/WebGLExtensions';
 import { WebGLGeometries } from 'three/src/renderers/webgl/WebGLGeometries';
 import { WebGLIndexedBufferRenderer } from 'three/src/renderers/webgl/WebGLIndexedBufferRenderer';
 import { WebGLInfo } from 'three/src/renderers/webgl/WebGLInfo';
+import { WebGLMaterials } from 'three/src/renderers/webgl/WebGLMaterials';
 import { WebGLMorphtargets } from 'three/src/renderers/webgl/WebGLMorphtargets';
-import { WebGLMultisampleRenderTarget } from 'three/src/renderers/WebGLMultisampleRenderTarget';
 import { WebGLObjects } from 'three/src/renderers/webgl/WebGLObjects';
 import { WebGLPrograms } from 'three/src/renderers/webgl/WebGLPrograms';
 import { WebGLProperties } from 'three/src/renderers/webgl/WebGLProperties';
 import { WebGLRenderLists } from 'three/src/renderers/webgl/WebGLRenderLists';
 import { WebGLRenderStates } from 'three/src/renderers/webgl/WebGLRenderStates';
-import { WebGLRenderTarget } from 'three/src/renderers/WebGLRenderTarget';
 import { WebGLShadowMap } from 'three/src/renderers/webgl/WebGLShadowMap';
 import { WebGLState } from 'three/src/renderers/webgl/WebGLState';
 import { WebGLTextures } from 'three/src/renderers/webgl/WebGLTextures';
 import { WebGLUniforms } from 'three/src/renderers/webgl/WebGLUniforms';
 import { WebGLUtils } from 'three/src/renderers/webgl/WebGLUtils';
+import { WebGLMultisampleRenderTarget } from 'three/src/renderers/WebGLMultisampleRenderTarget';
+import { WebGLRenderTarget } from 'three/src/renderers/WebGLRenderTarget';
 import { WebXRManager } from 'three/src/renderers/webxr/WebXRManager';
-import { WebGLMaterials } from 'three/src/renderers/webgl/WebGLMaterials';
+// import { WebGLBackground } from 'three/src/renderers/webgl/WebGLBackground';
 
-function createElementNS (name) {
-    return document.createElementNS('http://www.w3.org/1999/xhtml', name);
-}
+import { WebGLBackground } from './WebGL/WebGLBackground';
+import { createElementNS } from 'three/src/utils';
 
 function createCanvasElement () {
     const canvas = createElementNS('canvas');
     canvas.style.display = 'block';
     return canvas;
 }
-
-const drawingBufferSize = new Vector2();
 
 class MapRenderer {
     constructor (parameters = {}) {
@@ -216,7 +178,7 @@ class MapRenderer {
             };
 
             // OffscreenCanvas does not have setAttribute, see #22811
-            if ('setAttribute' in _canvas) { _canvas.setAttribute('data-engine', `three r${REVISION}`); }
+            if ('setAttribute' in _canvas) { _canvas.setAttribute('data-engine', `three.js r${REVISION}`); }
 
             // event listeners must be registered before WebGL context is created, see #12753
             _canvas.addEventListener('webglcontextlost', onContextLost, false);
@@ -1393,12 +1355,6 @@ class MapRenderer {
 
         this.setRenderTarget = function (renderTarget, activeCubeFace = 0, activeMipmapLevel = 0) {
             _currentRenderTarget = renderTarget;
-
-            if (_currentRenderTarget && _currentRenderTarget.isWebGLMultipleRenderTargets) {
-                _currentRenderTarget.texture.isTexture = true;
-                _currentRenderTarget.texture.encoding = this.outputEncoding;
-            }
-
             _currentActiveCubeFace = activeCubeFace;
             _currentActiveMipmapLevel = activeMipmapLevel;
             let useDefaultFramebuffer = true;
@@ -1694,20 +1650,17 @@ class MapRenderer {
             __THREE_DEVTOOLS__.dispatchEvent(new CustomEvent('observe', { detail: this })); // eslint-disable-line no-undef
         }
     }
-
-    /**
-     * 返回当前绘图缓冲区的尺寸
-     *
-     * @readonly
-     * @type {Vector2}
-     * @memberof MapRenderer
-     * @return {Vector2}
-     */
-    get drawingBufferSize () {
-        return this.getDrawingBufferSize(drawingBufferSize);
-    }
 }
 
 MapRenderer.prototype.isWebGLRenderer = true;
 
+const drawingBufferSize = new Vector2();
+Object.defineProperties(MapRenderer.prototype, {
+    drawingBufferSize: {
+        get: function () {
+            return this.getDrawingBufferSize(drawingBufferSize);
+        }
+    }
+
+});
 export { MapRenderer };

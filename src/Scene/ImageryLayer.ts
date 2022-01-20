@@ -385,11 +385,11 @@ class ImageryLayer {
         //                           tile.rectangle.south > -WebMercatorProjection.MaximumLatitude;
 
         // 重投影
-        // const useWebMercatorT = false;
-        const useWebMercatorT =
-        imageryProvider.tilingScheme.projection instanceof WebMercatorProjection &&
-        tile.rectangle.north < WebMercatorProjection.MaximumLatitude &&
-        tile.rectangle.south > -WebMercatorProjection.MaximumLatitude;
+        const useWebMercatorT = false;
+        // const useWebMercatorT =
+        // imageryProvider.tilingScheme.projection instanceof WebMercatorProjection &&
+        // tile.rectangle.north < WebMercatorProjection.MaximumLatitude &&
+        // tile.rectangle.south > -WebMercatorProjection.MaximumLatitude;
 
         // Compute the rectangle of the imagery from this imageryProvider that overlaps
         // the geometry tile.  The ImageryProvider and ImageryLayer both have the

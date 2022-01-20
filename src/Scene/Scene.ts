@@ -4,6 +4,7 @@ import { Cartesian3 } from '@/Core/Cartesian3';
 import { defined } from '@/Core/defined';
 import { RequestScheduler } from '@/Core/RequestScheduler';
 import { TweenCollection } from '@/Core/TweenCollection';
+import { MapRenderer } from '@/Renderer/MapRenderer';
 import * as THREE from 'three';
 import { GLSL3, LinearToneMapping, Mesh, Raycaster, ShaderMaterial, SphereBufferGeometry, sRGBEncoding, Vector2 } from 'three';
 import { CesiumColor } from '../Core/CesiumColor';
@@ -19,7 +20,8 @@ import { EffectComposerCollection } from './EffectComposerCollection';
 import { FrameState, PassesInterface } from './FrameState';
 import { Globe } from './Globe';
 import { ImageryLayerCollection } from './ImageryLayerCollection';
-import { MapRenderer, RenderStateParameters } from './MapRenderer';
+import { RenderStateParameters } from './MapRenderer';
+// MapRenderer
 import { PerspectiveFrustumCamera } from './PerspectiveFrustumCamera';
 import { Picking } from './Picking';
 import { PrimitiveCollection } from './PrimitiveCollection';
@@ -108,8 +110,6 @@ function postPassesUpdate (scene: Scene) {
 function render (scene:Scene) {
     const frameState = scene._frameState;
 
-    const context = scene.context;
-
     scene.updateFrameState();
 
     frameState.passes.render = true;
@@ -162,9 +162,9 @@ function isCameraUnderground (scene: Scene) {
 
     if (
         !defined(globe) ||
-      !globe.visible ||
-      mode === SceneMode.SCENE2D ||
-      mode === SceneMode.MORPHING
+        !globe.visible ||
+        mode === SceneMode.SCENE2D ||
+        mode === SceneMode.MORPHING
     ) {
         return false;
     }
@@ -251,20 +251,20 @@ function executeCommandsInViewport (firstViewport: boolean, scene:Scene, backgro
 }
 
 class Scene extends THREE.Scene {
-    _primitives: PrimitiveCollection
+    _primitives = new PrimitiveCollection();
     readonly renderer: MapRenderer;
     _frameState: FrameState;
-    _renderRequested: boolean;
+    _renderRequested = true;
     protected _shaderFrameCount: number;
     protected _context: Context;
-    protected _mode: SceneMode;
+    protected _mode = SceneMode.SCENE3D;
     readonly _camera: Camera;
     requestRenderMode: boolean;
-    readonly renderError: Event;
-    readonly postUpdate: Event;
-    readonly preRender: Event;
+    readonly renderError = new Event();
+    readonly postUpdate = new Event();
+    readonly preRender = new Event();
     readonly rethrowRenderErrors: boolean;
-    backgroundColor: CesiumColor;
+    backgroundColor = new CesiumColor(1.0, 0.0, 0.0, 1.0);
     readonly _screenSpaceCameraController: any;
     _mapProjection: GeographicProjection;
     _canvas: HTMLCanvasElement;
@@ -278,7 +278,7 @@ class Scene extends THREE.Scene {
     _removeRequestListenerCallback: any;
     _globeHeight?: number;
     _cameraUnderground: boolean;
-    _tweens: TweenCollection;
+    _tweens = new TweenCollection();
     effectComposerCollection: EffectComposerCollection;
     _picking: Picking;
     useDepthPicking: boolean;
@@ -286,22 +286,13 @@ class Scene extends THREE.Scene {
     constructor (options: SceneOptions) {
         super();
 
-        this._mode = SceneMode.SCENE3D;
-
-        ShaderMaterial.prototype.glslVersion = GLSL3;
-
         // 地图的投影方式
         this._mapProjection = defaultValue(options.mapProjection, new GeographicProjection()) as GeographicProjection;
-
-        this._primitives = new PrimitiveCollection();
-
-        this.renderError = new Event();
-        this.postUpdate = new Event();
-        this.preRender = new Event();
 
         this.renderer = new MapRenderer(options.renderState);
         this.renderer.toneMapping = LinearToneMapping;
         this.renderer.outputEncoding = sRGBEncoding;
+        this.renderer.autoClear = false;
 
         this._camera = new Camera(this, {
             aspect: this.drawingBufferSize.width / this.drawingBufferSize.height,
@@ -310,9 +301,6 @@ class Scene extends THREE.Scene {
         });
 
         this._camera.constrainedAxis = Cartesian3.UNIT_Z;
-
-        // this.activeCamera.position.set(10, 10, 10);
-        // this.activeCamera.lookAt(0, 0, 0);
 
         /**
          * When <code>true</code>, rendering a frame will only occur when needed as determined by changes within the scene.
@@ -328,7 +316,6 @@ class Scene extends THREE.Scene {
          * @default false
          */
         this.requestRenderMode = defaultValue(options.requestRenderMode, false) as boolean;
-        this._renderRequested = true;
         this._shaderFrameCount = 0;
 
         /**
@@ -384,17 +371,12 @@ class Scene extends THREE.Scene {
          */
         this.rethrowRenderErrors = false;
 
-        this.backgroundColor = new CesiumColor(1.0, 0.0, 0.0, 1.0);
-
         // this._computeCommandList = [];
 
         this._renderCollection = new RenderCollection();
 
         this.addObject(this._renderCollection);
 
-        this._tweens = new TweenCollection();
-
-        // this._screenSpaceCameraController = new OrbitControls(this.activeCamera, this.renderer.domElement);
         this._screenSpaceCameraController = new ScreenSpaceCameraController(this);
 
         this.effectComposerCollection = new EffectComposerCollection(this);
@@ -429,7 +411,6 @@ class Scene extends THREE.Scene {
 
     get activeCamera (): PerspectiveFrustumCamera {
         return this._camera.frustum;
-        // return this.camera.activeCamera;
     }
 
     get frameState ():FrameState {

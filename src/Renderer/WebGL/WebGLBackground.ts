@@ -1,6 +1,6 @@
 import { MapRenderer } from '@/Scene/MapRenderer';
 import { cube } from '@/Shader/CubeGlsl3Shader';
-import { GLSL3, BackSide, BoxGeometry, cloneUniforms, Color, Mesh, ShaderLib, ShaderMaterial, CubeUVReflectionMapping, PlaneGeometry, FrontSide, ToneMapping, WebGLState, Matrix4, Quaternion, Euler } from 'three';
+import { BackSide, BoxGeometry, cloneUniforms, Color, CubeUVReflectionMapping, FrontSide, Mesh, PlaneGeometry, ShaderLib, ShaderMaterial, WebGLState } from 'three';
 
 console.log(cube);
 class WebGLBackground {
@@ -13,7 +13,7 @@ class WebGLBackground {
 
         let currentBackground: any = null;
         let currentBackgroundVersion = 0;
-        let currentTonemapping: ToneMapping | null = null;
+        let currentTonemapping: any = null;
 
         function render (renderList: any, scene: any) {
             let forceClear = false;
@@ -58,33 +58,20 @@ class WebGLBackground {
                                 reflectivity: { value: 1 },
                                 refractionRatio: { value: 0.98 }
                             },
-                            vertexShader: cube.vertexShader,
-                            fragmentShader: cube.fragmentShader,
+                            vertexShader: ShaderLib.cube.vertexShader,
+                            fragmentShader: ShaderLib.cube.fragmentShader,
                             side: BackSide,
                             depthTest: false,
                             depthWrite: false,
-                            fog: false,
-                            glslVersion: GLSL3
-                            // wireframe: true
+                            fog: false
                         })
                     );
-                    // boxMesh.geometry.rotateZ(Math.PI / 2);
 
                     boxMesh.geometry.deleteAttribute('normal');
                     boxMesh.geometry.deleteAttribute('uv');
-                    boxMesh.matrixAutoUpdate = false;
-
-                    const quaternion = new Quaternion().setFromEuler(new Euler(Math.PI / 2, Math.PI / 2, 0));
-
-                    const mat = new Matrix4().makeRotationX(Math.PI / 2);
 
                     boxMesh.onBeforeRender = function (renderer, scene, camera) {
-                        // (this.matrixWorld as Matrix4).makeRotationX(0.1);
-                        // (this as Mesh).matrixWorld.copyPosition(camera.matrixWorld);
-                        // (this as Mesh).matrixWorld.multiply(mat);
-                        // boxMesh.rotateX(0.01);
-                        // debugger;
-                        this.matrixWorld.compose(camera.position, quaternion, this.scale);
+                        this.matrixWorld.copyPosition(camera.matrixWorld);
                     };
 
                     // enable code injection for non-built-in material
@@ -144,18 +131,18 @@ class WebGLBackground {
                     objects.update(planeMesh);
                 }
 
-                (planeMesh.material as ShaderMaterial).uniforms.t2D.value = background;
+                (boxMesh.material as ShaderMaterial).uniforms.t2D.value = background;
 
                 if (background.matrixAutoUpdate === true) {
                     background.updateMatrix();
                 }
 
-                (planeMesh.material as ShaderMaterial).uniforms.uvTransform.value.copy(background.matrix);
+                (boxMesh.material as ShaderMaterial).uniforms.uvTransform.value.copy(background.matrix);
 
                 if (currentBackground !== background ||
                     currentBackgroundVersion !== background.version ||
                     currentTonemapping !== renderer.toneMapping) {
-                    (planeMesh.material as ShaderMaterial).needsUpdate = true;
+                    (boxMesh.material as ShaderMaterial).needsUpdate = true;
 
                     currentBackground = background;
                     currentBackgroundVersion = background.version;
@@ -167,7 +154,7 @@ class WebGLBackground {
             }
         }
 
-        function setClear (color: Color, alpha: number) {
+        function setClear (color: any, alpha: any) {
             state.buffers.color.setClear(color.r, color.g, color.b, alpha, premultipliedAlpha);
         }
 
@@ -176,7 +163,7 @@ class WebGLBackground {
             getClearColor: function () {
                 return clearColor;
             },
-            setClearColor: function (color: Color | number, alpha = 1) {
+            setClearColor: function (color: any, alpha = 1) {
                 clearColor.set(color);
                 clearAlpha = alpha;
                 setClear(clearColor, clearAlpha);
@@ -184,7 +171,7 @@ class WebGLBackground {
             getClearAlpha: function () {
                 return clearAlpha;
             },
-            setClearAlpha: function (alpha: number) {
+            setClearAlpha: function (alpha: any) {
                 clearAlpha = alpha;
                 setClear(clearColor, clearAlpha);
             },

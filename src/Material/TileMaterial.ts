@@ -10,11 +10,11 @@ const vertexShader = `
 #include <logdepthbuf_pars_vertex>
 
 #ifdef QUANTIZATION_BITS12
-    in vec4 compressed0;
-    in float compressed1;
+    attribute vec4 compressed0;
+    attribute float compressed1;
 #else
-    in vec4 position3DAndHeight;
-    in vec4 textureCoordAndEncodedNormals;
+    attribute vec4 position3DAndHeight;
+    attribute vec4 textureCoordAndEncodedNormals;
 #endif
 
 #ifdef QUANTIZATION_BITS12
@@ -40,7 +40,7 @@ vec4 getPositionPlanarEarth(vec3 position, float height, vec2 textureCoordinates
     float yPositionFraction = get2DGeographicYPositionFraction(textureCoordinates);
     vec4 rtcPosition2D = vec4( mix(u_tileRectangle.st, u_tileRectangle.pq, vec2(textureCoordinates.x, yPositionFraction)), height, 1.0);
 
-    return projectionMatrix * modelViewMatrix * rtcPosition2D;
+    return u_modifiedModelViewProjection * rtcPosition2D;
 }
 
 vec4 getPositionColumbusViewMode(vec3 position, float height, vec2 textureCoordinates)
@@ -128,7 +128,7 @@ void main(){
 
 `;
 
-class TileMaterial extends ShaderMaterial {
+class TileMaterial extends RawShaderMaterial {
     constructor (parameters = {}, shaderSetOptions?:any) {
         super(parameters);
 
@@ -158,6 +158,10 @@ class TileMaterial extends ShaderMaterial {
         this.defines.APPLY_GAMMA = '';
 
         this.defines.GROUND_ATMOSPHERE = '';
+
+        this.toneMapped = false;
+
+        // this.defines.precision = 'highp';
 
         // this.side = DoubleSide;
         // this.wireframe = true;
@@ -284,6 +288,10 @@ class TileMaterial extends ShaderMaterial {
 
     createFragmentShader (options: any): string {
         const fragmentShader = `
+
+        precision mediump float;
+        #define highp mediump
+
         #include <common>
         #include <packing>
         #include <logdepthbuf_pars_fragment>
@@ -397,6 +405,10 @@ class TileMaterial extends ShaderMaterial {
         
             return color;
         }
+
+        vec4 LinearTosRGB( in vec4 value ) {
+            return vec4( mix( pow( value.rgb, vec3( 0.41666 ) ) * 1.055 - vec3( 0.055 ), value.rgb * 12.92, vec3( lessThanEqual( value.rgb, vec3( 0.0031308 ) ) ) ), value.a );
+        }
         
         void main(void){
             #include <logdepthbuf_fragment>
@@ -404,7 +416,9 @@ class TileMaterial extends ShaderMaterial {
             gl_FragColor = computeDayColor(u_initialColor, clamp(v_textureCoordinates, 0.0, 1.0));
 
             #include <tonemapping_fragment>
-            #include <encodings_fragment>
+            
+            gl_FragColor = LinearTosRGB( gl_FragColor );
+
             #include <fog_fragment>
             #include <premultiplied_alpha_fragment>
             #include <dithering_fragment>

@@ -135,7 +135,7 @@ class MapWidgets {
         const combineRenderState = combine({
             canvas: canvas,
             antialias: true,
-            logarithmicDepthBuffer: true
+            logarithmicDepthBuffer: false
         }, options.renderState);
 
         this._scene = new Scene({

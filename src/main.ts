@@ -13,7 +13,6 @@ import { MapWidgets } from './Widgets/MapWidgets/MapWidgets';
 const widget = new MapWidgets('app', {});
 
 const scene: Scene = widget.scene;
-const camera = scene.activeCamera;
 
 // scene.camera.setView({
 //     // destination: new Cartesian3(-742945.7510284233, -6142190.297500091, 6604747.564006202)
@@ -26,7 +25,7 @@ const camera = scene.activeCamera;
 // });
 
 const axesHelper = new AxesHelper(50000000);
-scene.add(axesHelper);
+// scene.add(axesHelper);
 // console.log(CameraEventType);
 
 const mapToken = '39d358c825ec7e59142958656c0a6864';// 盈嘉企业开发者秘钥
@@ -124,10 +123,6 @@ IntersectionTests.raySphere(
     scratchSphereIntersectionResult
 );
 
-console.log(scratchSphereIntersectionResult);
-
-console.log(ShaderLib.basic);
-
 // let isAni = false;
 
 // (document.getElementById('btn') as HTMLElement).onclick = function () {
@@ -142,4 +137,4 @@ console.log(ShaderLib.basic);
 //     }
 // });
 
-scene.renderer.toneMappingExposure = 1.2;
+scene.renderer.toneMappingExposure = 10;
