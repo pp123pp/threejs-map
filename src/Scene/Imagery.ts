@@ -81,7 +81,8 @@ class Imagery {
             }
 
             if (defined(this.textureWebMercator) && this.texture !== this.textureWebMercator) {
-                this.textureWebMercator.destroy();
+                this.textureWebMercator.dispose();
+                this.textureWebMercator = null;
             }
 
             destroyObject(this);

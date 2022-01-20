@@ -439,6 +439,27 @@ class GlobeSurfaceTile {
         return undefined;
     }
 
+    get eligibleForUnloading (): boolean {
+        // Do not remove tiles that are transitioning or that have
+        // imagery that is transitioning.
+        const terrainState = this.terrainState;
+        const loadingIsTransitioning =
+        terrainState === TerrainState.RECEIVING ||
+        terrainState === TerrainState.TRANSFORMING;
+
+        let shouldRemoveTile = !loadingIsTransitioning;
+
+        const imagery = this.imagery;
+        for (let i = 0, len = imagery.length; shouldRemoveTile && i < len; ++i) {
+            const tileImagery = imagery[i];
+            shouldRemoveTile =
+          !defined(tileImagery.loadingImagery) ||
+          tileImagery.loadingImagery.state !== ImageryState.TRANSITIONING;
+        }
+
+        return shouldRemoveTile;
+    }
+
     freeVertexArray (): void {
         GlobeSurfaceTile._freeVertexArray(this.vertexArray);
         this.vertexArray = undefined;
@@ -465,15 +486,23 @@ class GlobeSurfaceTile {
             //     }
             // }
 
-            const attributes = vertexArray.attributes;
+            // let attributes = vertexArray.attributes;
 
-            for (const key in attributes) {
-                (attributes[key] as InterleavedBufferAttribute).data.array = [];
-            }
+            // for (const key in attributes) {
+            //     // (attributes[key] as BufferAttribute).array = [];
+            //     // (attributes[key] as any) = null;
 
-            if (defined(indexBuffer)) {
-                (indexBuffer as BufferAttribute).array = [];
-            }
+            //     if (attributes[key] instanceof InterleavedBufferAttribute) {
+            //         (attributes[key] as InterleavedBufferAttribute).data.array = [];
+            //     } else if (attributes[key] instanceof BufferAttribute) {
+            //         (attributes[key] as BufferAttribute).array = [];
+            //     }
+            // }
+            // attributes = {};
+            // if (defined(indexBuffer)) {
+            //     (indexBuffer as BufferAttribute).array = [];
+            //     indexBuffer = null;
+            // }
 
             vertexArray.dispose();
         }
@@ -595,11 +624,11 @@ class GlobeSurfaceTile {
             geometry.setAttribute('compressed0', vertexBuffer);
         } else {
             const vertexBuffer = new InterleavedBuffer(typedArray, attributes[0].componentsPerAttribute + attributes[1].componentsPerAttribute);
-            const position3DAndHeight = new InterleavedBufferAttribute(vertexBuffer, attributes[0].componentsPerAttribute, 0, false);
-            // position3DAndHeight.setUsage = StaticDrawUsage;
 
+            vertexBuffer.setUsage(StaticDrawUsage);
+
+            const position3DAndHeight = new InterleavedBufferAttribute(vertexBuffer, attributes[0].componentsPerAttribute, 0, false);
             const textureCoordAndEncodedNormals = new InterleavedBufferAttribute(vertexBuffer, attributes[1].componentsPerAttribute, attributes[0].componentsPerAttribute, false);
-            // textureCoordAndEncodedNormals.setUsage = StaticDrawUsage;
 
             geometry.setAttribute('position3DAndHeight', position3DAndHeight);
             geometry.setAttribute('textureCoordAndEncodedNormals', textureCoordAndEncodedNormals);

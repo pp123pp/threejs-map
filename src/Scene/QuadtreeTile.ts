@@ -213,18 +213,18 @@ class QuadtreeTile {
         return this.state < QuadtreeTileLoadState.DONE;
     }
 
-    // get eligibleForUnloading (): boolean {
-    //     let result = true;
+    get eligibleForUnloading (): boolean {
+        let result = true;
 
-    //     if (defined(this.data)) {
-    //         result = this.data.eligibleForUnloading;
-    //         if (!defined(result)) {
-    //             result = true;
-    //         }
-    //     }
+        if (defined(this.data)) {
+            result = (this.data as GlobeSurfaceTile).eligibleForUnloading;
+            if (!defined(result)) {
+                result = true;
+            }
+        }
 
-    //     return result;
-    // }
+        return result;
+    }
 
     /**
      * Creates a rectangular set of tiles for level of detail zero, the coarsest, least detailed level.

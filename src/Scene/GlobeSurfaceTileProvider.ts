@@ -1216,7 +1216,7 @@ class GlobeSurfaceTileProvider {
 
             if (
                 frameState.mode === SceneMode.MORPHING &&
-        defined(surfaceTile.renderedMesh)
+                defined(surfaceTile.renderedMesh)
             ) {
                 boundingVolume = BoundingSphere.union(
                     tileBoundingRegion.boundingSphere,
