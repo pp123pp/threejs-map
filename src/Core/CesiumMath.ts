@@ -660,7 +660,15 @@ const CesiumMath = {
             return value;
         }
         return value > 0 ? 1 : -1;
-    })
+    }),
+
+    /**
+     * @private
+     */
+    fog: (distanceToCamera: number, density: number): number => {
+        const scalar = distanceToCamera * density;
+        return 1.0 - Math.exp(-(scalar * scalar));
+    }
 };
 
 export { CesiumMath };

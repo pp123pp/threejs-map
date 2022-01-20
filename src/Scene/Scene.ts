@@ -19,6 +19,7 @@ import { Context } from './Context';
 import { EffectComposerCollection } from './EffectComposerCollection';
 import { FrameState, PassesInterface } from './FrameState';
 import { Globe } from './Globe';
+import { GlobeTranslucencyState } from './GlobeTranslucencyState';
 import { ImageryLayerCollection } from './ImageryLayerCollection';
 import { RenderStateParameters } from './MapRenderer';
 // MapRenderer
@@ -282,7 +283,8 @@ class Scene extends THREE.Scene {
     effectComposerCollection: EffectComposerCollection;
     _picking: Picking;
     useDepthPicking: boolean;
-    skyBox: SkyBox
+    skyBox: SkyBox;
+    _globeTranslucencyState = new GlobeTranslucencyState();
     constructor (options: SceneOptions) {
         super();
 
@@ -574,6 +576,7 @@ class Scene extends THREE.Scene {
             camera.directionWC,
             camera.upWC
         );
+        frameState.globeTranslucencyState = this._globeTranslucencyState;
 
         this.clearPasses(frameState.passes);
     }

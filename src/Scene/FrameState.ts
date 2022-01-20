@@ -3,6 +3,7 @@ import { SceneMode } from '@/Core/SceneMode';
 import { ComputeCommand } from '@/Renderer/ComputeCommand';
 import { Camera } from './Camera';
 import { Context } from './Context';
+import { GlobeTranslucencyState } from './GlobeTranslucencyState';
 import { Scene } from './Scene';
 
 export interface PassesInterface{
@@ -32,6 +33,79 @@ class FrameState {
     minimumTerrainHeight: number;
     computeCommandList: ComputeCommand[];
     cameraUnderground: boolean;
+
+    /**
+     * @typedef FrameState.ShadowState
+     * @type {Object}
+     * @property {Boolean} shadowsEnabled Whether there are any active shadow maps this frame.
+     * @property {Boolean} lightShadowsEnabled Whether there are any active shadow maps that originate from light sources. Does not include shadow maps that are used for analytical purposes.
+     * @property {ShadowMap[]} shadowMaps All shadow maps that are enabled this frame.
+     * @property {ShadowMap[]} lightShadowMaps Shadow maps that originate from light sources. Does not include shadow maps that are used for analytical purposes. Only these shadow maps will be used to generate receive shadows shaders.
+     * @property {Number} nearPlane The near plane of the scene's frustum commands. Used for fitting cascaded shadow maps.
+     * @property {Number} farPlane The far plane of the scene's frustum commands. Used for fitting cascaded shadow maps.
+     * @property {Number} closestObjectSize The size of the bounding volume that is closest to the camera. This is used to place more shadow detail near the object.
+     * @property {Number} lastDirtyTime The time when a shadow map was last dirty
+     * @property {Boolean} outOfView Whether the shadows maps are out of view this frame
+     */
+
+    /**
+     * @type {FrameState.ShadowState}
+     */
+
+    shadowState = {
+        /**
+         * @default true
+         */
+        shadowsEnabled: true,
+        shadowMaps: [],
+        lightShadowMaps: [],
+        /**
+         * @default 1.0
+         */
+        nearPlane: 1.0,
+        /**
+         * @default 5000.0
+         */
+        farPlane: 5000.0,
+        /**
+         * @default 1000.0
+         */
+        closestObjectSize: 1000.0,
+        /**
+         * @default 0
+         */
+        lastDirtyTime: 0,
+        /**
+         * @default true
+         */
+        outOfView: true
+    };
+
+    /**
+     * @typedef FrameState.Fog
+     * @type {Object}
+     * @property {Boolean} enabled <code>true</code> if fog is enabled, <code>false</code> otherwise.
+     * @property {Number} density A positive number used to mix the color and fog color based on camera distance.
+     * @property {Number} sse A scalar used to modify the screen space error of geometry partially in fog.
+     * @property {Number} minimumBrightness The minimum brightness of terrain with fog applied.
+     */
+
+    /**
+     * @type {FrameState.Fog}
+     */
+
+    fog = {
+        /**
+     * @default false
+     */
+        enabled: false,
+        density: 1.8367740081812416e-11,
+        sse: undefined,
+        minimumBrightness: undefined
+    };
+
+    globeTranslucencyState?: GlobeTranslucencyState
+
     constructor (scene: Scene) {
         this.scene = scene;
 
@@ -154,6 +228,14 @@ class FrameState {
          * @default 0.0
          */
         this.minimumTerrainHeight = 0.0;
+
+        /**
+         * The {@link GlobeTranslucencyState} object used by the scene.
+         *
+         * @type {GlobeTranslucencyState}
+         * @default undefined
+         */
+        this.globeTranslucencyState = undefined;
     }
 
     get camera (): Camera {

@@ -27,6 +27,7 @@ class Context {
         this.sceneFrameBuffer = sceneFrameBuffer;
 
         ContextLimits._maxAnisotropy = scene.renderer.capabilities.getMaxAnisotropy();
+        ContextLimits._maximumTextureImageUnits = scene.renderer.capabilities.maxTextures;
     }
 
     get id (): string {

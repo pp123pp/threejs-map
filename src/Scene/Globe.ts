@@ -15,6 +15,7 @@ import { Rectangle } from '@/Core/Rectangle';
 import { SceneMode } from '@/Core/SceneMode';
 import { Mesh, Raycaster, SphereBufferGeometry, Vector2 } from 'three';
 import { FrameState } from './FrameState';
+import { GlobeSurfaceShaderSet } from './GlobeSurfaceShaderSet';
 import { GlobeSurfaceTileProvider } from './GlobeSurfaceTileProvider';
 import { ImageryLayerCollection } from './ImageryLayerCollection';
 import { QuadtreePrimitive } from './QuadtreePrimitive';
@@ -71,6 +72,7 @@ class Globe extends Object3DCollection {
     _zoomedOutOceanSpecularIntensity: number;
     terrainExaggeration: number;
     terrainExaggerationRelativeHeight: number;
+    _surfaceShaderSet = new GlobeSurfaceShaderSet()
     constructor (ellipsoid = Ellipsoid.WGS84) {
         super();
         const terrainProvider = new EllipsoidTerrainProvider({
@@ -86,8 +88,8 @@ class Globe extends Object3DCollection {
         this._surface = new QuadtreePrimitive({
             tileProvider: new GlobeSurfaceTileProvider({
                 terrainProvider: new EllipsoidTerrainProvider(),
-                imageryLayers: imageryLayerCollection
-                // surfaceShaderSet: this._surfaceShaderSet
+                imageryLayers: imageryLayerCollection,
+                surfaceShaderSet: this._surfaceShaderSet
             })
         });
 

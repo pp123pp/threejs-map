@@ -52,6 +52,14 @@ class Cartesian4 {
     }
 
     /**
+     * An immutable Cartesian4 instance initialized to (0.0, 0.0, 0.0, 0.0).
+     *
+     * @type {Cartesian4}
+     * @constant
+     */
+    static ZERO = Object.freeze(new Cartesian4(0.0, 0.0, 0.0, 0.0));
+
+    /**
      * An immutable Cartesian4 instance initialized to (0.0, 0.0, 0.0, 1.0).
      *
      * @type {Cartesian4}

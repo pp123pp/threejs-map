@@ -1,13 +1,8 @@
 
-import { CesiumMatrix4 } from '@/Core/CesiumMatrix4';
 import { defined } from '@/Core/defined';
-import { Rectangle } from '@/Core/Rectangle';
-import { ShaderMaterial, Vector2, Vector4, Matrix4, Vector3, RawShaderMaterial, GLSL3, DoubleSide, Texture } from 'three';
+import { Matrix4, RawShaderMaterial, Texture, Vector2, Vector3, Vector4 } from 'three';
 
 const vertexShader = `
-
-#include <common>
-#include <logdepthbuf_pars_vertex>
 
 #ifdef QUANTIZATION_BITS12
     attribute vec4 compressed0;
@@ -121,9 +116,6 @@ void main(){
 
     v_textureCoordinates = vec3(textureCoordinates, webMercatorT);
    
-
-    #include <logdepthbuf_vertex>
-    vHighPrecisionZW = gl_Position.zw;
 }
 
 `;
@@ -138,23 +130,67 @@ class TileMaterial extends RawShaderMaterial {
         const fragmentShader = this.createFragmentShader(shaderSetOptions);
 
         this.uniforms = {
+            // u_dayTextures: { value: [] },
+            // u_dayTextureTranslationAndScale: { value: [] },
+            // u_dayTextureTexCoordsRectangle: { value: [] },
+            // u_initialColor: { value: new Vector4(0, 0, 0.5, 1) },
+            // diffuse: { value: new Vector4(Math.random(), Math.random(), Math.random(), 1.0) },
+            // u_tileRectangle: { value: new Vector4() },
+            // rtc: { value: new Vector3() },
+            // u_minMaxHeight: { value: new Vector2() },
+            // u_scaleAndBias: { value: new Matrix4() },
+            // u_center3D: { value: new Vector3() },
+            // u_modifiedModelView: { value: new Matrix4() },
+            // u_modifiedModelViewProjection: { value: new Matrix4() }
+
+            u_backFaceAlphaByDistance: { value: new Vector4() },
+            u_center3D: { value: new Vector3() },
+            u_clippingPlanesEdgeColor: { value: new Vector4() },
+            u_clippingPlanesEdgeWidth: { value: 0 },
+
+            u_dayIntensity: { value: 0 },
+            u_dayTextureAlpha: { value: [] },
+            u_dayTextureBrightness: { value: [] },
+            u_dayTextureContrast: { value: [] },
+            u_dayTextureCutoutRectangles: { value: [] },
+            u_dayTextureDayAlpha: { value: [] },
+            u_dayTextureHue: { value: [] },
+            u_dayTextureNightAlpha: { value: [] },
+            u_dayTextureOneOverGamma: { value: [] },
+            u_dayTextureSaturation: { value: [] },
+            u_dayTextureSplit: { value: [] },
+            u_colorsToAlpha: { value: [] },
+            // u_dayTextureUseWebMercatorT: { value: [] },
             u_dayTextures: { value: [] },
             u_dayTextureTranslationAndScale: { value: [] },
             u_dayTextureTexCoordsRectangle: { value: [] },
-            u_initialColor: { value: new Vector4(0, 0, 0.5, 1) },
-            diffuse: { value: new Vector4(Math.random(), Math.random(), Math.random(), 1.0) },
-            u_tileRectangle: { value: new Vector4() },
-            rtc: { value: new Vector3() },
-            u_minMaxHeight: { value: new Vector2() },
-            u_scaleAndBias: { value: new Matrix4() },
-            u_center3D: { value: new Vector3() },
+            u_fillHighlightColor: { value: new Vector4() },
+            u_frontFaceAlphaByDistance: { value: new Vector4() },
+            u_hsbShift: { value: new Vector3() },
+            u_initialColor: { value: new Vector4() },
+            u_lightingFadeDistance: { value: new Vector2() },
+            u_localizedCartographicLimitRectangle: { value: new Vector4() },
+            u_localizedTranslucencyRectangle: { value: new Vector4() },
+            u_minMaxHeight: { value: new Vector4() },
             u_modifiedModelView: { value: new Matrix4() },
-            u_modifiedModelViewProjection: { value: new Matrix4() }
+            u_modifiedModelViewProjection: { value: new Matrix4() },
+            u_nightFadeDistance: { value: new Vector2() },
+            u_oceanNormalMap: { value: undefined },
+            u_scaleAndBias: { value: new Matrix4() },
+            u_southAndNorthLatitude: { value: new Vector2() },
+            u_southMercatorYAndOneOverHeight: { value: new Vector2() },
+            u_terrainExaggerationAndRelativeHeight: { value: new Vector2() },
+            u_tileRectangle: { value: new Vector4() },
+            u_undergroundColor: { value: new Vector4() },
+            u_undergroundColorAlphaByDistance: { value: new Vector4() },
+            u_waterMask: { value: undefined },
+            u_waterMaskTranslationAndScale: { value: new Vector4() },
+            u_zoomedOutOceanSpecularIntensity: { value: 0.4 }
         };
         this.vertexShader = vertexShader;
         this.fragmentShader = fragmentShader;
         this.defines.TEXTURE_UNITS = shaderSetOptions.numberOfDayTextures;
-        // this.glslVersion = GLSL3;
+        // this.glslVersion = GLSL2;
         this.defines.APPLY_GAMMA = '';
 
         this.defines.GROUND_ATMOSPHERE = '';
@@ -292,7 +328,7 @@ class TileMaterial extends RawShaderMaterial {
         precision mediump float;
         #define highp mediump
 
-        #include <common>
+        
         #include <packing>
         #include <logdepthbuf_pars_fragment>
 
@@ -411,7 +447,6 @@ class TileMaterial extends RawShaderMaterial {
         }
         
         void main(void){
-            #include <logdepthbuf_fragment>
             
             gl_FragColor = computeDayColor(u_initialColor, clamp(v_textureCoordinates, 0.0, 1.0));
 
@@ -419,9 +454,6 @@ class TileMaterial extends RawShaderMaterial {
             
             gl_FragColor = LinearTosRGB( gl_FragColor );
 
-            #include <fog_fragment>
-            #include <premultiplied_alpha_fragment>
-            #include <dithering_fragment>
         }
         `;
 

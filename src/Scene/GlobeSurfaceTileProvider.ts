@@ -14,6 +14,7 @@ import { EllipsoidTerrainProvider } from '@/Core/EllipsoidTerrainProvider';
 import { Event } from '@/Core/Event';
 import { GeographicTilingScheme } from '@/Core/GeographicTilingScheme';
 import { Intersect } from '@/Core/Intersect';
+import { NearFarScalar } from '@/Core/NearFarScalar';
 import { OrientedBoundingBox } from '@/Core/OrientedBoundingBox';
 import { Rectangle } from '@/Core/Rectangle';
 import { SceneMode } from '@/Core/SceneMode';
@@ -24,8 +25,11 @@ import { TileMaterial } from '@/Material/TileMaterial';
 import { DrawMeshCommand } from '@/Renderer/DrawMeshCommand';
 import { Vector4, Vector3, DoubleSide } from 'three';
 import { TerrainProvider } from './../Core/TerrainProvider';
+import { ContextLimits } from './ContextLimits';
 import { FrameState } from './FrameState';
+import { GlobeSurfaceShaderSet } from './GlobeSurfaceShaderSet';
 import { GlobeSurfaceTile } from './GlobeSurfaceTile';
+import { GlobeTranslucencyState } from './GlobeTranslucencyState';
 import { Imagery } from './Imagery';
 import { ImageryLayer } from './ImageryLayer';
 import { ImageryLayerCollection } from './ImageryLayerCollection';
@@ -34,6 +38,7 @@ import { QuadtreeOccluders } from './QuadtreeOccluders';
 import { QuadtreePrimitive } from './QuadtreePrimitive';
 import { QuadtreeTile } from './QuadtreeTile';
 import { QuadtreeTileLoadState } from './QuadtreeTileLoadState';
+import { ShadowMode } from './ShadowMode';
 import { TerrainFillMesh } from './TerrainFillMesh';
 import { TerrainState } from './TerrainState';
 import { TileBoundingRegion } from './TileBoundingRegion';
@@ -369,7 +374,10 @@ const createTileUniformMap = (frameState: FrameState, tileProvider: any, surface
 //     }
 // }
 
-const addDrawCommandsForTile = (tileProvider: any, tile: any, frameState: FrameState) => {
+const defaultUndergroundColor = CesiumColor.TRANSPARENT;
+const defaultundergroundColorAlphaByDistance = new NearFarScalar();
+
+const addDrawCommandsForTile = (tileProvider: GlobeSurfaceTileProvider, tile: any, frameState: FrameState) => {
     const surfaceTile = tile.data;
 
     if (!defined(surfaceTile.vertexArray)) {
@@ -382,12 +390,110 @@ const addDrawCommandsForTile = (tileProvider: any, tile: any, frameState: FrameS
         surfaceTile.fill.update(tileProvider, frameState);
     }
 
+    let maxTextures = ContextLimits.maximumTextureImageUnits;
+
+    let waterMaskTexture = surfaceTile.waterMaskTexture;
+    let waterMaskTranslationAndScale = surfaceTile.waterMaskTranslationAndScale;
+    if (!defined(waterMaskTexture) && defined(surfaceTile.fill)) {
+        waterMaskTexture = surfaceTile.fill.waterMaskTexture;
+        waterMaskTranslationAndScale =
+        surfaceTile.fill.waterMaskTranslationAndScale;
+    }
+
+    const cameraUnderground = frameState.cameraUnderground;
+
+    const globeTranslucencyState = frameState.globeTranslucencyState as GlobeTranslucencyState;
+    const translucent = globeTranslucencyState.translucent;
+    const frontFaceAlphaByDistance =
+      globeTranslucencyState.frontFaceAlphaByDistance;
+    const backFaceAlphaByDistance = globeTranslucencyState.backFaceAlphaByDistance;
+    const translucencyRectangle = globeTranslucencyState.rectangle;
+
+    const undergroundColor = defaultValue(
+        tileProvider.undergroundColor,
+        defaultUndergroundColor
+    ) as CesiumColor;
+    const undergroundColorAlphaByDistance = defaultValue(
+        tileProvider.undergroundColorAlphaByDistance,
+        defaultundergroundColorAlphaByDistance
+    ) as NearFarScalar;
+    const showUndergroundColor =
+        isUndergroundVisible(tileProvider, frameState) &&
+        frameState.mode === SceneMode.SCENE3D &&
+        undergroundColor.alpha > 0.0 &&
+        (undergroundColorAlphaByDistance.nearValue > 0.0 ||
+          undergroundColorAlphaByDistance.farValue > 0.0);
+
+    const showReflectiveOcean =
+        tileProvider.hasWaterMask && defined(waterMaskTexture);
+    const oceanNormalMap = tileProvider.oceanNormalMap;
+    const showOceanWaves = showReflectiveOcean && defined(oceanNormalMap);
+    const hasVertexNormals =
+        tileProvider.terrainProvider.ready &&
+        tileProvider.terrainProvider.hasVertexNormals;
+    const enableFog = frameState.fog.enabled && !cameraUnderground;
+    const showGroundAtmosphere =
+        tileProvider.showGroundAtmosphere && frameState.mode === SceneMode.SCENE3D;
+    const castShadows =
+        ShadowMode.castShadows(tileProvider.shadows) && !translucent;
+    const receiveShadows =
+        ShadowMode.receiveShadows(tileProvider.shadows) && !translucent;
+
+    // const hueShift = tileProvider.hueShift;
+    // const saturationShift = tileProvider.saturationShift;
+    // const brightnessShift = tileProvider.brightnessShift;
+
+    // const colorCorrect = !(
+    //     CesiumMath.equalsEpsilon(hueShift, 0.0, CesiumMath.EPSILON7) &&
+    //     CesiumMath.equalsEpsilon(saturationShift, 0.0, CesiumMath.EPSILON7) &&
+    //     CesiumMath.equalsEpsilon(brightnessShift, 0.0, CesiumMath.EPSILON7)
+    // );
+
+    let perFragmentGroundAtmosphere = false;
+    if (showGroundAtmosphere) {
+        const cameraDistance = Cartesian3.magnitude(frameState.camera.positionWC);
+        const fadeOutDistance = tileProvider.nightFadeOutDistance;
+        perFragmentGroundAtmosphere = cameraDistance > fadeOutDistance;
+    }
+
+    if (showReflectiveOcean) {
+        --maxTextures;
+    }
+    if (showOceanWaves) {
+        --maxTextures;
+    }
+    if (
+        defined(frameState.shadowState) &&
+        frameState.shadowState.shadowsEnabled
+    ) {
+        --maxTextures;
+    }
+    // if (
+    //     defined(tileProvider.clippingPlanes) &&
+    //     tileProvider.clippingPlanes.enabled
+    // ) {
+    //     --maxTextures;
+    // }
+
+    maxTextures -= globeTranslucencyState.numberOfTextureUniforms;
+
     const mesh = surfaceTile.renderedMesh;
     const rtc = mesh.center;
     const encoding = mesh.encoding;
+    const tileBoundingRegion = surfaceTile.tileBoundingRegion;
 
+    const exaggeration = frameState.terrainExaggeration;
+    const exaggerationRelativeHeight = frameState.terrainExaggerationRelativeHeight;
+    const hasExaggeration = exaggeration !== 1.0;
+    const hasGeodeticSurfaceNormals = encoding.hasGeodeticSurfaceNormals;
     // Not used in 3D.
     const tileRectangle = tileRectangleScratch;
+
+    // Only used for Mercator projections.
+    const southLatitude = 0.0;
+    const northLatitude = 0.0;
+    const southMercatorY = 0.0;
+    const oneOverMercatorHeight = 0.0;
 
     const useWebMercatorProjection = false;
 
@@ -507,10 +613,6 @@ const addDrawCommandsForTile = (tileProvider: any, tile: any, frameState: FrameS
         command.geometry = mesh.geometry;
         command.material = uniformMap;
 
-        if (defined(uniformMap.defines.QUANTIZATION_BITS12) === !defined(mesh.geometry.attributes.compressed0)) {
-            debugger;
-        }
-
         const boundingVolume = command.boundingVolume;
         const orientedBoundingBox = command.orientedBoundingBox;
         command.boundingVolume = BoundingSphere.clone(surfaceTile.boundingSphere3D, boundingVolume);
@@ -523,24 +625,64 @@ const addDrawCommandsForTile = (tileProvider: any, tile: any, frameState: FrameS
 };
 
 class GlobeSurfaceTileProvider {
+    lightingFadeOutDistance = 6500000.0;
+    lightingFadeInDistance = 9000000.0;
+    hasWaterMask = false;
+
+    zoomedOutOceanSpecularIntensity = 0.5;
+
     _imageryLayers: ImageryLayerCollection;
     _quadtree?: QuadtreePrimitive;
     _terrainProvider: EllipsoidTerrainProvider | TerrainProvider;
-    _errorEvent: Event;
-    _imageryLayersUpdatedEvent: Event;
-    _tileLoadedEvent: Event;
+    _errorEvent = new Event();
+
+    _imageryLayersUpdatedEvent = new Event();
+    _tileLoadedEvent = new Event();
     _tilesToRenderByTextureCount: any[];
+
+    enableLighting = false;
+    dynamicAtmosphereLighting = false;
+    dynamicAtmosphereLightingFromSun = false;
+    showGroundAtmosphere = false;
+    shadows = ShadowMode.RECEIVE_ONLY;
+
+    materialUniformMap: any;
+    _materialUniformMap: any
+
+    _surfaceShaderSet: GlobeSurfaceShaderSet;
+
+    /**
+     * The color to use to highlight terrain fill tiles. If undefined, fill tiles are not
+     * highlighted at all. The alpha value is used to alpha blend with the tile's
+     * actual color. Because terrain fill tiles do not represent the actual terrain surface,
+     * it may be useful in some applications to indicate visually that they are not to be trusted.
+     * @type {Color}
+     * @default undefined
+     */
+    fillHighlightColor?: CesiumColor = undefined;
+
+    showSkirts = true;
+
+    backFaceCulling = true;
 
     _drawCommands: any[];
     _compressCommands: any[];
     _uniformMaps: any[];
     _compressUniformMaps: any[];
 
-    _usedDrawCommands: number;
-    _usedCompressCommands: number;
+    _usedDrawCommands = 0;
+    _usedCompressCommands = 0;
+
+    hueShift = 0.0;
+    saturationShift = 0.0;
+    brightnessShift = 0.0;
+
+    nightFadeInDistance = 0.0;
+
+    undergroundColor?: CesiumColor;
 
     _vertexArraysToDestroy: any[];
-    cartographicLimitRectangle: Rectangle;
+    cartographicLimitRectangle = Rectangle.clone(Rectangle.MAX_VALUE) as Rectangle;
 
     _debug: {
         wireframe: boolean,
@@ -550,28 +692,31 @@ class GlobeSurfaceTileProvider {
     }
 
     _baseColor: CesiumColor | undefined;
-    _firstPassInitialColor: Cartesian4;
+    _firstPassInitialColor = new Cartesian4(0.0, 0.0, 0.5, 1.0);
 
     _layerOrderChanged: boolean;
-    _hasFillTilesThisFrame: boolean;
-    _hasLoadedTilesThisFrame: boolean;
+    _hasFillTilesThisFrame = false;
+    _hasLoadedTilesThisFrame = false;
+
+    nightFadeOutDistance = 0;
+
+    undergroundColorAlphaByDistance?: NearFarScalar;
+
+    oceanNormalMap: any;
     constructor (options: {
         terrainProvider: EllipsoidTerrainProvider;
         imageryLayers: ImageryLayerCollection;
+        surfaceShaderSet: GlobeSurfaceShaderSet
     }) {
         this._quadtree = undefined;
         this._imageryLayers = options.imageryLayers;
+        this._surfaceShaderSet = options.surfaceShaderSet;
         this._terrainProvider = options.terrainProvider;
-
-        this._errorEvent = new Event();
-
-        this._imageryLayersUpdatedEvent = new Event();
 
         this._imageryLayers.layerAdded.addEventListener(GlobeSurfaceTileProvider.prototype._onLayerAdded, this);
         this._imageryLayers.layerRemoved.addEventListener(GlobeSurfaceTileProvider.prototype._onLayerRemoved, this);
         this._imageryLayers.layerMoved.addEventListener(GlobeSurfaceTileProvider.prototype._onLayerMoved, this);
         this._imageryLayers.layerShownOrHidden.addEventListener(GlobeSurfaceTileProvider.prototype._onLayerShownOrHidden, this);
-        this._tileLoadedEvent = new Event();
         this._imageryLayersUpdatedEvent = new Event();
 
         this._tilesToRenderByTextureCount = [];
@@ -581,16 +726,7 @@ class GlobeSurfaceTileProvider {
         this._uniformMaps = [];
         this._compressUniformMaps = [];
 
-        this._usedDrawCommands = 0;
-        this._usedCompressCommands = 0;
-
         this._vertexArraysToDestroy = [];
-
-        this._tileLoadedEvent = new Event();
-        this.cartographicLimitRectangle = Rectangle.clone(Rectangle.MAX_VALUE) as Rectangle;
-
-        this._hasLoadedTilesThisFrame = false;
-        this._hasFillTilesThisFrame = false;
 
         this._debug = {
             wireframe: false,
@@ -600,7 +736,6 @@ class GlobeSurfaceTileProvider {
         this._layerOrderChanged = false;
 
         this._baseColor = undefined;
-        this._firstPassInitialColor = new Cartesian4(0.0, 0.0, 0.5, 1.0);
         this.baseColor = new CesiumColor(0.0, 0.0, 0.5, 1.0);
     }
 

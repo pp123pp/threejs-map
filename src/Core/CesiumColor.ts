@@ -64,24 +64,33 @@ class CesiumColor {
     static RED = CesiumColor.fromCssColorString('#FF0000')
 
     /**
+     * An immutable Color instance initialized to CSS transparent.
+     * <span class="colorSwath" style="background: transparent;"></span>
+     *
+     * @constant
+     * @type {Color}
+     */
+    static TRANSPARENT = Object.freeze(new CesiumColor(0, 0, 0, 0));
+
+    /**
      * Duplicates a Color.
      *
      * @param {Color} color The Color to duplicate.
      * @param {Color} [result] The object to store the result in, if undefined a new instance will be created.
      * @returns {Color} The modified result parameter or a new instance if result was undefined. (Returns undefined if color is undefined)
      */
-    static clone (color: any, result: any): any {
+    static clone (color: CesiumColor, result?: CesiumColor): CesiumColor | undefined {
         if (!defined(color)) {
             return undefined;
         }
         if (!defined(result)) {
             return new CesiumColor(color.red, color.green, color.blue, color.alpha);
         }
-        result.red = color.red;
-        result.green = color.green;
-        result.blue = color.blue;
-        result.alpha = color.alpha;
-        return result;
+        (result as CesiumColor).red = color.red;
+        (result as CesiumColor).green = color.green;
+        (result as CesiumColor).blue = color.blue;
+        (result as CesiumColor).alpha = color.alpha;
+        return (result as CesiumColor);
     }
 
     /**
