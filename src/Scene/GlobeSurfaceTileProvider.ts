@@ -314,16 +314,36 @@ const southwestScratch = new Vector3();
 const northeastScratch = new Vector3();
 const centerEyeScratch = new Cartesian3();
 
-const surfaceShaderSetOptionsScratch : {
-    frameState?: FrameState,
-    surfaceTile: any,
-    enableLighting: boolean,
-    useWebMercatorProjection: boolean,
-    numberOfDayTextures?: number
-} = {
+const surfaceShaderSetOptionsScratch: any = {
+    frameState: undefined,
     surfaceTile: undefined,
-    enableLighting: false,
-    useWebMercatorProjection: false
+    numberOfDayTextures: undefined,
+    applyBrightness: undefined,
+    applyContrast: undefined,
+    applyHue: undefined,
+    applySaturation: undefined,
+    applyGamma: undefined,
+    applyAlpha: undefined,
+    applyDayNightAlpha: undefined,
+    applySplit: undefined,
+    showReflectiveOcean: undefined,
+    showOceanWaves: undefined,
+    enableLighting: undefined,
+    dynamicAtmosphereLighting: undefined,
+    dynamicAtmosphereLightingFromSun: undefined,
+    showGroundAtmosphere: undefined,
+    perFragmentGroundAtmosphere: undefined,
+    hasVertexNormals: undefined,
+    useWebMercatorProjection: undefined,
+    enableFog: undefined,
+    enableClippingPlanes: undefined,
+    clippingPlanes: undefined,
+    clippedByBoundaries: undefined,
+    hasImageryLayerCutout: undefined,
+    colorCorrect: undefined,
+    colorToAlpha: undefined,
+    hasGeodeticSurfaceNormals: undefined,
+    hasExaggeration: undefined
 };
 
 function sortTileImageryByLayerIndex (a: any, b: any) {
@@ -439,15 +459,15 @@ const addDrawCommandsForTile = (tileProvider: GlobeSurfaceTileProvider, tile: an
     const receiveShadows =
         ShadowMode.receiveShadows(tileProvider.shadows) && !translucent;
 
-    // const hueShift = tileProvider.hueShift;
-    // const saturationShift = tileProvider.saturationShift;
-    // const brightnessShift = tileProvider.brightnessShift;
+    const hueShift = tileProvider.hueShift;
+    const saturationShift = tileProvider.saturationShift;
+    const brightnessShift = tileProvider.brightnessShift;
 
-    // const colorCorrect = !(
-    //     CesiumMath.equalsEpsilon(hueShift, 0.0, CesiumMath.EPSILON7) &&
-    //     CesiumMath.equalsEpsilon(saturationShift, 0.0, CesiumMath.EPSILON7) &&
-    //     CesiumMath.equalsEpsilon(brightnessShift, 0.0, CesiumMath.EPSILON7)
-    // );
+    const colorCorrect = !(
+        CesiumMath.equalsEpsilon(hueShift, 0.0, CesiumMath.EPSILON7) &&
+        CesiumMath.equalsEpsilon(saturationShift, 0.0, CesiumMath.EPSILON7) &&
+        CesiumMath.equalsEpsilon(brightnessShift, 0.0, CesiumMath.EPSILON7)
+    );
 
     let perFragmentGroundAtmosphere = false;
     if (showGroundAtmosphere) {
@@ -500,16 +520,55 @@ const addDrawCommandsForTile = (tileProvider: GlobeSurfaceTileProvider, tile: an
     const surfaceShaderSetOptions = surfaceShaderSetOptionsScratch;
     surfaceShaderSetOptions.frameState = frameState;
     surfaceShaderSetOptions.surfaceTile = surfaceTile;
+    surfaceShaderSetOptions.showReflectiveOcean = showReflectiveOcean;
+    surfaceShaderSetOptions.showOceanWaves = showOceanWaves;
+    surfaceShaderSetOptions.enableLighting = tileProvider.enableLighting;
+    surfaceShaderSetOptions.dynamicAtmosphereLighting =
+        tileProvider.dynamicAtmosphereLighting;
+    surfaceShaderSetOptions.dynamicAtmosphereLightingFromSun =
+        tileProvider.dynamicAtmosphereLightingFromSun;
+    surfaceShaderSetOptions.showGroundAtmosphere = showGroundAtmosphere;
+    surfaceShaderSetOptions.perFragmentGroundAtmosphere = perFragmentGroundAtmosphere;
+    surfaceShaderSetOptions.hasVertexNormals = hasVertexNormals;
+    surfaceShaderSetOptions.useWebMercatorProjection = useWebMercatorProjection;
+    surfaceShaderSetOptions.clippedByBoundaries = surfaceTile.clippedByBoundaries;
+    surfaceShaderSetOptions.hasGeodeticSurfaceNormals = hasGeodeticSurfaceNormals;
+    surfaceShaderSetOptions.hasExaggeration = hasExaggeration;
 
     const quantization = encoding.quantization;
-    surfaceShaderSetOptions.enableLighting = tileProvider.enableLighting;
-    surfaceShaderSetOptions.useWebMercatorProjection = useWebMercatorProjection;
 
     const tileImageryCollection = surfaceTile.imagery;
     let imageryIndex = 0;
     const imageryLen = tileImageryCollection.length;
 
+    const showSkirts =
+    tileProvider.showSkirts && !cameraUnderground && !translucent;
+    const backFaceCulling =
+    tileProvider.backFaceCulling && !cameraUnderground && !translucent;
+    // const firstPassRenderState = backFaceCulling
+    //     ? tileProvider._renderState
+    //     : tileProvider._disableCullingRenderState;
+    // const otherPassesRenderState = backFaceCulling
+    //     ? tileProvider._blendRenderState
+    //     : tileProvider._disableCullingBlendRenderState;
+    // const renderState = firstPassRenderState;
+
     let initialColor = tileProvider._firstPassInitialColor;
+
+    const context = frameState.context;
+
+    const materialUniformMapChanged =
+        tileProvider._materialUniformMap !== tileProvider.materialUniformMap;
+    if (materialUniformMapChanged) {
+        tileProvider._materialUniformMap = tileProvider.materialUniformMap;
+        const drawCommandsLength = tileProvider._drawCommands.length;
+        for (let i = 0; i < drawCommandsLength; ++i) {
+            // tileProvider._uniformMaps[i] = createTileUniformMap(
+            //     frameState,
+            //     tileProvider
+            // );
+        }
+    }
 
     do {
         let numberOfDayTextures = 0;

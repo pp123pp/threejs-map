@@ -137,4 +137,4 @@ IntersectionTests.raySphere(
 //     }
 // });
 
-scene.renderer.toneMappingExposure = 10;
+scene.renderer.toneMappingExposure = 1.2;
