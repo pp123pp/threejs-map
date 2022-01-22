@@ -72,7 +72,7 @@ const urlTemplateImageryProvide = new UrlTemplateImageryProvider({
 //     urlTemplateImageryProvide
 // );
 
-// scene.imageryLayers.addImageryProvider(new (TileCoordinatesImageryProvider as any)());
+scene.imageryLayers.addImageryProvider(new (TileCoordinatesImageryProvider as any)());
 
 console.log(urlTemplateImageryProvide.proxy);
 const geometry = new SphereGeometry(1, 64, 64);

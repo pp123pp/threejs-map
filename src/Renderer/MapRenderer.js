@@ -1,10 +1,46 @@
 import {
-    BackSide, ClampToEdgeWrapping,
-    DoubleSide, FloatType, FrontSide, Frustum, HalfFloatType, LinearEncoding, LinearMipmapLinearFilter, Matrix4, NearestFilter, NoToneMapping, REVISION, RGBAFormat, UnsignedByteType, Vector2, Vector3,
-    Vector4
+    Frustum,
+    LinearEncoding,
+    Matrix4,
+    Renderer,
+    TextureEncoding,
+    ToneMapping,
+    Vector3,
+    Vector4,
+    WebGLDebug,
+    WebGLRendererParameters,
+    NoToneMapping,
+    WebGLRenderer,
+    Box3,
+    BufferGeometry,
+    Camera,
+    Color,
+    ColorRepresentation,
+    CullFace,
+    DataTexture2DArray,
+    DataTexture3D,
+    Material,
+    ShadowMapType,
+    Texture,
+    Vector2,
+    WebGLMultipleRenderTargets,
+    XRAnimationLoopCallback,
+    REVISION,
+    HalfFloatType,
+    UnsignedByteType,
+    LinearMipmapLinearFilter,
+    NearestFilter,
+    ClampToEdgeWrapping,
+    DoubleSide,
+    BackSide,
+    FrontSide,
+    FloatType,
+    RGBAFormat
 } from 'three';
 import { WebGLAnimation } from 'three/src/renderers/webgl/WebGLAnimation';
 import { WebGLAttributes } from 'three/src/renderers/webgl/WebGLAttributes';
+// import { WebGLBackground } from 'three/src/renderers/webgl/WebGLBackground';
+import { WebGLBackground } from './WebGL/WebGLBackground';
 import { WebGLBindingStates } from 'three/src/renderers/webgl/WebGLBindingStates';
 import { WebGLBufferRenderer } from 'three/src/renderers/webgl/WebGLBufferRenderer';
 import { WebGLCapabilities } from 'three/src/renderers/webgl/WebGLCapabilities';
@@ -15,31 +51,33 @@ import { WebGLExtensions } from 'three/src/renderers/webgl/WebGLExtensions';
 import { WebGLGeometries } from 'three/src/renderers/webgl/WebGLGeometries';
 import { WebGLIndexedBufferRenderer } from 'three/src/renderers/webgl/WebGLIndexedBufferRenderer';
 import { WebGLInfo } from 'three/src/renderers/webgl/WebGLInfo';
-import { WebGLMaterials } from 'three/src/renderers/webgl/WebGLMaterials';
 import { WebGLMorphtargets } from 'three/src/renderers/webgl/WebGLMorphtargets';
+import { WebGLMultisampleRenderTarget } from 'three/src/renderers/WebGLMultisampleRenderTarget';
 import { WebGLObjects } from 'three/src/renderers/webgl/WebGLObjects';
 import { WebGLPrograms } from 'three/src/renderers/webgl/WebGLPrograms';
 import { WebGLProperties } from 'three/src/renderers/webgl/WebGLProperties';
 import { WebGLRenderLists } from 'three/src/renderers/webgl/WebGLRenderLists';
 import { WebGLRenderStates } from 'three/src/renderers/webgl/WebGLRenderStates';
+import { WebGLRenderTarget } from 'three/src/renderers/WebGLRenderTarget';
 import { WebGLShadowMap } from 'three/src/renderers/webgl/WebGLShadowMap';
 import { WebGLState } from 'three/src/renderers/webgl/WebGLState';
 import { WebGLTextures } from 'three/src/renderers/webgl/WebGLTextures';
 import { WebGLUniforms } from 'three/src/renderers/webgl/WebGLUniforms';
 import { WebGLUtils } from 'three/src/renderers/webgl/WebGLUtils';
-import { WebGLMultisampleRenderTarget } from 'three/src/renderers/WebGLMultisampleRenderTarget';
-import { WebGLRenderTarget } from 'three/src/renderers/WebGLRenderTarget';
 import { WebXRManager } from 'three/src/renderers/webxr/WebXRManager';
-// import { WebGLBackground } from 'three/src/renderers/webgl/WebGLBackground';
+import { WebGLMaterials } from 'three/src/renderers/webgl/WebGLMaterials';
 
-import { WebGLBackground } from './WebGL/WebGLBackground';
-import { createElementNS } from 'three/src/utils';
+function createElementNS (name) {
+    return document.createElementNS('http://www.w3.org/1999/xhtml', name);
+}
 
 function createCanvasElement () {
     const canvas = createElementNS('canvas');
     canvas.style.display = 'block';
     return canvas;
 }
+
+const drawingBufferSize = new Vector2();
 
 class MapRenderer {
     constructor (parameters = {}) {
@@ -69,9 +107,9 @@ class MapRenderer {
         // Debug configuration container
         this.debug = {
             /**
-             * Enables error checking and reporting when shader programs are being compiled
-             * @type {boolean}
-             */
+       * Enables error checking and reporting when shader programs are being compiled
+       * @type {boolean}
+       */
             checkShaderErrors: true
         };
 
@@ -178,7 +216,7 @@ class MapRenderer {
             };
 
             // OffscreenCanvas does not have setAttribute, see #22811
-            if ('setAttribute' in _canvas) { _canvas.setAttribute('data-engine', `three.js r${REVISION}`); }
+            if ('setAttribute' in _canvas) { _canvas.setAttribute('data-engine', `three r${REVISION}`); }
 
             // event listeners must be registered before WebGL context is created, see #12753
             _canvas.addEventListener('webglcontextlost', onContextLost, false);
@@ -1092,7 +1130,7 @@ class MapRenderer {
             if (_clippingEnabled === true) {
                 if (_localClippingEnabled === true || camera !== _currentCamera) {
                     const useCache = camera === _currentCamera &&
-                        material.id === _currentMaterialId;
+            material.id === _currentMaterialId;
 
                     // we might want to call this function with some ClippingGroup
                     // object instead of the material, once it becomes feasible
@@ -1122,8 +1160,8 @@ class MapRenderer {
                 } else if (material.fog && materialProperties.fog !== fog) {
                     needsProgramChange = true;
                 } else if (materialProperties.numClippingPlanes !== undefined &&
-                    (materialProperties.numClippingPlanes !== clipping.numPlanes ||
-                        materialProperties.numIntersection !== clipping.numIntersection)) {
+          (materialProperties.numClippingPlanes !== clipping.numPlanes ||
+            materialProperties.numIntersection !== clipping.numIntersection)) {
                     needsProgramChange = true;
                 } else if (materialProperties.vertexAlphas !== vertexAlphas) {
                     needsProgramChange = true;
@@ -1188,10 +1226,10 @@ class MapRenderer {
                 // load material specific uniforms
                 // (shader material also gets them for the sake of genericity)
                 if (material.isShaderMaterial ||
-                    material.isMeshPhongMaterial ||
-                    material.isMeshToonMaterial ||
-                    material.isMeshStandardMaterial ||
-                    material.envMap) {
+          material.isMeshPhongMaterial ||
+          material.isMeshToonMaterial ||
+          material.isMeshStandardMaterial ||
+          material.envMap) {
                     const uCamPos = p_uniforms.map.cameraPosition;
 
                     if (uCamPos !== undefined) {
@@ -1201,22 +1239,22 @@ class MapRenderer {
                 }
 
                 if (material.isMeshPhongMaterial ||
-                    material.isMeshToonMaterial ||
-                    material.isMeshLambertMaterial ||
-                    material.isMeshBasicMaterial ||
-                    material.isMeshStandardMaterial ||
-                    material.isShaderMaterial) {
+          material.isMeshToonMaterial ||
+          material.isMeshLambertMaterial ||
+          material.isMeshBasicMaterial ||
+          material.isMeshStandardMaterial ||
+          material.isShaderMaterial) {
                     p_uniforms.setValue(_gl, 'isOrthographic', camera.isOrthographicCamera === true);
                 }
 
                 if (material.isMeshPhongMaterial ||
-                    material.isMeshToonMaterial ||
-                    material.isMeshLambertMaterial ||
-                    material.isMeshBasicMaterial ||
-                    material.isMeshStandardMaterial ||
-                    material.isShaderMaterial ||
-                    material.isShadowMaterial ||
-                    object.isSkinnedMesh) {
+          material.isMeshToonMaterial ||
+          material.isMeshLambertMaterial ||
+          material.isMeshBasicMaterial ||
+          material.isMeshStandardMaterial ||
+          material.isShaderMaterial ||
+          material.isShadowMaterial ||
+          object.isSkinnedMesh) {
                     p_uniforms.setValue(_gl, 'viewMatrix', camera.matrixWorldInverse);
                 }
             }
@@ -1309,8 +1347,8 @@ class MapRenderer {
 
         function materialNeedsLights (material) {
             return material.isMeshLambertMaterial || material.isMeshToonMaterial || material.isMeshPhongMaterial ||
-                material.isMeshStandardMaterial || material.isShadowMaterial ||
-                (material.isShaderMaterial && material.lights === true);
+        material.isMeshStandardMaterial || material.isShadowMaterial ||
+        (material.isShaderMaterial && material.lights === true);
         }
 
         this.getActiveCubeFace = function () {
@@ -1355,6 +1393,12 @@ class MapRenderer {
 
         this.setRenderTarget = function (renderTarget, activeCubeFace = 0, activeMipmapLevel = 0) {
             _currentRenderTarget = renderTarget;
+
+            if (_currentRenderTarget && _currentRenderTarget.isWebGLMultipleRenderTargets) {
+                _currentRenderTarget.texture.isTexture = true;
+                _currentRenderTarget.texture.encoding = this.outputEncoding;
+            }
+
             _currentActiveCubeFace = activeCubeFace;
             _currentActiveMipmapLevel = activeMipmapLevel;
             let useDefaultFramebuffer = true;
@@ -1493,8 +1537,8 @@ class MapRenderer {
                     const halfFloatSupportedByExt = (textureType === HalfFloatType) && (extensions.has('EXT_color_buffer_half_float') || (capabilities.isWebGL2 && extensions.has('EXT_color_buffer_float')));
 
                     if (textureType !== UnsignedByteType && utils.convert(textureType) !== _gl.getParameter(_gl.IMPLEMENTATION_COLOR_READ_TYPE) && // Edge and Chrome Mac < 52 (#9513)
-                        !(textureType === FloatType && (capabilities.isWebGL2 || extensions.has('OES_texture_float') || extensions.has('WEBGL_color_buffer_float'))) && // Chrome Mac >= 52 and Firefox
-                        !halfFloatSupportedByExt) {
+            !(textureType === FloatType && (capabilities.isWebGL2 || extensions.has('OES_texture_float') || extensions.has('WEBGL_color_buffer_float'))) && // Chrome Mac >= 52 and Firefox
+            !halfFloatSupportedByExt) {
                         console.error('THREE.WebGLRenderer.readRenderTargetPixels: renderTarget is not in UnsignedByteType or implementation defined type.');
                         return;
                     }
@@ -1650,17 +1694,20 @@ class MapRenderer {
             __THREE_DEVTOOLS__.dispatchEvent(new CustomEvent('observe', { detail: this })); // eslint-disable-line no-undef
         }
     }
+
+    /**
+   * 返回当前绘图缓冲区的尺寸
+   *
+   * @readonly
+   * @type {Vector2}
+   * @memberof MapRenderer
+   * @return {Vector2}
+   */
+    get drawingBufferSize () {
+        return this.getDrawingBufferSize(drawingBufferSize);
+    }
 }
 
 MapRenderer.prototype.isWebGLRenderer = true;
 
-const drawingBufferSize = new Vector2();
-Object.defineProperties(MapRenderer.prototype, {
-    drawingBufferSize: {
-        get: function () {
-            return this.getDrawingBufferSize(drawingBufferSize);
-        }
-    }
-
-});
 export { MapRenderer };

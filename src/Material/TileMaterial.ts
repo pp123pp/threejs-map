@@ -1,15 +1,20 @@
 
+import { CesiumMatrix4 } from '@/Core/CesiumMatrix4';
 import { defined } from '@/Core/defined';
-import { Matrix4, RawShaderMaterial, Texture, Vector2, Vector3, Vector4 } from 'three';
+import { Rectangle } from '@/Core/Rectangle';
+import { ShaderMaterial, Vector2, Vector4, Matrix4, Vector3, RawShaderMaterial, GLSL3, DoubleSide, Texture } from 'three';
 
 const vertexShader = `
 
+#include <common>
+#include <logdepthbuf_pars_vertex>
+
 #ifdef QUANTIZATION_BITS12
-    attribute vec4 compressed0;
-    attribute float compressed1;
+    in vec4 compressed0;
+    in float compressed1;
 #else
-    attribute vec4 position3DAndHeight;
-    attribute vec4 textureCoordAndEncodedNormals;
+    in vec4 position3DAndHeight;
+    in vec4 textureCoordAndEncodedNormals;
 #endif
 
 #ifdef QUANTIZATION_BITS12
@@ -35,7 +40,7 @@ vec4 getPositionPlanarEarth(vec3 position, float height, vec2 textureCoordinates
     float yPositionFraction = get2DGeographicYPositionFraction(textureCoordinates);
     vec4 rtcPosition2D = vec4( mix(u_tileRectangle.st, u_tileRectangle.pq, vec2(textureCoordinates.x, yPositionFraction)), height, 1.0);
 
-    return u_modifiedModelViewProjection * rtcPosition2D;
+    return projectionMatrix * modelViewMatrix * rtcPosition2D;
 }
 
 vec4 getPositionColumbusViewMode(vec3 position, float height, vec2 textureCoordinates)
@@ -84,7 +89,7 @@ void main(){
     #endif
 
 #else
-    
+
     vec3 position = position3DAndHeight.xyz;
     float height = position3DAndHeight.w;
     vec2 textureCoordinates = textureCoordAndEncodedNormals.xy;
@@ -111,16 +116,19 @@ void main(){
     // gl_Position = getPosition(transformed, height, textureCoordinates);
 
     // gl_Position = projectionMatrix * modelViewMatrix *  vec4( transformed, 1.0 );
-    
+
     gl_Position = u_modifiedModelViewProjection * vec4(position, 1.0);
 
     v_textureCoordinates = vec3(textureCoordinates, webMercatorT);
-   
+
+
+    #include <logdepthbuf_vertex>
+    vHighPrecisionZW = gl_Position.zw;
 }
 
 `;
 
-class TileMaterial extends RawShaderMaterial {
+class TileMaterial extends ShaderMaterial {
     constructor (parameters = {}, shaderSetOptions?:any) {
         super(parameters);
 
@@ -130,78 +138,30 @@ class TileMaterial extends RawShaderMaterial {
         const fragmentShader = this.createFragmentShader(shaderSetOptions);
 
         this.uniforms = {
-            // u_dayTextures: { value: [] },
-            // u_dayTextureTranslationAndScale: { value: [] },
-            // u_dayTextureTexCoordsRectangle: { value: [] },
-            // u_initialColor: { value: new Vector4(0, 0, 0.5, 1) },
-            // diffuse: { value: new Vector4(Math.random(), Math.random(), Math.random(), 1.0) },
-            // u_tileRectangle: { value: new Vector4() },
-            // rtc: { value: new Vector3() },
-            // u_minMaxHeight: { value: new Vector2() },
-            // u_scaleAndBias: { value: new Matrix4() },
-            // u_center3D: { value: new Vector3() },
-            // u_modifiedModelView: { value: new Matrix4() },
-            // u_modifiedModelViewProjection: { value: new Matrix4() }
-
-            u_backFaceAlphaByDistance: { value: new Vector4() },
-            u_center3D: { value: new Vector3() },
-            u_clippingPlanesEdgeColor: { value: new Vector4() },
-            u_clippingPlanesEdgeWidth: { value: 0 },
-
-            u_dayIntensity: { value: 0 },
-            u_dayTextureAlpha: { value: [] },
-            u_dayTextureBrightness: { value: [] },
-            u_dayTextureContrast: { value: [] },
-            u_dayTextureCutoutRectangles: { value: [] },
-            u_dayTextureDayAlpha: { value: [] },
-            u_dayTextureHue: { value: [] },
-            u_dayTextureNightAlpha: { value: [] },
-            u_dayTextureOneOverGamma: { value: [] },
-            u_dayTextureSaturation: { value: [] },
-            u_dayTextureSplit: { value: [] },
-            u_colorsToAlpha: { value: [] },
-            // u_dayTextureUseWebMercatorT: { value: [] },
             u_dayTextures: { value: [] },
             u_dayTextureTranslationAndScale: { value: [] },
             u_dayTextureTexCoordsRectangle: { value: [] },
-            u_fillHighlightColor: { value: new Vector4() },
-            u_frontFaceAlphaByDistance: { value: new Vector4() },
-            u_hsbShift: { value: new Vector3() },
-            u_initialColor: { value: new Vector4() },
-            u_lightingFadeDistance: { value: new Vector2() },
-            u_localizedCartographicLimitRectangle: { value: new Vector4() },
-            u_localizedTranslucencyRectangle: { value: new Vector4() },
-            u_minMaxHeight: { value: new Vector4() },
-            u_modifiedModelView: { value: new Matrix4() },
-            u_modifiedModelViewProjection: { value: new Matrix4() },
-            u_nightFadeDistance: { value: new Vector2() },
-            u_oceanNormalMap: { value: undefined },
-            u_scaleAndBias: { value: new Matrix4() },
-            u_southAndNorthLatitude: { value: new Vector2() },
-            u_southMercatorYAndOneOverHeight: { value: new Vector2() },
-            u_terrainExaggerationAndRelativeHeight: { value: new Vector2() },
+            u_initialColor: { value: new Vector4(0, 0, 0.5, 1) },
+            diffuse: { value: new Vector4(Math.random(), Math.random(), Math.random(), 1.0) },
             u_tileRectangle: { value: new Vector4() },
-            u_undergroundColor: { value: new Vector4() },
-            u_undergroundColorAlphaByDistance: { value: new Vector4() },
-            u_waterMask: { value: undefined },
-            u_waterMaskTranslationAndScale: { value: new Vector4() },
-            u_zoomedOutOceanSpecularIntensity: { value: 0.4 }
+            rtc: { value: new Vector3() },
+            u_minMaxHeight: { value: new Vector2() },
+            u_scaleAndBias: { value: new Matrix4() },
+            u_center3D: { value: new Vector3() },
+            u_modifiedModelView: { value: new Matrix4() },
+            u_modifiedModelViewProjection: { value: new Matrix4() }
         };
         this.vertexShader = vertexShader;
         this.fragmentShader = fragmentShader;
         this.defines.TEXTURE_UNITS = shaderSetOptions.numberOfDayTextures;
-        // this.glslVersion = GLSL2;
+        // this.glslVersion = GLSL3;
         this.defines.APPLY_GAMMA = '';
 
         this.defines.GROUND_ATMOSPHERE = '';
 
-        this.toneMapped = false;
-
-        // this.defines.precision = 'highp';
-
-        // this.side = DoubleSide;
-        // this.wireframe = true;
-        // this.depthWrite = false;
+    // this.side = DoubleSide;
+    // this.wireframe = true;
+    // this.depthWrite = false;
     }
 
     get dayTextures (): Texture[] {
@@ -324,11 +284,7 @@ class TileMaterial extends RawShaderMaterial {
 
     createFragmentShader (options: any): string {
         const fragmentShader = `
-
-        precision mediump float;
-        #define highp mediump
-
-        
+        #include <common>
         #include <packing>
         #include <logdepthbuf_pars_fragment>
 
@@ -336,16 +292,16 @@ class TileMaterial extends RawShaderMaterial {
         varying vec2 vHighPrecisionZW;
         uniform vec4 u_initialColor;
         uniform vec4 diffuse;
-        
-        
+
+
         #if TEXTURE_UNITS > 0
             uniform sampler2D u_dayTextures[TEXTURE_UNITS];
             uniform vec4 u_dayTextureTranslationAndScale[TEXTURE_UNITS];
             uniform bool u_dayTextureUseWebMercatorT[TEXTURE_UNITS];
             uniform vec4 u_dayTextureTexCoordsRectangle[TEXTURE_UNITS];
         #endif
-        
-        
+
+
         vec4 sampleAndBlend(
             vec4 previousColor,
             sampler2D textureToSample,
@@ -360,67 +316,67 @@ class TileMaterial extends RawShaderMaterial {
             float textureOneOverGamma,
             float split)
         {
-            
-            
+
+
             vec2 alphaMultiplier = step(textureCoordinateRectangle.st, tileTextureCoordinates);
             textureAlpha = textureAlpha * alphaMultiplier.x * alphaMultiplier.y;
-        
+
             alphaMultiplier = step(vec2(0.0), textureCoordinateRectangle.pq - tileTextureCoordinates);
             textureAlpha = textureAlpha * alphaMultiplier.x * alphaMultiplier.y;
-        
+
             vec2 translation = textureCoordinateTranslationAndScale.xy;
             vec2 scale = textureCoordinateTranslationAndScale.zw;
             vec2 textureCoordinates = tileTextureCoordinates * scale + translation;
             vec4 value = texture2D(textureToSample, textureCoordinates);
             vec3 color = value.rgb;
             float alpha = value.a;
-        
+
         #ifdef APPLY_SPLIT
             float splitPosition = czm_imagerySplitPosition;
-            
+
             if (split < 0.0 && gl_FragCoord.x > splitPosition) {
                alpha = 0.0;
             }
-            
+
             else if (split > 0.0 && gl_FragCoord.x < splitPosition) {
                alpha = 0.0;
             }
         #endif
-        
+
         #ifdef APPLY_BRIGHTNESS
             color = mix(vec3(0.0), color, textureBrightness);
         #endif
-        
+
         #ifdef APPLY_CONTRAST
             color = mix(vec3(0.5), color, textureContrast);
         #endif
-        
+
         #ifdef APPLY_HUE
             color = czm_hue(color, textureHue);
         #endif
-        
+
         #ifdef APPLY_SATURATION
             color = czm_saturation(color, textureSaturation);
         #endif
-        
+
         #ifdef APPLY_GAMMA
             color = pow(color, vec3(textureOneOverGamma));
         #endif
-        
+
             float sourceAlpha = alpha * textureAlpha;
             float outAlpha = mix(previousColor.a, 1.0, sourceAlpha);
             vec3 outColor = mix(previousColor.rgb * previousColor.a, color, sourceAlpha) / outAlpha;
             return vec4(outColor, outAlpha);
         }
-        
-        
+
+
         vec4 computeDayColor(vec4 initialColor, vec3 textureCoordinates)
         {
             vec4 color = initialColor;
-        
+
             #pragma unroll_loop_start
             for ( int i = 0; i < ${options.numberOfDayTextures}; i ++ ) {
-        
+
                 color = sampleAndBlend(
                     color,
                     u_dayTextures[ i ],
@@ -435,25 +391,23 @@ class TileMaterial extends RawShaderMaterial {
                     2.2,
                     0.0
                 );
-        
+
             }
             #pragma unroll_loop_end
-        
+
             return color;
         }
 
-        vec4 LinearTosRGB( in vec4 value ) {
-            return vec4( mix( pow( value.rgb, vec3( 0.41666 ) ) * 1.055 - vec3( 0.055 ), value.rgb * 12.92, vec3( lessThanEqual( value.rgb, vec3( 0.0031308 ) ) ) ), value.a );
-        }
-        
         void main(void){
-            
+            #include <logdepthbuf_fragment>
+
             gl_FragColor = computeDayColor(u_initialColor, clamp(v_textureCoordinates, 0.0, 1.0));
 
             #include <tonemapping_fragment>
-            
-            gl_FragColor = LinearTosRGB( gl_FragColor );
-
+            #include <encodings_fragment>
+            #include <fog_fragment>
+            #include <premultiplied_alpha_fragment>
+            #include <dithering_fragment>
         }
         `;
 
