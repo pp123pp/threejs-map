@@ -2,6 +2,7 @@ import { BoundingSphere } from '@/Core/BoundingSphere';
 import { Cartesian2 } from '@/Core/Cartesian2';
 import { Cartesian3 } from '@/Core/Cartesian3';
 import { Cartographic } from '@/Core/Cartographic';
+import { CesiumColor } from '@/Core/CesiumColor';
 import { defaultValue } from '@/Core/defaultValue';
 import { defined } from '@/Core/defined';
 import { DeveloperError } from '@/Core/DeveloperError';
@@ -9,6 +10,7 @@ import { Ellipsoid } from '@/Core/Ellipsoid';
 import { EllipsoidTerrainProvider } from '@/Core/EllipsoidTerrainProvider';
 import { Event } from '@/Core/Event';
 import { IntersectionTests } from '@/Core/IntersectionTests';
+import { NearFarScalar } from '@/Core/NearFarScalar';
 import { Object3DCollection } from '@/Core/Object3DCollection';
 import { Ray } from '@/Core/Ray';
 import { Rectangle } from '@/Core/Rectangle';
@@ -72,7 +74,9 @@ class Globe extends Object3DCollection {
     _zoomedOutOceanSpecularIntensity: number;
     terrainExaggeration: number;
     terrainExaggerationRelativeHeight: number;
-    _surfaceShaderSet = new GlobeSurfaceShaderSet()
+    _surfaceShaderSet = new GlobeSurfaceShaderSet();
+    _undergroundColor = CesiumColor.clone(CesiumColor.BLACK);
+    _undergroundColorAlphaByDistance: NearFarScalar;
     constructor (ellipsoid = Ellipsoid.WGS84) {
         super();
         const terrainProvider = new EllipsoidTerrainProvider({
@@ -97,6 +101,13 @@ class Globe extends Object3DCollection {
         this._terrainProviderChanged = new Event();
 
         this.maximumScreenSpaceError = 2;
+
+        this._undergroundColorAlphaByDistance = new NearFarScalar(
+            ellipsoid.maximumRadius / 1000.0,
+            0.0,
+            ellipsoid.maximumRadius / 5.0,
+            1.0
+        );
 
         /**
          * The size of the terrain tile cache, expressed as a number of tiles.  Any additional

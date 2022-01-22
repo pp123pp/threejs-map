@@ -61,6 +61,15 @@ class CesiumColor {
         this.alpha = defaultValue(alpha, 1.0);
     }
 
+    /**
+     * An immutable Color instance initialized to CSS color #000000
+     * <span class="colorSwath" style="background: #000000;"></span>
+     *
+     * @constant
+     * @type {Color}
+     */
+    static BLACK = Object.freeze(CesiumColor.fromCssColorString('#000000')) as CesiumColor;
+
     static RED = CesiumColor.fromCssColorString('#FF0000')
 
     /**
