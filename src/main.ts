@@ -10,6 +10,10 @@ import { UrlTemplateImageryProvider } from './Scene/UrlTemplateImageryProvider';
 import './Widgets/MapWidgets/CesiumWidget.css';
 import { MapWidgets } from './Widgets/MapWidgets/MapWidgets';
 
+// import SkyAtmosphereCommon from './Shader/SkyAtmosphereCommon.glsl';
+
+// console.log(SkyAtmosphereCommon);
+
 const widget = new MapWidgets('app', {});
 
 const scene: Scene = widget.scene;

@@ -7,6 +7,7 @@ import { Cartographic } from '@/Core/Cartographic';
 import { CesiumColor } from '@/Core/CesiumColor';
 import { CesiumMath } from '@/Core/CesiumMath';
 import { CesiumMatrix4 } from '@/Core/CesiumMatrix4';
+import { combine } from '@/Core/combine';
 import { defaultValue } from '@/Core/defaultValue';
 import { defined } from '@/Core/defined';
 import { DeveloperError } from '@/Core/DeveloperError';
@@ -21,9 +22,10 @@ import { SceneMode } from '@/Core/SceneMode';
 import { TerrainExaggeration } from '@/Core/TerrainExaggeration';
 import { TerrainQuantization } from '@/Core/TerrainQuantization';
 import { Visibility } from '@/Core/Visibility';
+import { GlobeSurfaceTileMaterial } from '@/Material/GlobeSurfaceTileMaterial';
 import { TileMaterial } from '@/Material/TileMaterial';
 import { DrawMeshCommand } from '@/Renderer/DrawMeshCommand';
-import { Vector4, Vector3, DoubleSide } from 'three';
+import { Vector4, Vector3, DoubleSide, Matrix4, Vector2 } from 'three';
 import { TerrainProvider } from './../Core/TerrainProvider';
 import { ContextLimits } from './ContextLimits';
 import { FrameState } from './FrameState';
@@ -306,13 +308,17 @@ function isUndergroundVisible (tileProvider:GlobeSurfaceTileProvider, frameState
 
     return false;
 }
+
+const otherPassesInitialColor = new Cartesian4(0.0, 0.0, 0.0, 0.0);
+const modifiedModelViewScratch = new CesiumMatrix4();
 const modifiedModelViewProjectionScratch = new CesiumMatrix4();
-const otherPassesInitialColor = new Vector4(0.0, 0.0, 0.0, 0.0);
 const tileRectangleScratch = new Vector4();
-const rtcScratch = new Vector3();
-const southwestScratch = new Vector3();
-const northeastScratch = new Vector3();
+const localizedCartographicLimitRectangleScratch = new Cartesian4();
+const localizedTranslucencyRectangleScratch = new Cartesian4();
+const rtcScratch = new Cartesian3();
 const centerEyeScratch = new Cartesian3();
+const southwestScratch = new Cartesian3();
+const northeastScratch = new Cartesian3();
 
 const surfaceShaderSetOptionsScratch: any = {
     frameState: undefined,
@@ -360,7 +366,7 @@ function sortTileImageryByLayerIndex (a: any, b: any) {
     return aImagery.imageryLayer._layerIndex - bImagery.imageryLayer._layerIndex;
 }
 
-const createTileUniformMap = (frameState: FrameState, tileProvider: any, surfaceShaderSetOptions: any, quantization: TerrainQuantization): TileMaterial => {
+const createMaterialMap = (frameState: FrameState, tileProvider: any, surfaceShaderSetOptions: any, quantization: TerrainQuantization): TileMaterial => {
     const material = new TileMaterial({
         // side: DoubleSide
         // wireframe: true
@@ -374,6 +380,309 @@ const createTileUniformMap = (frameState: FrameState, tileProvider: any, surface
     material.defines.QUANTIZATION_BITS12 = '';
 
     return material;
+};
+
+const setUniform = (command: DrawMeshCommand, uniformMap: any, globeSurfaceMaterial: any) => {
+    const properties = uniformMap.properties;
+
+    const material = command.material as GlobeSurfaceTileMaterial;
+
+    const uniforms = globeSurfaceMaterial.uniforms;
+
+    uniforms.u_backFaceAlphaByDistance.value = uniformMap.u_backFaceAlphaByDistance();
+    uniforms.u_center3D.value = uniformMap.u_center3D();
+    // uniforms.clippingPlanesEdgeColor.value = uniformMap.u_clippingPlanesEdgeColor;
+    // uniforms.clippingPlanesEdgeWidth.value = uniformMap.u_clippingPlanesEdgeWidth;
+    uniforms.u_colorsToAlpha.value = uniformMap.u_colorsToAlpha();
+    uniforms.u_dayIntensity.value = uniformMap.u_dayIntensity();
+    uniforms.u_dayTextureAlpha.value = uniformMap.u_dayTextureAlpha();
+    uniforms.u_dayTextureBrightness.value = uniformMap.u_dayTextureBrightness();
+    uniforms.u_dayTextureContrast.value = uniformMap.u_dayTextureContrast();
+    uniforms.u_dayTextureCutoutRectangles.value = uniformMap.u_dayTextureCutoutRectangles();
+    uniforms.u_dayTextureDayAlpha.value = uniformMap.u_dayTextureDayAlpha();
+    uniforms.u_dayTextureHue.value = uniformMap.u_dayTextureHue();
+    uniforms.u_dayTextureNightAlpha.value = uniformMap.u_dayTextureNightAlpha();
+    uniforms.u_dayTextureOneOverGamma.value = uniformMap.u_dayTextureOneOverGamma();
+    uniforms.u_dayTextureSaturation.value = uniformMap.u_dayTextureSaturation();
+    uniforms.u_dayTextureSplit.value = uniformMap.u_dayTextureSplit();
+    uniforms.u_dayTextureTexCoordsRectangle.value = uniformMap.u_dayTextureTexCoordsRectangle();
+    uniforms.u_dayTextureTranslationAndScale.value = uniformMap.u_dayTextureTranslationAndScale();
+    uniforms.u_dayTextureUseWebMercatorT.value = uniformMap.u_dayTextureUseWebMercatorT();
+    uniforms.u_dayTextures.value = uniformMap.u_dayTextures();
+    uniforms.u_fillHighlightColor.value = uniformMap.u_fillHighlightColor();
+    uniforms.u_frontFaceAlphaByDistance.value = uniformMap.u_frontFaceAlphaByDistance();
+    uniforms.u_hsbShift.value = uniformMap.u_hsbShift();
+    uniforms.u_initialColor.value = uniformMap.u_initialColor();
+    uniforms.u_lightingFadeDistance.value = uniformMap.u_lightingFadeDistance();
+    uniforms.u_localizedCartographicLimitRectangle.value = uniformMap.u_cartographicLimitRectangle();
+    uniforms.u_localizedTranslucencyRectangle.value = uniformMap.u_translucencyRectangle();
+    uniforms.u_minMaxHeight.value = uniformMap.u_minMaxHeight();
+    uniforms.u_modifiedModelView.value = uniformMap.u_modifiedModelView();
+    uniforms.u_modifiedModelViewProjection.value = uniformMap.u_modifiedModelViewProjection();
+    uniforms.u_nightFadeDistance.value = uniformMap.u_nightFadeDistance();
+    uniforms.u_oceanNormalMap.value = uniformMap.u_oceanNormalMap();
+    uniforms.u_scaleAndBias.value = uniformMap.u_scaleAndBias();
+    uniforms.u_southAndNorthLatitude.value = uniformMap.u_southAndNorthLatitude();
+    uniforms.u_southMercatorYAndOneOverHeight.value = uniformMap.u_southMercatorYAndOneOverHeight();
+    uniforms.u_terrainExaggerationAndRelativeHeight.value = uniformMap.u_terrainExaggerationAndRelativeHeight();
+    uniforms.u_tileRectangle.value = uniformMap.u_tileRectangle();
+    uniforms.u_undergroundColor.value = uniformMap.u_undergroundColor();
+    uniforms.u_undergroundColorAlphaByDistance.value = uniformMap.u_undergroundColorAlphaByDistance();
+    uniforms.u_waterMask.value = uniformMap.u_waterMask();
+    uniforms.u_waterMaskTranslationAndScale.value = uniformMap.u_waterMaskTranslationAndScale();
+    uniforms.u_zoomedOutOceanSpecularIntensity.value = uniformMap.u_zoomedOutOceanSpecularIntensity();
+};
+
+const createTileUniformMap = (frameState: FrameState, globeSurfaceTileProvider: GlobeSurfaceTileProvider) => {
+    const uniformMap = {
+        u_initialColor: function () {
+            return this.properties.initialColor;
+        },
+        u_fillHighlightColor: function () {
+            return this.properties.fillHighlightColor;
+        },
+        u_zoomedOutOceanSpecularIntensity: function () {
+            return this.properties.zoomedOutOceanSpecularIntensity;
+        },
+        u_oceanNormalMap: function () {
+            return this.properties.oceanNormalMap;
+        },
+        u_lightingFadeDistance: function () {
+            return this.properties.lightingFadeDistance;
+        },
+        u_nightFadeDistance: function () {
+            return this.properties.nightFadeDistance;
+        },
+        u_center3D: function () {
+            return this.properties.center3D;
+        },
+        u_terrainExaggerationAndRelativeHeight: function () {
+            return this.properties.terrainExaggerationAndRelativeHeight;
+        },
+        u_tileRectangle: function () {
+            return this.properties.tileRectangle;
+        },
+        u_modifiedModelView: function () {
+            const viewMatrix = frameState.camera.viewMatrix;
+            const centerEye = CesiumMatrix4.multiplyByPoint(
+                viewMatrix,
+                this.properties.rtc,
+                centerEyeScratch
+            );
+            CesiumMatrix4.setTranslation(viewMatrix, centerEye, modifiedModelViewScratch);
+
+            CesiumMatrix4.transformToThreeMatrix4(modifiedModelViewScratch, this.properties_three.modifiedModelView);
+            return this.properties_three.modifiedModelView;
+        },
+        u_modifiedModelViewProjection: function () {
+            const viewMatrix = frameState.camera.viewMatrix;
+            const projectionMatrix = frameState.camera.frustum.cesiumProjectMatrix;
+            const centerEye = CesiumMatrix4.multiplyByPoint(
+                viewMatrix,
+                this.properties.rtc,
+                centerEyeScratch
+            );
+            CesiumMatrix4.setTranslation(
+                viewMatrix,
+                centerEye,
+                modifiedModelViewProjectionScratch
+            );
+            CesiumMatrix4.multiply(
+                projectionMatrix,
+                modifiedModelViewProjectionScratch,
+                modifiedModelViewProjectionScratch
+            );
+
+            CesiumMatrix4.transformToThreeMatrix4(modifiedModelViewProjectionScratch, this.properties_three.modifiedModelViewProjection);
+            return this.properties_three.modifiedModelViewProjection;
+        },
+        u_dayTextures: function () {
+            return this.properties.dayTextures;
+        },
+        u_dayTextureTranslationAndScale: function () {
+            return this.properties.dayTextureTranslationAndScale;
+        },
+        u_dayTextureTexCoordsRectangle: function () {
+            return this.properties.dayTextureTexCoordsRectangle;
+        },
+        u_dayTextureUseWebMercatorT: function () {
+            return this.properties.dayTextureUseWebMercatorT;
+        },
+        u_dayTextureAlpha: function () {
+            return this.properties.dayTextureAlpha;
+        },
+        u_dayTextureNightAlpha: function () {
+            return this.properties.dayTextureNightAlpha;
+        },
+        u_dayTextureDayAlpha: function () {
+            return this.properties.dayTextureDayAlpha;
+        },
+        u_dayTextureBrightness: function () {
+            return this.properties.dayTextureBrightness;
+        },
+        u_dayTextureContrast: function () {
+            return this.properties.dayTextureContrast;
+        },
+        u_dayTextureHue: function () {
+            return this.properties.dayTextureHue;
+        },
+        u_dayTextureSaturation: function () {
+            return this.properties.dayTextureSaturation;
+        },
+        u_dayTextureOneOverGamma: function () {
+            return this.properties.dayTextureOneOverGamma;
+        },
+        u_dayIntensity: function () {
+            return this.properties.dayIntensity;
+        },
+        u_southAndNorthLatitude: function () {
+            return this.properties.southAndNorthLatitude;
+        },
+        u_southMercatorYAndOneOverHeight: function () {
+            return this.properties.southMercatorYAndOneOverHeight;
+        },
+        u_waterMask: function () {
+            return this.properties.waterMask;
+        },
+        u_waterMaskTranslationAndScale: function () {
+            return this.properties.waterMaskTranslationAndScale;
+        },
+        u_minMaxHeight: function () {
+            return this.properties.minMaxHeight;
+        },
+        u_scaleAndBias: function () {
+            return this.properties.scaleAndBias;
+        },
+        u_dayTextureSplit: function () {
+            return this.properties.dayTextureSplit;
+        },
+        u_dayTextureCutoutRectangles: function () {
+            return this.properties.dayTextureCutoutRectangles;
+        },
+        // u_clippingPlanes: function () {
+        //     const clippingPlanes = globeSurfaceTileProvider._clippingPlanes;
+        //     if (defined(clippingPlanes) && defined(clippingPlanes.texture)) {
+        //         // Check in case clippingPlanes hasn't been updated yet.
+        //         return clippingPlanes.texture;
+        //     }
+        //     return frameState.context.defaultTexture;
+        // },
+        u_cartographicLimitRectangle: function () {
+            return this.properties.localizedCartographicLimitRectangle;
+        },
+        // u_clippingPlanesMatrix: function () {
+        //     const clippingPlanes = globeSurfaceTileProvider._clippingPlanes;
+        //     const transform = defined(clippingPlanes)
+        //         ? Matrix4.multiply(
+        //             frameState.context.uniformState.view,
+        //             clippingPlanes.modelMatrix,
+        //             scratchClippingPlanesMatrix
+        //         )
+        //         : Matrix4.IDENTITY;
+
+        //     return Matrix4.inverseTranspose(
+        //         transform,
+        //         scratchInverseTransposeClippingPlanesMatrix
+        //     );
+        // },
+        // u_clippingPlanesEdgeStyle: function () {
+        //     const style = this.properties.clippingPlanesEdgeColor;
+        //     style.alpha = this.properties.clippingPlanesEdgeWidth;
+        //     return style;
+        // },
+        u_minimumBrightness: function () {
+            return frameState.fog.minimumBrightness;
+        },
+        u_hsbShift: function () {
+            return this.properties.hsbShift;
+        },
+        u_colorsToAlpha: function () {
+            return this.properties.colorsToAlpha;
+        },
+        u_frontFaceAlphaByDistance: function () {
+            return this.properties.frontFaceAlphaByDistance;
+        },
+        u_backFaceAlphaByDistance: function () {
+            return this.properties.backFaceAlphaByDistance;
+        },
+        u_translucencyRectangle: function () {
+            return this.properties.localizedTranslucencyRectangle;
+        },
+        u_undergroundColor: function () {
+            const undergroundColor = this.properties.undergroundColor;
+            this.properties_three.undergroundColor.set(undergroundColor.red, undergroundColor.green, undergroundColor.blue, undergroundColor.alpha);
+            return this.properties_three.undergroundColor;
+        },
+        u_undergroundColorAlphaByDistance: function () {
+            return this.properties.undergroundColorAlphaByDistance;
+        },
+
+        // make a separate object so that changes to the properties are seen on
+        // derived commands that combine another uniform map with this one.
+        properties: {
+            initialColor: new Vector4(0.0, 0.0, 0.5, 1.0),
+            fillHighlightColor: new Vector4(0.0, 0.0, 0.0, 0.0),
+            zoomedOutOceanSpecularIntensity: 0.5,
+            oceanNormalMap: undefined,
+            lightingFadeDistance: new Vector2(6500000.0, 9000000.0),
+            nightFadeDistance: new Vector2(10000000.0, 40000000.0),
+            hsbShift: new Vector3(),
+
+            center3D: new Vector3(),
+            rtc: new Cartesian3(),
+            modifiedModelView: new CesiumMatrix4(),
+            tileRectangle: new Vector4(),
+
+            terrainExaggerationAndRelativeHeight: new Vector2(1.0, 0.0),
+
+            dayTextures: [],
+            dayTextureTranslationAndScale: [],
+            dayTextureTexCoordsRectangle: [],
+            dayTextureUseWebMercatorT: [],
+            dayTextureAlpha: [],
+            dayTextureNightAlpha: [],
+            dayTextureDayAlpha: [],
+            dayTextureBrightness: [],
+            dayTextureContrast: [],
+            dayTextureHue: [],
+            dayTextureSaturation: [],
+            dayTextureOneOverGamma: [],
+            dayTextureSplit: [],
+            dayTextureCutoutRectangles: [],
+            dayIntensity: 0.0,
+            colorsToAlpha: [],
+
+            southAndNorthLatitude: new Vector2(),
+            southMercatorYAndOneOverHeight: new Vector2(),
+
+            waterMask: undefined,
+            waterMaskTranslationAndScale: new Vector4(),
+
+            minMaxHeight: new Vector2(),
+            scaleAndBias: new Matrix4(),
+            // clippingPlanesEdgeColor: CesiumColor.clone(CesiumColor.WHITE),
+            clippingPlanesEdgeWidth: 0.0,
+
+            localizedCartographicLimitRectangle: new Vector4(),
+
+            frontFaceAlphaByDistance: new Vector4(),
+            backFaceAlphaByDistance: new Vector4(),
+            localizedTranslucencyRectangle: new Vector4(),
+            undergroundColor: CesiumColor.clone(CesiumColor.TRANSPARENT),
+            undergroundColorAlphaByDistance: new Vector4()
+        },
+        properties_three: {
+            undergroundColor: new Vector4(),
+            modifiedModelView: new Matrix4(),
+            modifiedModelViewProjection: new Matrix4()
+        }
+    };
+
+    if (defined(globeSurfaceTileProvider.materialUniformMap)) {
+        return combine(uniformMap, globeSurfaceTileProvider.materialUniformMap);
+    }
+
+    return uniformMap;
 };
 
 // function updateCredits (surface: GlobeSurfaceTileProvider, frameState: FrameState) {
@@ -444,8 +753,7 @@ const addDrawCommandsForTile = (tileProvider: GlobeSurfaceTileProvider, tile: an
         (undergroundColorAlphaByDistance.nearValue > 0.0 ||
           undergroundColorAlphaByDistance.farValue > 0.0);
 
-    const showReflectiveOcean =
-        tileProvider.hasWaterMask && defined(waterMaskTexture);
+    const showReflectiveOcean = tileProvider.hasWaterMask && defined(waterMaskTexture);
     const oceanNormalMap = tileProvider.oceanNormalMap;
     const showOceanWaves = showReflectiveOcean && defined(oceanNormalMap);
     const hasVertexNormals =
@@ -463,7 +771,7 @@ const addDrawCommandsForTile = (tileProvider: GlobeSurfaceTileProvider, tile: an
     const saturationShift = tileProvider.saturationShift;
     const brightnessShift = tileProvider.brightnessShift;
 
-    const colorCorrect = !(
+    let colorCorrect = !(
         CesiumMath.equalsEpsilon(hueShift, 0.0, CesiumMath.EPSILON7) &&
         CesiumMath.equalsEpsilon(saturationShift, 0.0, CesiumMath.EPSILON7) &&
         CesiumMath.equalsEpsilon(brightnessShift, 0.0, CesiumMath.EPSILON7)
@@ -574,12 +882,16 @@ const addDrawCommandsForTile = (tileProvider: GlobeSurfaceTileProvider, tile: an
         let numberOfDayTextures = 0;
 
         let command: DrawMeshCommand;
-        let uniformMap: TileMaterial;
+        let material: TileMaterial;
+
+        let globeSurfaceMaterial: GlobeSurfaceTileMaterial;
+
+        let uniformMap: any;
 
         const dayTextures = [];
         const dayTextureTranslationAndScale = [];
         const dayTextureTexCoordsRectangle = [];
-        while (imageryIndex < imageryLen) {
+        while (numberOfDayTextures < maxTextures && imageryIndex < imageryLen) {
             const tileImagery = tileImageryCollection[imageryIndex];
             const imagery = tileImagery.readyImagery;
             ++imageryIndex;
@@ -614,33 +926,44 @@ const addDrawCommandsForTile = (tileProvider: GlobeSurfaceTileProvider, tile: an
             command.boundingVolume = new BoundingSphere();
             command.orientedBoundingBox = undefined;
 
-            uniformMap = createTileUniformMap(frameState, tileProvider, surfaceShaderSetOptions, quantization);
+            material = createMaterialMap(frameState, tileProvider, surfaceShaderSetOptions, quantization);
+
+            uniformMap = createTileUniformMap(frameState, tileProvider);
+
+            globeSurfaceMaterial = new GlobeSurfaceTileMaterial();
 
             tileProvider._drawCommands.push(command);
-            tileProvider._uniformMaps.push(uniformMap);
+            tileProvider._materialMaps.push(material);
+            tileProvider._uniformMaps.push(globeSurfaceMaterial);
         } else {
             command = tileProvider._drawCommands[tileProvider._usedDrawCommands];
-            uniformMap = tileProvider._uniformMaps[tileProvider._usedDrawCommands];
+            material = tileProvider._materialMaps[tileProvider._usedDrawCommands];
+
+            globeSurfaceMaterial = tileProvider._uniformMaps[tileProvider._usedDrawCommands];
+
+            uniformMap = createTileUniformMap(frameState, tileProvider);
         }
 
-        if (uniformMap.defines.TEXTURE_UNITS !== uniformMap.dayTextures.length ||
-            imageryLen !== uniformMap.dayTextures.length ||
-            quantization === TerrainQuantization.BITS12 && !defined(uniformMap.defines.QUANTIZATION_BITS12) ||
-            quantization === TerrainQuantization.NONE && defined(uniformMap.defines.QUANTIZATION_BITS12)
+        if (material.defines.TEXTURE_UNITS !== material.dayTextures.length ||
+            imageryLen !== material.dayTextures.length ||
+            quantization === TerrainQuantization.BITS12 && !defined(material.defines.QUANTIZATION_BITS12) ||
+            quantization === TerrainQuantization.NONE && defined(material.defines.QUANTIZATION_BITS12)
         ) {
-            uniformMap.dispose();
-            uniformMap = createTileUniformMap(frameState, tileProvider, surfaceShaderSetOptions, quantization);
+            material.dispose();
+            material = createMaterialMap(frameState, tileProvider, surfaceShaderSetOptions, quantization);
+
+            globeSurfaceMaterial.dispose();
+            uniformMap = createTileUniformMap(frameState, tileProvider);
+            globeSurfaceMaterial = new GlobeSurfaceTileMaterial();
         }
-
-        ++tileProvider._usedDrawCommands;
-
-        uniformMap.dayTextures = dayTextures;
-        uniformMap.dayTextureTranslationAndScale = dayTextureTranslationAndScale;
-        uniformMap.dayTextureTexCoordsRectangle = dayTextureTexCoordsRectangle;
-
-        Cartesian4.clone(initialColor, uniformMap.initialColor);
 
         command.owner = tile;
+        ++tileProvider._usedDrawCommands;
+
+        material.dayTextures = dayTextures;
+        material.dayTextureTranslationAndScale = dayTextureTranslationAndScale;
+        material.dayTextureTexCoordsRectangle = dayTextureTexCoordsRectangle;
+        Cartesian4.clone(initialColor, material.initialColor);
 
         const viewMatrix = frameState.camera.viewMatrix;
         const projectionMatrix = frameState.camera.frustum.cesiumProjectMatrix;
@@ -660,17 +983,400 @@ const addDrawCommandsForTile = (tileProvider: GlobeSurfaceTileProvider, tile: an
             modifiedModelViewProjectionScratch
         );
 
-        CesiumMatrix4.transformToThreeMatrix4(modifiedModelViewProjectionScratch, uniformMap.modifiedModelViewProjectionScratch);
+        CesiumMatrix4.transformToThreeMatrix4(modifiedModelViewProjectionScratch, material.modifiedModelViewProjectionScratch);
 
-        uniformMap.tileRectangle = tileRectangle;
+        material.tileRectangle = tileRectangle;
 
-        uniformMap.minMaxHeight.x = encoding.minimumHeight;
-        uniformMap.minMaxHeight.y = encoding.maximumHeight;
+        material.minMaxHeight.x = encoding.minimumHeight;
+        material.minMaxHeight.y = encoding.maximumHeight;
 
-        uniformMap.scaleAndBias = encoding.threeMatrix4;
+        material.scaleAndBias = encoding.threeMatrix4;
+
+        const uniformMapProperties = uniformMap.properties;
+        Cartesian4.clone(initialColor, uniformMapProperties.initialColor);
+        uniformMapProperties.oceanNormalMap = oceanNormalMap;
+        uniformMapProperties.lightingFadeDistance.x =
+          tileProvider.lightingFadeOutDistance;
+        uniformMapProperties.lightingFadeDistance.y =
+          tileProvider.lightingFadeInDistance;
+        uniformMapProperties.nightFadeDistance.x =
+          tileProvider.nightFadeOutDistance;
+        uniformMapProperties.nightFadeDistance.y = tileProvider.nightFadeInDistance;
+        uniformMapProperties.zoomedOutOceanSpecularIntensity =
+          tileProvider.zoomedOutOceanSpecularIntensity;
+
+        const frontFaceAlphaByDistanceFinal = cameraUnderground
+            ? backFaceAlphaByDistance
+            : frontFaceAlphaByDistance;
+        const backFaceAlphaByDistanceFinal = cameraUnderground
+            ? frontFaceAlphaByDistance
+            : backFaceAlphaByDistance;
+
+        if (defined(frontFaceAlphaByDistanceFinal)) {
+            Cartesian4.fromElements(
+                frontFaceAlphaByDistanceFinal.near,
+                frontFaceAlphaByDistanceFinal.nearValue,
+                frontFaceAlphaByDistanceFinal.far,
+                frontFaceAlphaByDistanceFinal.farValue,
+                uniformMapProperties.frontFaceAlphaByDistance
+            );
+            Cartesian4.fromElements(
+                backFaceAlphaByDistanceFinal.near,
+                backFaceAlphaByDistanceFinal.nearValue,
+                backFaceAlphaByDistanceFinal.far,
+                backFaceAlphaByDistanceFinal.farValue,
+                uniformMapProperties.backFaceAlphaByDistance
+            );
+        }
+
+        Cartesian4.fromElements(
+            undergroundColorAlphaByDistance.near,
+            undergroundColorAlphaByDistance.nearValue,
+            undergroundColorAlphaByDistance.far,
+            undergroundColorAlphaByDistance.farValue,
+            uniformMapProperties.undergroundColorAlphaByDistance
+        );
+        CesiumColor.clone(undergroundColor, uniformMapProperties.undergroundColor);
+
+        const highlightFillTile =
+          !defined(surfaceTile.vertexArray) &&
+          defined(tileProvider.fillHighlightColor) &&
+          (tileProvider.fillHighlightColor as CesiumColor).alpha > 0.0;
+        if (highlightFillTile) {
+            CesiumColor.clone(
+                (tileProvider.fillHighlightColor as CesiumColor),
+                uniformMapProperties.fillHighlightColor
+            );
+        }
+
+        uniformMapProperties.terrainExaggerationAndRelativeHeight.x = exaggeration;
+        uniformMapProperties.terrainExaggerationAndRelativeHeight.y = exaggerationRelativeHeight;
+
+        uniformMapProperties.center3D.set(mesh.center.x, mesh.center.y, mesh.center.z);
+        Cartesian3.clone(rtc, uniformMapProperties.rtc);
+
+        Cartesian4.clone(tileRectangle, uniformMapProperties.tileRectangle);
+        uniformMapProperties.southAndNorthLatitude.x = southLatitude;
+        uniformMapProperties.southAndNorthLatitude.y = northLatitude;
+        uniformMapProperties.southMercatorYAndOneOverHeight.x = southMercatorY;
+        uniformMapProperties.southMercatorYAndOneOverHeight.y = oneOverMercatorHeight;
+
+        // Convert tile limiter rectangle from cartographic to texture space using the tileRectangle.
+        const localizedCartographicLimitRectangle = localizedCartographicLimitRectangleScratch;
+        const cartographicLimitRectangle = clipRectangleAntimeridian(
+            tile.rectangle,
+            tileProvider.cartographicLimitRectangle
+        );
+
+        const localizedTranslucencyRectangle = localizedTranslucencyRectangleScratch;
+        const clippedTranslucencyRectangle = clipRectangleAntimeridian(
+            tile.rectangle,
+            translucencyRectangle
+        );
+
+        Cartesian3.fromElements(
+            hueShift,
+            saturationShift,
+            brightnessShift,
+            uniformMapProperties.hsbShift
+        );
+
+        const cartographicTileRectangle = tile.rectangle;
+        const inverseTileWidth = 1.0 / cartographicTileRectangle.width;
+        const inverseTileHeight = 1.0 / cartographicTileRectangle.height;
+        localizedCartographicLimitRectangle.x =
+          (cartographicLimitRectangle.west - cartographicTileRectangle.west) *
+          inverseTileWidth;
+        localizedCartographicLimitRectangle.y =
+          (cartographicLimitRectangle.south - cartographicTileRectangle.south) *
+          inverseTileHeight;
+        localizedCartographicLimitRectangle.z =
+          (cartographicLimitRectangle.east - cartographicTileRectangle.west) *
+          inverseTileWidth;
+        localizedCartographicLimitRectangle.w =
+          (cartographicLimitRectangle.north - cartographicTileRectangle.south) *
+          inverseTileHeight;
+
+        Cartesian4.clone(
+            localizedCartographicLimitRectangle,
+            uniformMapProperties.localizedCartographicLimitRectangle
+        );
+
+        localizedTranslucencyRectangle.x =
+          (clippedTranslucencyRectangle.west - cartographicTileRectangle.west) *
+          inverseTileWidth;
+        localizedTranslucencyRectangle.y =
+          (clippedTranslucencyRectangle.south - cartographicTileRectangle.south) *
+          inverseTileHeight;
+        localizedTranslucencyRectangle.z =
+          (clippedTranslucencyRectangle.east - cartographicTileRectangle.west) *
+          inverseTileWidth;
+        localizedTranslucencyRectangle.w =
+          (clippedTranslucencyRectangle.north - cartographicTileRectangle.south) *
+          inverseTileHeight;
+
+        Cartesian4.clone(
+            localizedTranslucencyRectangle,
+            uniformMapProperties.localizedTranslucencyRectangle
+        );
+
+        // For performance, use fog in the shader only when the tile is in fog.
+        const applyFog =
+          enableFog &&
+          CesiumMath.fog(tile._distance, frameState.fog.density) >
+            CesiumMath.EPSILON3;
+        colorCorrect = colorCorrect && (applyFog || showGroundAtmosphere);
+
+        let applyBrightness = false;
+        let applyContrast = false;
+        let applyHue = false;
+        let applySaturation = false;
+        let applyGamma = false;
+        let applyAlpha = false;
+        let applyDayNightAlpha = false;
+        let applySplit = false;
+        let applyCutout = false;
+        let applyColorToAlpha = false;
+
+        let numberOfDayTextures2 = 0;
+        let imageryIndex2 = 0;
+
+        while (numberOfDayTextures2 < maxTextures && imageryIndex2 < imageryLen) {
+            const tileImagery = tileImageryCollection[imageryIndex2];
+            const imagery = tileImagery.readyImagery;
+            ++imageryIndex2;
+
+            if (!defined(imagery) || imagery.imageryLayer.alpha === 0.0) {
+                continue;
+            }
+
+            const texture = tileImagery.useWebMercatorT
+                ? imagery.textureWebMercator
+                : imagery.texture;
+
+            // >>includeStart('debug', pragmas.debug);
+            if (!defined(texture)) {
+                // Our "ready" texture isn't actually ready.  This should never happen.
+                //
+                // Side note: It IS possible for it to not be in the READY ImageryState, though.
+                // This can happen when a single imagery tile is shared by two terrain tiles (common)
+                // and one of them (A) needs a geographic version of the tile because it is near the poles,
+                // and the other (B) does not.  B can and will transition the imagery tile to the READY state
+                // without reprojecting to geographic.  Then, later, A will deem that same tile not-ready-yet
+                // because it only has the Web Mercator texture, and flip it back to the TRANSITIONING state.
+                // The imagery tile won't be in the READY state anymore, but it's still READY enough for B's
+                // purposes.
+                throw new DeveloperError('readyImagery is not actually ready!');
+            }
+            // >>includeEnd('debug');
+
+            const imageryLayer = imagery.imageryLayer;
+
+            if (!defined(tileImagery.textureTranslationAndScale)) {
+                tileImagery.textureTranslationAndScale = imageryLayer._calculateTextureTranslationAndScale(
+                    tile,
+                    tileImagery
+                );
+            }
+
+            uniformMapProperties.dayTextures[numberOfDayTextures2] = texture;
+            uniformMapProperties.dayTextureTranslationAndScale[numberOfDayTextures2] =
+              tileImagery.textureTranslationAndScale_vector4;
+            uniformMapProperties.dayTextureTexCoordsRectangle[numberOfDayTextures2] =
+              tileImagery.textureCoordinateRectangle_vector4;
+            uniformMapProperties.dayTextureUseWebMercatorT[numberOfDayTextures2] =
+              tileImagery.useWebMercatorT;
+
+            uniformMapProperties.dayTextureAlpha[numberOfDayTextures2] =
+              imageryLayer.alpha;
+            applyAlpha =
+              applyAlpha ||
+              uniformMapProperties.dayTextureAlpha[numberOfDayTextures2] !== 1.0;
+
+            uniformMapProperties.dayTextureNightAlpha[numberOfDayTextures2] =
+              imageryLayer.nightAlpha;
+            applyDayNightAlpha =
+              applyDayNightAlpha ||
+              uniformMapProperties.dayTextureNightAlpha[numberOfDayTextures2] !== 1.0;
+
+            uniformMapProperties.dayTextureDayAlpha[numberOfDayTextures2] =
+              imageryLayer.dayAlpha;
+            applyDayNightAlpha =
+              applyDayNightAlpha ||
+              uniformMapProperties.dayTextureDayAlpha[numberOfDayTextures2] !== 1.0;
+
+            uniformMapProperties.dayTextureBrightness[numberOfDayTextures2] =
+              imageryLayer.brightness;
+            applyBrightness =
+              applyBrightness ||
+              uniformMapProperties.dayTextureBrightness[numberOfDayTextures2] !==
+                ImageryLayer.DEFAULT_BRIGHTNESS;
+
+            uniformMapProperties.dayTextureContrast[numberOfDayTextures2] =
+              imageryLayer.contrast;
+            applyContrast =
+              applyContrast ||
+              uniformMapProperties.dayTextureContrast[numberOfDayTextures2] !==
+                ImageryLayer.DEFAULT_CONTRAST;
+
+            uniformMapProperties.dayTextureHue[numberOfDayTextures2] =
+              imageryLayer.hue;
+            applyHue =
+              applyHue ||
+              uniformMapProperties.dayTextureHue[numberOfDayTextures2] !==
+                ImageryLayer.DEFAULT_HUE;
+
+            uniformMapProperties.dayTextureSaturation[numberOfDayTextures2] =
+              imageryLayer.saturation;
+            applySaturation =
+              applySaturation ||
+              uniformMapProperties.dayTextureSaturation[numberOfDayTextures2] !==
+                ImageryLayer.DEFAULT_SATURATION;
+
+            uniformMapProperties.dayTextureOneOverGamma[numberOfDayTextures2] =
+              1.0 / imageryLayer.gamma;
+            applyGamma =
+              applyGamma ||
+              uniformMapProperties.dayTextureOneOverGamma[numberOfDayTextures2] !==
+                1.0 / ImageryLayer.DEFAULT_GAMMA;
+
+            uniformMapProperties.dayTextureSplit[numberOfDayTextures2] =
+              imageryLayer.splitDirection;
+            applySplit =
+              applySplit ||
+              uniformMapProperties.dayTextureSplit[numberOfDayTextures2] !== 0.0;
+
+            // Update cutout rectangle
+            let dayTextureCutoutRectangle =
+              uniformMapProperties.dayTextureCutoutRectangles[numberOfDayTextures2];
+            if (!defined(dayTextureCutoutRectangle)) {
+                dayTextureCutoutRectangle = uniformMapProperties.dayTextureCutoutRectangles[
+                    numberOfDayTextures2
+                ] = new Vector4();
+            }
+
+            Cartesian4.clone(Cartesian4.ZERO, dayTextureCutoutRectangle);
+            if (defined(imageryLayer.cutoutRectangle)) {
+                const cutoutRectangle = clipRectangleAntimeridian(
+                    cartographicTileRectangle,
+                    imageryLayer.cutoutRectangle
+                );
+                const intersection = Rectangle.simpleIntersection(
+                    cutoutRectangle,
+                    cartographicTileRectangle,
+                    rectangleIntersectionScratch
+                );
+                applyCutout = defined(intersection) || applyCutout;
+
+                dayTextureCutoutRectangle.x =
+                (cutoutRectangle.west - cartographicTileRectangle.west) *
+                inverseTileWidth;
+                dayTextureCutoutRectangle.y =
+                (cutoutRectangle.south - cartographicTileRectangle.south) *
+                inverseTileHeight;
+                dayTextureCutoutRectangle.z =
+                (cutoutRectangle.east - cartographicTileRectangle.west) *
+                inverseTileWidth;
+                dayTextureCutoutRectangle.w =
+                (cutoutRectangle.north - cartographicTileRectangle.south) *
+                inverseTileHeight;
+            }
+
+            // Update color to alpha
+            let colorToAlpha =
+              uniformMapProperties.colorsToAlpha[numberOfDayTextures2];
+            if (!defined(colorToAlpha)) {
+                colorToAlpha = uniformMapProperties.colorsToAlpha[
+                    numberOfDayTextures2
+                ] = new Vector4();
+            }
+
+            const hasColorToAlpha =
+              defined(imageryLayer.colorToAlpha) &&
+              imageryLayer.colorToAlphaThreshold > 0.0;
+            applyColorToAlpha = applyColorToAlpha || hasColorToAlpha;
+
+            if (hasColorToAlpha) {
+                const color = imageryLayer.colorToAlpha;
+                colorToAlpha.x = color.red;
+                colorToAlpha.y = color.green;
+                colorToAlpha.z = color.blue;
+                colorToAlpha.w = imageryLayer.colorToAlphaThreshold;
+            } else {
+                colorToAlpha.w = -1.0;
+            }
+
+            // if (defined(imagery.credits)) {
+            //     const credits = imagery.credits;
+            //     for (
+            //         let creditIndex = 0, creditLength = credits.length;
+            //         creditIndex < creditLength;
+            //         ++creditIndex
+            //     ) {
+            //         creditDisplay.addCredit(credits[creditIndex]);
+            //     }
+            // }
+
+            ++numberOfDayTextures2;
+        }
+
+        // trim texture array to the used length so we don't end up using old textures
+        // which might get destroyed eventually
+        uniformMapProperties.dayTextures.length = numberOfDayTextures2;
+        uniformMapProperties.waterMask = waterMaskTexture;
+        Cartesian4.clone(
+            waterMaskTranslationAndScale,
+            uniformMapProperties.waterMaskTranslationAndScale
+        );
+
+        uniformMapProperties.minMaxHeight.x = encoding.minimumHeight;
+        uniformMapProperties.minMaxHeight.y = encoding.maximumHeight;
+        CesiumMatrix4.clone(encoding.matrix, uniformMapProperties.scaleAndBias);
+
+        // update clipping planes
+        //     const clippingPlanes = tileProvider._clippingPlanes;
+        //     const clippingPlanesEnabled =
+        //   defined(clippingPlanes) && clippingPlanes.enabled && tile.isClipped;
+        //     if (clippingPlanesEnabled) {
+        //         uniformMapProperties.clippingPlanesEdgeColor = Color.clone(
+        //             clippingPlanes.edgeColor,
+        //             uniformMapProperties.clippingPlanesEdgeColor
+        //         );
+        //         uniformMapProperties.clippingPlanesEdgeWidth = clippingPlanes.edgeWidth;
+        //     }
+
+        surfaceShaderSetOptions.numberOfDayTextures = numberOfDayTextures2;
+        surfaceShaderSetOptions.applyBrightness = applyBrightness;
+        surfaceShaderSetOptions.applyContrast = applyContrast;
+        surfaceShaderSetOptions.applyHue = applyHue;
+        surfaceShaderSetOptions.applySaturation = applySaturation;
+        surfaceShaderSetOptions.applyGamma = applyGamma;
+        surfaceShaderSetOptions.applyAlpha = applyAlpha;
+        surfaceShaderSetOptions.applyDayNightAlpha = applyDayNightAlpha;
+        surfaceShaderSetOptions.applySplit = applySplit;
+        surfaceShaderSetOptions.enableFog = applyFog;
+        surfaceShaderSetOptions.enableClippingPlanes = false;
+        // surfaceShaderSetOptions.clippingPlanes = clippingPlanes;
+        surfaceShaderSetOptions.hasImageryLayerCutout = applyCutout;
+        surfaceShaderSetOptions.colorCorrect = colorCorrect;
+        surfaceShaderSetOptions.highlightFillTile = highlightFillTile;
+        surfaceShaderSetOptions.colorToAlpha = applyColorToAlpha;
+        surfaceShaderSetOptions.showUndergroundColor = showUndergroundColor;
+        surfaceShaderSetOptions.translucent = translucent;
+
+        setUniform(command, uniformMap, globeSurfaceMaterial);
+
+        const shaderProgram = tileProvider._surfaceShaderSet.getShaderProgram(
+            surfaceShaderSetOptions
+        );
 
         command.geometry = mesh.geometry;
-        command.material = uniformMap;
+        command.material = material;
+
+        // command.material = globeSurfaceMaterial;
+
+        // (command.material as GlobeSurfaceTileMaterial).vertexShader = shaderProgram._vertexShaderText;
+        // (command.material as GlobeSurfaceTileMaterial).fragmentShader = shaderProgram._fragmentShaderText;
 
         const boundingVolume = command.boundingVolume;
         const orientedBoundingBox = command.orientedBoundingBox;
@@ -697,7 +1403,7 @@ class GlobeSurfaceTileProvider {
 
     _imageryLayersUpdatedEvent = new Event();
     _tileLoadedEvent = new Event();
-    _tilesToRenderByTextureCount: any[];
+    _tilesToRenderByTextureCount: any[] = []
 
     enableLighting = false;
     dynamicAtmosphereLighting = false;
@@ -724,10 +1430,11 @@ class GlobeSurfaceTileProvider {
 
     backFaceCulling = true;
 
-    _drawCommands: any[];
-    _compressCommands: any[];
-    _uniformMaps: any[];
-    _compressUniformMaps: any[];
+    _drawCommands: any[] = [];
+    _compressCommands: any[] = [];
+    _materialMaps: any[] = [];
+    _uniformMaps: any[] = [];
+    _compressUniformMaps: any[] = [];
 
     _usedDrawCommands = 0;
     _usedCompressCommands = 0;
@@ -740,7 +1447,7 @@ class GlobeSurfaceTileProvider {
 
     undergroundColor?: CesiumColor;
 
-    _vertexArraysToDestroy: any[];
+    _vertexArraysToDestroy: any[] = [];
     cartographicLimitRectangle = Rectangle.clone(Rectangle.MAX_VALUE) as Rectangle;
 
     _debug: {
@@ -776,16 +1483,6 @@ class GlobeSurfaceTileProvider {
         this._imageryLayers.layerRemoved.addEventListener(GlobeSurfaceTileProvider.prototype._onLayerRemoved, this);
         this._imageryLayers.layerMoved.addEventListener(GlobeSurfaceTileProvider.prototype._onLayerMoved, this);
         this._imageryLayers.layerShownOrHidden.addEventListener(GlobeSurfaceTileProvider.prototype._onLayerShownOrHidden, this);
-        this._imageryLayersUpdatedEvent = new Event();
-
-        this._tilesToRenderByTextureCount = [];
-        this._drawCommands = [];
-        this._compressCommands = [];
-
-        this._uniformMaps = [];
-        this._compressUniformMaps = [];
-
-        this._vertexArraysToDestroy = [];
 
         this._debug = {
             wireframe: false,

@@ -51,7 +51,8 @@ class Context {
     }
 
     get webgl2 (): boolean {
-        return this.scene.renderer.capabilities.isWebGL2;
+        // return this.scene.renderer.capabilities.isWebGL2;
+        return false;
     }
 
     get textureFloatLinear (): boolean {

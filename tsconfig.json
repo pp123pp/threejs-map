@@ -31,14 +31,13 @@
   },
   "include": [
     "src/**/*.ts",
-    
+    "src/**/*.glsl",
     "src/**/*.tsx",
     "src/**/*.vue",
     "tests/**/*.ts",
     "tests/**/*.tsx"
 , "src/ThirdParty/when.ts"  ],
   "exclude": [
-    "node_modules",
-    "src/**/*.glsl",
+    "node_modules"
   ]
 }

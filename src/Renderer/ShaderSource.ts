@@ -4,6 +4,8 @@ import { defaultValue } from '@/Core/defaultValue';
 import { defined } from '@/Core/defined';
 import { DeveloperError } from '@/Core/DeveloperError';
 import { Context } from '@/Scene/Context';
+import CzmBuiltins from '@/Shader/Builtin/CzmBuiltins';
+import AutomaticUniforms from './AutomaticUniforms';
 import modernizeShader from './modernizeShader';
 
 function removeComments (source: string) {
@@ -240,13 +242,25 @@ function combineShader (shaderSource: ShaderSource, isFragmentShader: boolean, c
         // The highp keyword is not always available on older mobile devices
         // See https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/WebGL_best_practices#In_WebGL_1_highp_float_support_is_optional_in_fragment_shaders
         result +=
-        '\
-  #ifdef GL_FRAGMENT_PRECISION_HIGH\n\
-      precision highp float;\n\
-  #else\n\
-      precision mediump float;\n\
-      #define highp mediump\n\
-  #endif\n\n';
+                '\
+        #ifdef GL_FRAGMENT_PRECISION_HIGH\n\
+            precision highp float;\n\
+        #else\n\
+            precision mediump float;\n\
+            #define highp mediump\n\
+        #endif\n\n';
+    }
+
+    if (isFragmentShader) {
+        result += `
+        #include <common>
+        #include <packing>
+        #include <logdepthbuf_pars_fragment>`;
+    } else {
+        result += `
+        #include <common>
+        #include <logdepthbuf_pars_vertex>
+        `;
     }
 
     // Prepend #defines for uber-shaders
@@ -275,6 +289,14 @@ function combineShader (shaderSource: ShaderSource, isFragmentShader: boolean, c
     if (context.floatingPointTexture) {
         result += '#define OES_texture_float\n\n';
     }
+
+    if (context.scene.renderer.capabilities.logarithmicDepthBuffer) {
+        result += '#define USE_LOGDEPTHBUF\n\n';
+    }
+
+    // if (context.scene.renderer.extensions.has('EXT_frag_depth')) {
+    result += '#define USE_LOGDEPTHBUF_EXT\n\n';
+    // }
 
     // append built-ins
     if (shaderSource.includeBuiltIns) {
@@ -389,6 +411,29 @@ class ShaderSource {
       '}';
 
         return renamedFS + '\n' + pickMain;
+    }
+}
+
+/**
+ * For ShaderProgram testing
+ * @private
+ */
+
+// combine automatic uniforms and Cesium built-ins
+for (const builtinName in CzmBuiltins) {
+    if (CzmBuiltins.hasOwnProperty(builtinName)) {
+        ShaderSource._czmBuiltinsAndUniforms[builtinName] =
+       CzmBuiltins[builtinName];
+    }
+}
+for (const uniformName in AutomaticUniforms) {
+    if (AutomaticUniforms.hasOwnProperty(uniformName)) {
+        const uniform = AutomaticUniforms[uniformName];
+        if (typeof uniform.getDeclaration === 'function') {
+            ShaderSource._czmBuiltinsAndUniforms[
+                uniformName
+            ] = uniform.getDeclaration(uniformName);
+        }
     }
 }
 

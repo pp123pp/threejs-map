@@ -128,7 +128,7 @@ class TerrainEncoding {
             matrix = CesiumMatrix4.clone((fromENU as CesiumMatrix4));
             CesiumMatrix4.setTranslation(matrix, Cartesian3.ZERO, matrix);
 
-            fromENU = CesiumMatrix4.clone((fromENU as CesiumMatrix4), new CesiumMatrix4());
+            fromENU = CesiumMatrix4.clone((fromENU as CesiumMatrix4), new CesiumMatrix4()) as CesiumMatrix4;
 
             const translationMatrix = CesiumMatrix4.fromTranslation(minimum, matrix4Scratch);
             const scaleMatrix = CesiumMatrix4.fromScale(dimensions, matrix4Scratch2);

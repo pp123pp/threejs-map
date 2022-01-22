@@ -386,10 +386,10 @@ class CesiumMatrix4 {
  * @param {Matrix4} [result] The object onto which to store the result.
  * @returns {Matrix4} The modified result parameter or a new Matrix4 instance if one was not provided. (Returns undefined if matrix is undefined)
  */
-    static clone (matrix:CesiumMatrix4, result?:CesiumMatrix4):CesiumMatrix4 {
-    // if (!defined(matrix)) {
-    //     return undefined;
-    // }
+    static clone (matrix:CesiumMatrix4, result?:CesiumMatrix4):any {
+        if (!defined(matrix)) {
+            return undefined;
+        }
         if (!defined(result)) {
             return new CesiumMatrix4(
                 matrix[0],

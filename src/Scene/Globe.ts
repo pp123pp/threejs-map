@@ -15,6 +15,10 @@ import { Object3DCollection } from '@/Core/Object3DCollection';
 import { Ray } from '@/Core/Ray';
 import { Rectangle } from '@/Core/Rectangle';
 import { SceneMode } from '@/Core/SceneMode';
+import { ShaderSource } from '@/Renderer/ShaderSource';
+import GlobeFS from '@/Shader/GlobeFS.glsl';
+import GlobeVS from '@/Shader/GlobeVS.glsl';
+import GroundAtmosphere from '@/Shader/GroundAtmosphere';
 import { Mesh, Raycaster, SphereBufferGeometry, Vector2 } from 'three';
 import { FrameState } from './FrameState';
 import { GlobeSurfaceShaderSet } from './GlobeSurfaceShaderSet';
@@ -61,6 +65,43 @@ function createComparePickTileFunction (rayOrigin: Cartesian3) {
         return aDist - bDist;
     };
 }
+const makeShadersDirty = (globe: Globe) => {
+    const defines: any[] = [];
+
+    // const requireNormals =
+    //   defined(globe._material) &&
+    //   (globe._material.shaderSource.match(/slope/) ||
+    //     globe._material.shaderSource.match('normalEC'));
+
+    const requireNormals = false;
+
+    const fragmentSources = [GroundAtmosphere];
+    // if (
+    //     defined(globe._material) &&
+    //   (!requireNormals || globe._terrainProvider.requestVertexNormals)
+    // ) {
+    //     fragmentSources.push(globe._material.shaderSource);
+    //     defines.push('APPLY_MATERIAL');
+    //     globe._surface._tileProvider.materialUniformMap = globe._material._uniforms;
+    // } else {
+    //     globe._surface._tileProvider.materialUniformMap = undefined;
+    // }
+
+    globe._surface._tileProvider.materialUniformMap = undefined;
+
+    fragmentSources.push(GlobeFS);
+
+    globe._surfaceShaderSet.baseVertexShaderSource = new ShaderSource({
+        sources: [GroundAtmosphere, GlobeVS],
+        defines: defines
+    });
+
+    globe._surfaceShaderSet.baseFragmentShaderSource = new ShaderSource({
+        sources: fragmentSources,
+        defines: defines
+    });
+    // globe._surfaceShaderSet.material = globe._material;
+};
 
 class Globe extends Object3DCollection {
     _ellipsoid:Ellipsoid
@@ -151,6 +192,17 @@ class Globe extends Object3DCollection {
          * @default 0.0
          */
         this.terrainExaggerationRelativeHeight = 0.0;
+
+        this.terrainProvider = new EllipsoidTerrainProvider();
+
+        this._undergroundColorAlphaByDistance = new NearFarScalar(
+            ellipsoid.maximumRadius / 1000.0,
+            0.0,
+            ellipsoid.maximumRadius / 5.0,
+            1.0
+        );
+
+        makeShadersDirty(this);
 
         this.terrainProvider = new EllipsoidTerrainProvider();
     }
