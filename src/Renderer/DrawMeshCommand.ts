@@ -11,6 +11,7 @@ class DrawMeshCommand extends Mesh {
     owner?: any;
     boundingVolume?: BoundingSphere;
     orientedBoundingBox?: OrientedBoundingBox
+    shaderProgram: any;
     constructor (geometry?: BufferGeometry, material?: Material) {
         super(geometry, material);
 
@@ -21,7 +22,8 @@ class DrawMeshCommand extends Mesh {
             picking: undefined,
             oitMaterial: undefined,
             depth: undefined,
-            basicMaterial: undefined
+            // 对数深度
+            logDepth: undefined
         };
         // this.pass = CommandRenderPass.OPAQUE;
         this.isCommand = true;

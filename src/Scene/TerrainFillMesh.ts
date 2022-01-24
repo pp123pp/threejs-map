@@ -1266,7 +1266,7 @@ function createFillMesh (tileProvider: any, frameState: any, tile: any, vertexAr
         }
 
         fill.mesh = new TerrainMesh(
-            encoding.center,
+            (encoding.center as Cartesian3),
             typedArray,
             indices,
             indexCount,

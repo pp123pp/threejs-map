@@ -1,7 +1,7 @@
 import { CesiumColor } from '@/Core/CesiumColor';
 import { GLSL3, Matrix4, RawShaderMaterial, ShaderMaterial, Vector2, Vector3, Vector4 } from 'three';
 
-class GlobeSurfaceTileMaterial extends ShaderMaterial {
+class GlobeSurfaceTileMaterial extends RawShaderMaterial {
     lights = false;
     fog = false;
     constructor (parameters = {}) {

@@ -159,8 +159,8 @@ class TileMaterial extends ShaderMaterial {
 
         this.defines.GROUND_ATMOSPHERE = '';
 
-    // this.side = DoubleSide;
-    // this.wireframe = true;
+        // this.side = DoubleSide;
+        // this.wireframe = true;
     // this.depthWrite = false;
     }
 

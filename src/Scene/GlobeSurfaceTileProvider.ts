@@ -1331,7 +1331,8 @@ const addDrawCommandsForTile = (tileProvider: GlobeSurfaceTileProvider, tile: an
 
         uniformMapProperties.minMaxHeight.x = encoding.minimumHeight;
         uniformMapProperties.minMaxHeight.y = encoding.maximumHeight;
-        CesiumMatrix4.clone(encoding.matrix, uniformMapProperties.scaleAndBias);
+
+        uniformMapProperties.scaleAndBias.copy(encoding.threeMatrix4);
 
         // update clipping planes
         //     const clippingPlanes = tileProvider._clippingPlanes;
@@ -1371,12 +1372,12 @@ const addDrawCommandsForTile = (tileProvider: GlobeSurfaceTileProvider, tile: an
         );
 
         command.geometry = mesh.geometry;
-        command.material = material;
+        // command.material = material;
 
-        // command.material = globeSurfaceMaterial;
+        command.material = globeSurfaceMaterial;
 
-        // (command.material as GlobeSurfaceTileMaterial).vertexShader = shaderProgram._vertexShaderText;
-        // (command.material as GlobeSurfaceTileMaterial).fragmentShader = shaderProgram._fragmentShaderText;
+        (command.material as GlobeSurfaceTileMaterial).vertexShader = shaderProgram._vertexShaderText;
+        (command.material as GlobeSurfaceTileMaterial).fragmentShader = shaderProgram._fragmentShaderText;
 
         const boundingVolume = command.boundingVolume;
         const orientedBoundingBox = command.orientedBoundingBox;
@@ -2359,7 +2360,7 @@ class GlobeSurfaceTileProvider {
             const tileImagery = tileImageryCollection[i];
             if (
                 defined(tileImagery.readyImagery) &&
-        tileImagery.readyImagery.imageryLayer.alpha !== 0.0
+                (tileImagery.readyImagery as any).imageryLayer.alpha !== 0.0
             ) {
                 ++readyTextureCount;
             }

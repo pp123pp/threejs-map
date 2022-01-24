@@ -16,7 +16,7 @@ class ShaderCache {
         vertexShaderSource: ShaderSource | string,
         fragmentShaderSource: ShaderSource | string,
         context: Context,
-        attributeLocations: {
+        attributeLocations?: {
             [name: string]: number
         }
     }): ShaderProgram {

@@ -226,15 +226,15 @@ class CesiumMatrix4 {
     }
 
     /**
- * Computes a Matrix4 instance from a Matrix3 representing the rotation
- * and a Cartesian3 representing the translation.
- *
- * @param {Matrix3} rotation The upper left portion of the matrix representing the rotation.
- * @param {Cartesian3} [translation=Cartesian3.ZERO] The upper right portion of the matrix representing the translation.
- * @param {Matrix4} [result] The object in which the result will be stored, if undefined a new instance will be created.
- * @returns {Matrix4} The modified result parameter, or a new Matrix4 instance if one was not provided.
- */
-    static fromRotationTranslation (rotation:CesiumMatrix3, translation:Cartesian3, result?:CesiumMatrix4):CesiumMatrix4 {
+     * Computes a Matrix4 instance from a Matrix3 representing the rotation
+     * and a Cartesian3 representing the translation.
+     *
+     * @param {Matrix3} rotation The upper left portion of the matrix representing the rotation.
+     * @param {Cartesian3} [translation=Cartesian3.ZERO] The upper right portion of the matrix representing the translation.
+     * @param {Matrix4} [result] The object in which the result will be stored, if undefined a new instance will be created.
+     * @returns {Matrix4} The modified result parameter, or a new Matrix4 instance if one was not provided.
+     */
+    static fromRotationTranslation (rotation:CesiumMatrix3, translation = Cartesian3.ZERO, result?:CesiumMatrix4):CesiumMatrix4 {
         translation = defaultValue(translation, Cartesian3.ZERO);
 
         if (!defined(result)) {
@@ -512,7 +512,10 @@ class CesiumMatrix4 {
         return result;
     }
 
-    static transformToThreeMatrix4 (matrix: CesiumMatrix4, threeMatrix: Matrix4): Matrix4 {
+    static transformToThreeMatrix4 (matrix: CesiumMatrix4, threeMatrix: Matrix4): any {
+        if (!defined(matrix)) {
+            return undefined;
+        }
         CesiumMatrix4.toArray(matrix, threeMatrix.elements);
         return threeMatrix;
     }
@@ -891,6 +894,131 @@ class CesiumMatrix4 {
         result.y = y;
         result.z = z;
         result.w = w;
+        return result;
+    }
+
+    /**
+     * Computes the product of two matrices assuming the matrices are affine transformation matrices,
+     * where the upper left 3x3 elements are any matrix, and
+     * the upper three elements in the fourth column are the translation.
+     * The bottom row is assumed to be [0, 0, 0, 1].
+     * The matrix is not verified to be in the proper form.
+     * This method is faster than computing the product for general 4x4
+     * matrices using {@link Matrix4.multiply}.
+     *
+     * @param {Matrix4} left The first matrix.
+     * @param {Matrix4} right The second matrix.
+     * @param {Matrix4} result The object onto which to store the result.
+     * @returns {Matrix4} The modified result parameter.
+     *
+     * @example
+     * var m1 = new Cesium.Matrix4(1.0, 6.0, 7.0, 0.0, 2.0, 5.0, 8.0, 0.0, 3.0, 4.0, 9.0, 0.0, 0.0, 0.0, 0.0, 1.0);
+     * var m2 = Cesium.Transforms.eastNorthUpToFixedFrame(new Cesium.Cartesian3(1.0, 1.0, 1.0));
+     * var m3 = Cesium.Matrix4.multiplyTransformation(m1, m2, new Cesium.Matrix4());
+     */
+    static multiplyTransformation (left: CesiumMatrix4, right: CesiumMatrix4, result: CesiumMatrix4): CesiumMatrix4 {
+    // >>includeStart('debug', pragmas.debug);
+        Check.typeOf.object('left', left);
+        Check.typeOf.object('right', right);
+        Check.typeOf.object('result', result);
+        // >>includeEnd('debug');
+
+        const left0 = left[0];
+        const left1 = left[1];
+        const left2 = left[2];
+        const left4 = left[4];
+        const left5 = left[5];
+        const left6 = left[6];
+        const left8 = left[8];
+        const left9 = left[9];
+        const left10 = left[10];
+        const left12 = left[12];
+        const left13 = left[13];
+        const left14 = left[14];
+
+        const right0 = right[0];
+        const right1 = right[1];
+        const right2 = right[2];
+        const right4 = right[4];
+        const right5 = right[5];
+        const right6 = right[6];
+        const right8 = right[8];
+        const right9 = right[9];
+        const right10 = right[10];
+        const right12 = right[12];
+        const right13 = right[13];
+        const right14 = right[14];
+
+        const column0Row0 = left0 * right0 + left4 * right1 + left8 * right2;
+        const column0Row1 = left1 * right0 + left5 * right1 + left9 * right2;
+        const column0Row2 = left2 * right0 + left6 * right1 + left10 * right2;
+
+        const column1Row0 = left0 * right4 + left4 * right5 + left8 * right6;
+        const column1Row1 = left1 * right4 + left5 * right5 + left9 * right6;
+        const column1Row2 = left2 * right4 + left6 * right5 + left10 * right6;
+
+        const column2Row0 = left0 * right8 + left4 * right9 + left8 * right10;
+        const column2Row1 = left1 * right8 + left5 * right9 + left9 * right10;
+        const column2Row2 = left2 * right8 + left6 * right9 + left10 * right10;
+
+        const column3Row0 =
+      left0 * right12 + left4 * right13 + left8 * right14 + left12;
+        const column3Row1 =
+      left1 * right12 + left5 * right13 + left9 * right14 + left13;
+        const column3Row2 =
+      left2 * right12 + left6 * right13 + left10 * right14 + left14;
+
+        result[0] = column0Row0;
+        result[1] = column0Row1;
+        result[2] = column0Row2;
+        result[3] = 0.0;
+        result[4] = column1Row0;
+        result[5] = column1Row1;
+        result[6] = column1Row2;
+        result[7] = 0.0;
+        result[8] = column2Row0;
+        result[9] = column2Row1;
+        result[10] = column2Row2;
+        result[11] = 0.0;
+        result[12] = column3Row0;
+        result[13] = column3Row1;
+        result[14] = column3Row2;
+        result[15] = 1.0;
+        return result;
+    }
+
+    /**
+     * Gets the upper left 3x3 matrix of the provided matrix.
+     *
+     * @param {Matrix4} matrix The matrix to use.
+     * @param {Matrix3} result The object onto which to store the result.
+     * @returns {Matrix3} The modified result parameter.
+     *
+     * @example
+     * // returns a Matrix3 instance from a Matrix4 instance
+     *
+     * // m = [10.0, 14.0, 18.0, 22.0]
+     * //     [11.0, 15.0, 19.0, 23.0]
+     * //     [12.0, 16.0, 20.0, 24.0]
+     * //     [13.0, 17.0, 21.0, 25.0]
+     *
+     * var b = new Cesium.Matrix3();
+     * Cesium.Matrix4.getMatrix3(m,b);
+     *
+     * // b = [10.0, 14.0, 18.0]
+     * //     [11.0, 15.0, 19.0]
+     * //     [12.0, 16.0, 20.0]
+     */
+    static getMatrix3 (matrix: CesiumMatrix4, result: CesiumMatrix3): CesiumMatrix3 {
+        result[0] = matrix[0];
+        result[1] = matrix[1];
+        result[2] = matrix[2];
+        result[3] = matrix[4];
+        result[4] = matrix[5];
+        result[5] = matrix[6];
+        result[6] = matrix[8];
+        result[7] = matrix[9];
+        result[8] = matrix[10];
         return result;
     }
 }

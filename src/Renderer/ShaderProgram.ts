@@ -56,13 +56,13 @@ class ShaderProgram {
     _fragmentShaderSource: ShaderSource;
     _fragmentShaderText: string;
 
-    _attributeLocations: {[name: string]: any}
+    _attributeLocations?: {[name: string]: any}
     constructor (options: {
         vertexShaderSource: ShaderSource,
         vertexShaderText: string,
         fragmentShaderSource: ShaderSource,
         fragmentShaderText: string,
-        attributeLocations: {[name: string]: number}
+        attributeLocations?: {[name: string]: number}
     }) {
         const vertexShaderText = options.vertexShaderText;
         const fragmentShaderText = options.fragmentShaderText;
@@ -106,7 +106,7 @@ class ShaderProgram {
         fragmentShaderSource: ShaderSource | string,
         vertexShaderSource: ShaderSource | string,
         context: Context,
-        attributeLocations: {
+        attributeLocations?: {
             [name: string]: number
         }
     } = {} as any): ShaderProgram {

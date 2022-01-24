@@ -33,7 +33,6 @@ const attributesIndicesBits12 = {
     compressed1: 1,
     geodeticSurfaceNormal: 2
 };
-
 /**
  * Data used to quantize and pack the terrain mesh. The position can be unpacked for picking and all attributes
  * are unpacked in the vertex shader.
@@ -45,7 +44,7 @@ const attributesIndicesBits12 = {
  * @param {AxisAlignedBoundingBox} axisAlignedBoundingBox The bounds of the tile in the east-north-up coordinates at the tiles center.
  * @param {Number} minimumHeight The minimum height.
  * @param {Number} maximumHeight The maximum height.
- * @param {CesiumMatrix4} fromENU The east-north-up to fixed frame matrix at the center of the terrain mesh.
+ * @param {Matrix4} fromENU The east-north-up to fixed frame matrix at the center of the terrain mesh.
  * @param {Boolean} hasVertexNormals If the mesh has vertex normals.
  * @param {Boolean} [hasWebMercatorT=false] true if the terrain data includes a Web Mercator texture coordinate; otherwise, false.
  * @param {Boolean} [hasGeodeticSurfaceNormals=false] true if the terrain data includes geodetic surface normals; otherwise, false.
@@ -54,35 +53,40 @@ const attributesIndicesBits12 = {
  *
  * @private
  */
-
 class TerrainEncoding {
     quantization: TerrainQuantization;
-    minimumHeight: number | undefined;
-    maximumHeight: number | undefined;
-    center: Cartesian3;
-    toScaledENU: CesiumMatrix4;
+    minimumHeight?: number;
+    maximumHeight?: number;
+    center?: Cartesian3;
+    toScaledENU?: CesiumMatrix4;
     fromScaledENU?: CesiumMatrix4;
     matrix: CesiumMatrix4;
-    _threeMatrix4: Matrix4;
-    hasVertexNormals: boolean | undefined;
-    hasWebMercatorT: boolean | undefined;
-    hasGeodeticSurfaceNormals: boolean | undefined;
-    exaggeration: number;
-    exaggerationRelativeHeight: number;
-    stride: number;
-    _offsetGeodeticSurfaceNormal: number;
-    _offsetVertexNormal: number;
+    hasVertexNormals: boolean;
+    hasWebMercatorT = false;
+    hasGeodeticSurfaceNormals = false;
+    exaggeration = 1.0;
+    exaggerationRelativeHeight = 0.0;
+    /**
+     * The number of components in each vertex. This value can differ with different quantizations.
+     * @type {Number}
+     */
+    stride = 0;
 
-    constructor (center = new Cartesian3(),
-        axisAlignedBoundingBox?:AxisAlignedBoundingBox,
+    _offsetGeodeticSurfaceNormal = 0;
+    _offsetVertexNormal = 0;
+    _threeMatrix4 = new Matrix4();
+    constructor (
+        center?: Cartesian3,
+        axisAlignedBoundingBox?: AxisAlignedBoundingBox,
         minimumHeight?: number,
         maximumHeight?: number,
-        fromENU?:CesiumMatrix4,
-        hasVertexNormals?:boolean,
-        hasWebMercatorT?: boolean,
-        hasGeodeticSurfaceNormals?: boolean,
+        fromENU?: CesiumMatrix4,
+        hasVertexNormals?: boolean,
+        hasWebMercatorT = false,
+        hasGeodeticSurfaceNormals = false,
         exaggeration = 1.0,
-        exaggerationRelativeHeight = 0.0) {
+        exaggerationRelativeHeight = 0.0
+    ) {
         let quantization = TerrainQuantization.NONE;
         let toENU;
         let matrix;
@@ -165,29 +169,27 @@ class TerrainEncoding {
         /**
          * A matrix that takes a vertex from the tile, transforms it to east-north-up at the center and scales
          * it so each component is in the [0, 1] range.
-         * @type {CesiumMatrix4}
+         * @type {Matrix4}
          */
-        this.toScaledENU = (toENU as CesiumMatrix4);
+        this.toScaledENU = toENU as CesiumMatrix4;
 
         /**
          * A matrix that restores a vertex transformed with toScaledENU back to the earth fixed reference frame
-         * @type {CesiumMatrix4}
+         * @type {Matrix4}
          */
         this.fromScaledENU = fromENU;
 
         /**
          * The matrix used to decompress the terrain vertices in the shader for RTE rendering.
-         * @type {CesiumMatrix4}
+         * @type {Matrix4}
          */
-        this.matrix = (matrix as CesiumMatrix4);
-
-        this._threeMatrix4 = new Matrix4();
+        this.matrix = matrix;
 
         /**
          * The terrain mesh contains normals.
          * @type {Boolean}
          */
-        this.hasVertexNormals = hasVertexNormals;
+        this.hasVertexNormals = hasVertexNormals as boolean;
 
         /**
          * The terrain mesh contains a vertical texture coordinate following the Web Mercator projection.
@@ -218,12 +220,6 @@ class TerrainEncoding {
             0.0
         );
 
-        /**
-         * The number of components in each vertex. This value can differ with different quantizations.
-         * @type {Number}
-         */
-        this.stride = 0;
-
         this._offsetGeodeticSurfaceNormal = 0;
         this._offsetVertexNormal = 0;
 
@@ -232,38 +228,37 @@ class TerrainEncoding {
     }
 
     get threeMatrix4 (): Matrix4 {
-        if (defined(this.matrix)) {
-            CesiumMatrix4.toArray(this.matrix, this._threeMatrix4.elements);
+        if (!defined(this.matrix)) {
+            return this._threeMatrix4;
         }
-
-        return this._threeMatrix4;
+        return CesiumMatrix4.transformToThreeMatrix4(this.matrix, this._threeMatrix4);
     }
 
     encode (
         vertexBuffer: any,
-        bufferIndex: number,
-        position: Cartesian3,
-        uv:Cartesian2,
-        height: number,
-        normalToPack: Cartesian2 | undefined,
-        webMercatorT: number,
-        geodeticSurfaceNormal:Cartesian3
-    ): number {
+        bufferIndex: any,
+        position: any,
+        uv: any,
+        height: any,
+        normalToPack: any,
+        webMercatorT: any,
+        geodeticSurfaceNormal: any
+    ) {
         const u = uv.x;
         const v = uv.y;
 
         if (this.quantization === TerrainQuantization.BITS12) {
             position = CesiumMatrix4.multiplyByPoint(
-                this.toScaledENU,
-                position,
-                cartesian3Scratch
+               this.toScaledENU as CesiumMatrix4,
+               position,
+               cartesian3Scratch
             );
 
             position.x = CesiumMath.clamp(position.x, 0.0, 1.0);
             position.y = CesiumMath.clamp(position.y, 0.0, 1.0);
             position.z = CesiumMath.clamp(position.z, 0.0, 1.0);
 
-            const hDim = (this.maximumHeight as number) - (this.minimumHeight as number);
+            const hDim = this.maximumHeight as number - (this.minimumHeight as number);
             const h = CesiumMath.clamp((height - (this.minimumHeight as number)) / hDim, 0.0, 1.0);
 
             Cartesian2.fromElements(position.x, position.y, cartesian2Scratch);
@@ -293,7 +288,7 @@ class TerrainEncoding {
                 vertexBuffer[bufferIndex++] = compressed3;
             }
         } else {
-            Cartesian3.subtract(position, this.center, cartesian3Scratch);
+            Cartesian3.subtract(position, (this.center as Cartesian3), cartesian3Scratch);
 
             vertexBuffer[bufferIndex++] = cartesian3Scratch.x;
             vertexBuffer[bufferIndex++] = cartesian3Scratch.y;
@@ -309,7 +304,7 @@ class TerrainEncoding {
 
         if (this.hasVertexNormals) {
             vertexBuffer[bufferIndex++] = AttributeCompression.octPackFloat(
-                (normalToPack as Cartesian2)
+                normalToPack
             );
         }
 
@@ -323,10 +318,10 @@ class TerrainEncoding {
     }
 
     addGeodeticSurfaceNormals (
-        oldBuffer: number[],
-        newBuffer: number[],
-        ellipsoid:Ellipsoid
-    ): void {
+        oldBuffer: any,
+        newBuffer: any,
+        ellipsoid: Ellipsoid
+    ) {
         if (this.hasGeodeticSurfaceNormals) {
             return;
         }
@@ -357,9 +352,9 @@ class TerrainEncoding {
     }
 
     removeGeodeticSurfaceNormals (
-        oldBuffer: number[],
-        newBuffer: number[]
-    ): void {
+        oldBuffer: any,
+        newBuffer: any
+    ) {
         if (!this.hasGeodeticSurfaceNormals) {
             return;
         }
@@ -379,7 +374,7 @@ class TerrainEncoding {
         }
     }
 
-    decodePosition (buffer: number[], index: number, result = new Cartesian3()):Cartesian3 {
+    decodePosition (buffer: ArrayBuffer, index: number, result: Cartesian3): Cartesian3 {
         if (!defined(result)) {
             result = new Cartesian3();
         }
@@ -406,14 +401,14 @@ class TerrainEncoding {
         result.x = buffer[index];
         result.y = buffer[index + 1];
         result.z = buffer[index + 2];
-        return Cartesian3.add(result, this.center, result);
+        return Cartesian3.add(result, (this.center as Cartesian3), result);
     }
 
     getExaggeratedPosition (
-        buffer: number[],
+        buffer:ArrayBuffer,
         index: number,
-        result?:Cartesian3
-    ) :Cartesian3 {
+        result: Cartesian3
+    ): Cartesian3 {
         result = this.decodePosition(buffer, index, result);
 
         const exaggeration = this.exaggeration;
@@ -427,11 +422,11 @@ class TerrainEncoding {
             );
             const rawHeight = this.decodeHeight(buffer, index);
             const heightDifference =
-            TerrainExaggeration.getHeight(
-                rawHeight,
-                exaggeration,
-                exaggerationRelativeHeight
-            ) - rawHeight;
+      TerrainExaggeration.getHeight(
+          rawHeight,
+          exaggeration,
+          exaggerationRelativeHeight
+      ) - rawHeight;
 
             // some math is unrolled for better performance
             result.x += geodeticSurfaceNormal.x * heightDifference;
@@ -443,10 +438,10 @@ class TerrainEncoding {
     }
 
     decodeTextureCoordinates (
-        buffer: number[],
-        index: number,
-        result = new Cartesian2()
-    ):Cartesian2 {
+        buffer: any,
+        index: any,
+        result: any
+    ) {
         if (!defined(result)) {
             result = new Cartesian2();
         }
@@ -463,7 +458,7 @@ class TerrainEncoding {
         return Cartesian2.fromElements(buffer[index + 4], buffer[index + 5], result);
     }
 
-    decodeHeight (buffer:number[], index: number): number {
+    decodeHeight (buffer: any, index: any) {
         index *= this.stride;
 
         if (this.quantization === TerrainQuantization.BITS12) {
@@ -479,7 +474,7 @@ class TerrainEncoding {
         return buffer[index + 3];
     }
 
-    decodeWebMercatorT (buffer: number[], index: number): number {
+    decodeWebMercatorT (buffer: any, index: any) {
         index *= this.stride;
 
         if (this.quantization === TerrainQuantization.BITS12) {
@@ -493,10 +488,10 @@ class TerrainEncoding {
     }
 
     getOctEncodedNormal (
-        buffer: number[],
-        index: number,
-        result?:Cartesian2
-    ):Cartesian2 {
+        buffer: any,
+        index: any,
+        result: any
+    ) {
         index = index * this.stride + this._offsetVertexNormal;
 
         const temp = buffer[index] / 256.0;
@@ -507,10 +502,10 @@ class TerrainEncoding {
     }
 
     decodeGeodeticSurfaceNormal (
-        buffer: number[],
-        index: number,
-        result:Cartesian3
-    ):Cartesian3 {
+        buffer: any,
+        index: any,
+        result: any
+    ) {
         index = index * this.stride + this._offsetGeodeticSurfaceNormal;
 
         result.x = buffer[index];
@@ -519,7 +514,7 @@ class TerrainEncoding {
         return result;
     }
 
-    _calculateStrideAndOffsets ():void {
+    _calculateStrideAndOffsets (): void {
         let vertexStride = 0;
 
         switch (this.quantization) {
@@ -544,14 +539,14 @@ class TerrainEncoding {
         this.stride = vertexStride;
     }
 
-    getAttributes (buffer:number[]): any {
+    getAttributes (buffer: any) {
         const datatype = ComponentDatatype.FLOAT;
         const sizeInBytes = ComponentDatatype.getSizeInBytes(datatype);
         const strideInBytes = this.stride * sizeInBytes;
         let offsetInBytes = 0;
 
-        const attributes: any[] = [];
-        function addAttribute (index: number, componentsPerAttribute: number): void {
+        const attributes: any = [];
+        function addAttribute (index: any, componentsPerAttribute: any) {
             attributes.push({
                 index: index,
                 vertexBuffer: buffer,
@@ -582,9 +577,9 @@ class TerrainEncoding {
             // WebMercatorT and vertex normals each take up one component, so if only one of them is present the first
             // attribute gets a 4th component. If both are present, we need an additional attribute that has 1 component.
             const usingAttribute0Component4 =
-            this.hasWebMercatorT || this.hasVertexNormals;
+          this.hasWebMercatorT || this.hasVertexNormals;
             const usingAttribute1Component1 =
-            this.hasWebMercatorT && this.hasVertexNormals;
+          this.hasWebMercatorT && this.hasVertexNormals;
             addAttribute(
                 attributesIndicesBits12.compressed0,
                 usingAttribute0Component4 ? 4 : 3
@@ -609,54 +604,28 @@ class TerrainEncoding {
         return attributesIndicesBits12;
     }
 
-    static clone (encoding:TerrainEncoding, result?:TerrainEncoding):TerrainEncoding | undefined {
-        if (!defined(result)) {
-            result = new TerrainEncoding();
+    static clone (encoding: any, result = new TerrainEncoding()): TerrainEncoding | undefined {
+        if (!defined(encoding)) {
+            return undefined;
         }
 
-        (result as TerrainEncoding).quantization = encoding.quantization;
-        (result as TerrainEncoding).minimumHeight = encoding.minimumHeight;
-        (result as TerrainEncoding).maximumHeight = encoding.maximumHeight;
-        (result as TerrainEncoding).center = Cartesian3.clone(encoding.center) as Cartesian3;
-        (result as TerrainEncoding).toScaledENU = CesiumMatrix4.clone(encoding.toScaledENU);
-        (result as TerrainEncoding).fromScaledENU = CesiumMatrix4.clone(encoding.fromScaledENU as CesiumMatrix4);
-        (result as TerrainEncoding).matrix = CesiumMatrix4.clone(encoding.matrix);
-        (result as TerrainEncoding).hasVertexNormals = encoding.hasVertexNormals;
-        (result as TerrainEncoding).hasWebMercatorT = encoding.hasWebMercatorT;
-        (result as TerrainEncoding).hasGeodeticSurfaceNormals = encoding.hasGeodeticSurfaceNormals;
-        (result as TerrainEncoding).exaggeration = encoding.exaggeration;
-        (result as TerrainEncoding).exaggerationRelativeHeight = encoding.exaggerationRelativeHeight;
+        result.quantization = encoding.quantization;
+        result.minimumHeight = encoding.minimumHeight;
+        result.maximumHeight = encoding.maximumHeight;
+        result.center = Cartesian3.clone(encoding.center);
+        result.toScaledENU = CesiumMatrix4.clone(encoding.toScaledENU);
+        result.fromScaledENU = CesiumMatrix4.clone(encoding.fromScaledENU);
+        result.matrix = CesiumMatrix4.clone(encoding.matrix);
+        result.hasVertexNormals = encoding.hasVertexNormals;
+        result.hasWebMercatorT = encoding.hasWebMercatorT;
+        result.hasGeodeticSurfaceNormals = encoding.hasGeodeticSurfaceNormals;
+        result.exaggeration = encoding.exaggeration;
+        result.exaggerationRelativeHeight = encoding.exaggerationRelativeHeight;
 
-        (result as TerrainEncoding)._calculateStrideAndOffsets();
+        result._calculateStrideAndOffsets();
 
-        return (result as TerrainEncoding);
+        return result;
     }
-
-    // static clone (encoding, result) {
-    //     if (!defined(encoding)) {
-    //         return undefined;
-    //     }
-    //     if (!defined(result)) {
-    //         result = new TerrainEncoding();
-    //     }
-
-    //     result.quantization = encoding.quantization;
-    //     result.minimumHeight = encoding.minimumHeight;
-    //     result.maximumHeight = encoding.maximumHeight;
-    //     result.center = Cartesian3.clone(encoding.center);
-    //     result.toScaledENU = CesiumMatrix4.clone(encoding.toScaledENU);
-    //     result.fromScaledENU = CesiumMatrix4.clone(encoding.fromScaledENU);
-    //     result.matrix = CesiumMatrix4.clone(encoding.matrix);
-    //     result.hasVertexNormals = encoding.hasVertexNormals;
-    //     result.hasWebMercatorT = encoding.hasWebMercatorT;
-    //     result.hasGeodeticSurfaceNormals = encoding.hasGeodeticSurfaceNormals;
-    //     result.exaggeration = encoding.exaggeration;
-    //     result.exaggerationRelativeHeight = encoding.exaggerationRelativeHeight;
-
-    //     result._calculateStrideAndOffsets();
-
-    //     return result;
-    // }
 }
 
 export { TerrainEncoding };

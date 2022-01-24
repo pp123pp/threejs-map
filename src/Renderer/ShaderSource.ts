@@ -290,13 +290,13 @@ function combineShader (shaderSource: ShaderSource, isFragmentShader: boolean, c
         result += '#define OES_texture_float\n\n';
     }
 
-    if (context.scene.renderer.capabilities.logarithmicDepthBuffer) {
-        result += '#define USE_LOGDEPTHBUF\n\n';
-    }
-
-    // if (context.scene.renderer.extensions.has('EXT_frag_depth')) {
-    result += '#define USE_LOGDEPTHBUF_EXT\n\n';
+    // if (context.scene.renderer.capabilities.logarithmicDepthBuffer) {
+    //     result += '#define USE_LOGDEPTHBUF\n\n';
     // }
+
+    // // if (context.scene.renderer.extensions.has('EXT_frag_depth')) {
+    // result += '#define USE_LOGDEPTHBUF_EXT\n\n';
+    // // }
 
     // append built-ins
     if (shaderSource.includeBuiltIns) {

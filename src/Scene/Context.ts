@@ -12,9 +12,11 @@ class Context {
     } = {};
 
     protected _id = generateUUID();
+    _gl: WebGLRenderingContext
     drawingBufferHeight = new Cartesian2();
     sceneFrameBuffer: WebGLMultisampleRenderTarget;
     _shaderCache = new ShaderCache(this)
+    uniformState: any;
     constructor (scene: Scene) {
         this.scene = scene;
 
@@ -23,6 +25,8 @@ class Context {
         const sceneFrameBuffer = new WebGLMultisampleRenderTarget(bufferSize.width, bufferSize.height, {
             format: RGBFormat
         });
+
+        this._gl = scene.renderer.getContext();
 
         this.sceneFrameBuffer = sceneFrameBuffer;
 

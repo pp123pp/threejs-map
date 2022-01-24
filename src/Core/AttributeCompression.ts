@@ -275,7 +275,6 @@ const octUnpack = function (packed:Cartesian2, v1:Cartesian3, v2:Cartesian3, v3:
  *
  */
 const compressTextureCoordinates = function (textureCoordinates:Cartesian2):number {
-    // Move x and y to the range 0-4095;
     const x = (textureCoordinates.x * 4095.0) | 0;
     const y = (textureCoordinates.y * 4095.0) | 0;
     return 4096.0 * x + y;
