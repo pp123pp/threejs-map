@@ -1,5 +1,6 @@
 import { Cartesian2 } from '@/Core/Cartesian2';
 import { ShaderCache } from '@/Renderer/ShaderCache';
+import { UniformState } from '@/Renderer/UniformState';
 import { RGBFormat, Texture, WebGLMultisampleRenderTarget } from 'three';
 import { generateUUID } from 'three/src/math/MathUtils';
 import { ContextLimits } from './ContextLimits';
@@ -16,7 +17,7 @@ class Context {
     drawingBufferHeight = new Cartesian2();
     sceneFrameBuffer: WebGLMultisampleRenderTarget;
     _shaderCache = new ShaderCache(this)
-    uniformState: any;
+    _us = new UniformState();
     constructor (scene: Scene) {
         this.scene = scene;
 
@@ -32,6 +33,10 @@ class Context {
 
         ContextLimits._maxAnisotropy = scene.renderer.capabilities.getMaxAnisotropy();
         ContextLimits._maximumTextureImageUnits = scene.renderer.capabilities.maxTextures;
+    }
+
+    get uniformState (): UniformState {
+        return this._us;
     }
 
     get id (): string {

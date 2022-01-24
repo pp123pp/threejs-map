@@ -27,6 +27,11 @@ function setView (uniformState: UniformState, matrix: CesiumMatrix4) {
     uniformState._inverseNormal3DDirty = true;
 }
 
+function setInverseView (uniformState: UniformState, matrix: CesiumMatrix4) {
+    CesiumMatrix4.clone(matrix, uniformState._inverseView);
+    CesiumMatrix4.getMatrix3(matrix, uniformState._inverseViewRotation);
+}
+
 class UniformState {
     _viewRotation = new CesiumMatrix3();
     _inverseViewRotation = new CesiumMatrix3();
@@ -125,8 +130,9 @@ class UniformState {
         this.updateCamera(camera);
     }
 
-    updateCamera (camera: Camera) {
+    updateCamera (camera: Camera): void {
         setView(this, camera.viewMatrix);
+        setInverseView(this, camera.inverseViewMatrix);
     }
 }
 

@@ -184,7 +184,7 @@ class SkyAtmosphere {
         // const translucent = frameState.globeTranslucencyState.translucent;
         const translucent = false;
         const perFragmentAtmosphere =
-      this.perFragmentAtmosphere || translucent || !defined(globe) || !globe.visible;
+        this.perFragmentAtmosphere || translucent || !defined(globe) || !globe.visible;
 
         const command = this._command;
 

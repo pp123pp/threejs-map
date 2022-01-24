@@ -1372,12 +1372,12 @@ const addDrawCommandsForTile = (tileProvider: GlobeSurfaceTileProvider, tile: an
         );
 
         command.geometry = mesh.geometry;
-        // command.material = material;
+        command.material = material;
 
-        command.material = globeSurfaceMaterial;
+        // command.material = globeSurfaceMaterial;
 
-        (command.material as GlobeSurfaceTileMaterial).vertexShader = shaderProgram._vertexShaderText;
-        (command.material as GlobeSurfaceTileMaterial).fragmentShader = shaderProgram._fragmentShaderText;
+        // (command.material as GlobeSurfaceTileMaterial).vertexShader = shaderProgram._vertexShaderText;
+        // (command.material as GlobeSurfaceTileMaterial).fragmentShader = shaderProgram._fragmentShaderText;
 
         const boundingVolume = command.boundingVolume;
         const orientedBoundingBox = command.orientedBoundingBox;

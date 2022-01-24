@@ -380,12 +380,12 @@ class GlobeSurfaceTile {
     }
 
     processImagery (
-        tile: any,
+        tile: QuadtreeTile,
         terrainProvider: any,
-        frameState: any,
-        skipLoading: any
+        frameState: FrameState,
+        skipLoading?: any
     ) {
-        const surfaceTile = tile.data;
+        const surfaceTile = tile.data as GlobeSurfaceTile;
         let isUpsampledOnly = tile.upsampledFromParent;
         let isAnyTileLoaded = false;
         let isDoneLoading = true;
@@ -394,14 +394,14 @@ class GlobeSurfaceTile {
         const tileImageryCollection = surfaceTile.imagery;
         let i, len;
         for (i = 0, len = tileImageryCollection.length; i < len; ++i) {
-            const tileImagery = tileImageryCollection[i];
+            const tileImagery = tileImageryCollection[i] as TileImagery;
             if (!defined(tileImagery.loadingImagery)) {
                 isUpsampledOnly = false;
                 continue;
             }
 
-            if (tileImagery.loadingImagery.state === ImageryState.PLACEHOLDER) {
-                const imageryLayer = tileImagery.loadingImagery.imageryLayer;
+            if ((tileImagery.loadingImagery as Imagery).state === ImageryState.PLACEHOLDER) {
+                const imageryLayer = (tileImagery.loadingImagery as Imagery).imageryLayer;
                 if (imageryLayer.imageryProvider.ready) {
                 // Remove the placeholder and add the actual skeletons (if any)
                 // at the same position.  Then continue the loop at the same index.
@@ -425,15 +425,15 @@ class GlobeSurfaceTile {
 
             // The imagery is renderable as soon as we have any renderable imagery for this region.
             isAnyTileLoaded =
-        isAnyTileLoaded ||
-        thisTileDoneLoading ||
-        defined(tileImagery.readyImagery);
+            isAnyTileLoaded ||
+            thisTileDoneLoading ||
+            defined(tileImagery.readyImagery);
 
             isUpsampledOnly =
-        isUpsampledOnly &&
-        defined(tileImagery.loadingImagery) &&
-        (tileImagery.loadingImagery.state === ImageryState.FAILED ||
-          tileImagery.loadingImagery.state === ImageryState.INVALID);
+            isUpsampledOnly &&
+            defined(tileImagery.loadingImagery) &&
+            ((tileImagery.loadingImagery as Imagery).state === ImageryState.FAILED ||
+            (tileImagery.loadingImagery as Imagery).state === ImageryState.INVALID);
         }
 
         tile.upsampledFromParent = isUpsampledOnly;
@@ -457,7 +457,7 @@ class GlobeSurfaceTile {
         toggleGeodeticSurfaceNormals(this, false, undefined, frameState);
     }
 
-    static _createVertexArrayForMesh (context: any, mesh: any) {
+    static _createVertexArrayForMesh (context: Context, mesh: any) {
         const typedArray = mesh.vertices;
         const buffer = Buffer.createVertexBuffer({
             context: context,
@@ -469,9 +469,6 @@ class GlobeSurfaceTile {
         const indexBuffers = mesh.indices.indexBuffers || {};
         let indexBuffer = indexBuffers[context.id];
         if (!defined(indexBuffer) || indexBuffer.isDestroyed()) {
-            if ((mesh.encoding).quantization === TerrainQuantization.BITS12) {
-                debugger;
-            }
             const indices = mesh.indices;
             indexBuffer = Buffer.createIndexBuffer({
                 context: context,

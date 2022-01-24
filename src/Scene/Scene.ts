@@ -110,11 +110,13 @@ function postPassesUpdate (scene: Scene) {
 
 function render (scene:Scene) {
     const frameState = scene._frameState;
+    const context = scene.context;
+    const us = context.uniformState;
 
     scene.updateFrameState();
 
     frameState.passes.render = true;
-
+    us.update(frameState);
     if (defined(scene.globe)) {
         scene.globe.beginFrame(frameState);
 
