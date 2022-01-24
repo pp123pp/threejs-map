@@ -412,7 +412,7 @@ class Camera {
 
     get inverseViewMatrix (): CesiumMatrix4 {
         updateMembers(this);
-        return this.inverseViewMatrix;
+        return this._invViewMatrix;
     }
 
     get positionCartographic (): Cartographic {

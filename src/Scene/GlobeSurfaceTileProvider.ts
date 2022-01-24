@@ -1370,6 +1370,7 @@ const addDrawCommandsForTile = (tileProvider: GlobeSurfaceTileProvider, tile: an
         const shaderProgram = tileProvider._surfaceShaderSet.getShaderProgram(
             surfaceShaderSetOptions
         );
+        command.geometry.dispose();
 
         command.geometry = mesh.geometry;
         command.material = material;
