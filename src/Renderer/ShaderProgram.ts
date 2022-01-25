@@ -42,27 +42,32 @@ function handleUniformPrecisionMismatches (
     };
 }
 
+export interface CachedShaderOptions {
+    cache: ShaderCache,
+    // eslint-disable-next-line no-use-before-define
+    shaderProgram: ShaderProgram,
+    keyword: string,
+    derivedKeywords: any[],
+    count: number
+}
+let nextShaderProgramId = 0;
 class ShaderProgram {
-    _cachedShader?: {
-        cache: ShaderCache,
-        shaderProgram: ShaderProgram,
-        keyword: string,
-        derivedKeywords: any[],
-        count: number
-    }
+    _cachedShader?: CachedShaderOptions
 
     _vertexShaderSource: ShaderSource;
     _vertexShaderText: string;
     _fragmentShaderSource: ShaderSource;
     _fragmentShaderText: string;
 
-    _attributeLocations?: {[name: string]: any}
+    _attributeLocations?: { [name: string]: any };
+    id: number;
     constructor (options: {
         vertexShaderSource: ShaderSource,
         vertexShaderText: string,
         fragmentShaderSource: ShaderSource,
         fragmentShaderText: string,
-        attributeLocations?: {[name: string]: number}
+        attributeLocations?: { [name: string]: number },
+        [propName: string]: any
     }) {
         const vertexShaderText = options.vertexShaderText;
         const fragmentShaderText = options.fragmentShaderText;
@@ -100,6 +105,19 @@ class ShaderProgram {
         this._vertexShaderText = options.vertexShaderText;
         this._fragmentShaderSource = options.fragmentShaderSource;
         this._fragmentShaderText = modifiedFS.fragmentShaderText;
+
+        /**
+         * @private
+         */
+        this.id = nextShaderProgramId++;
+    }
+
+    get vertexShaderSource (): ShaderSource {
+        return this._vertexShaderSource;
+    }
+
+    get fragmentShaderSource (): ShaderSource {
+        return this._fragmentShaderSource;
     }
 
     static fromCache (options: {

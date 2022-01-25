@@ -8,6 +8,7 @@ import { Scene } from './Scene';
 
 class Context {
     scene: Scene;
+    logShaderCompilation = false
     public cache: {
         [name: string]: any
     } = {};
@@ -70,6 +71,10 @@ class Context {
 
     get floatingPointTexture (): boolean {
         return true;
+    }
+
+    get debugShaders (): any {
+        return {};
     }
 }
 

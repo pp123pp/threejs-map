@@ -251,17 +251,17 @@ function combineShader (shaderSource: ShaderSource, isFragmentShader: boolean, c
         #endif\n\n';
     }
 
-    if (isFragmentShader) {
-        result += `
-        #include <common>
-        #include <packing>
-        #include <logdepthbuf_pars_fragment>`;
-    } else {
-        result += `
-        #include <common>
-        #include <logdepthbuf_pars_vertex>
-        `;
-    }
+    // if (isFragmentShader) {
+    //     result += `
+    //     #include <common>
+    //     #include <packing>
+    //     #include <logdepthbuf_pars_fragment>`;
+    // } else {
+    //     result += `
+    //     #include <common>
+    //     #include <logdepthbuf_pars_vertex>
+    //     `;
+    // }
 
     // Prepend #defines for uber-shaders
     const defines = shaderSource.defines;
