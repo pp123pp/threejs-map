@@ -14,6 +14,10 @@ import { CesiumMath } from '@/Core/CesiumMath';
 import { Axis } from './Axis';
 import { ShaderProgram } from '@/Renderer/ShaderProgram';
 import { destroyObject } from '@/Core/destroyObject';
+import { EllipsoidGeometry } from '@/Core/EllipsoidGeometry';
+import { Object3DCollection } from '@/Core/Object3DCollection';
+import { SkyAtmosphereMaterial } from '@/Material/SkyAtmosphereMaterial';
+import { BackSide, DoubleSide, Float16BufferAttribute, Float32BufferAttribute, Float64BufferAttribute, Vector3 } from 'three';
 const scratchModelMatrix = new CesiumMatrix4();
 
 function hasColorCorrection (skyAtmosphere: SkyAtmosphere) {
@@ -36,15 +40,16 @@ function hasColorCorrection (skyAtmosphere: SkyAtmosphere) {
     );
 }
 
-class SkyAtmosphere {
-    show = true;
+class SkyAtmosphere extends Object3DCollection {
     perFragmentAtmosphere = false;
     _ellipsoid: Ellipsoid;
     _scaleMatrix: CesiumMatrix4;
     _modelMatrix = new CesiumMatrix4();
     _command: DrawMeshCommand;
     _spSkyFromSpace?: any;
+    _spSkyFromSpaceMaterial = new SkyAtmosphereMaterial({ transparent: true });
     _spSkyFromAtmosphere?: any;
+    _spSkyFromAtmosphereMaterial = new SkyAtmosphereMaterial({ transparent: true });
 
     _flags?: number;
 
@@ -72,11 +77,12 @@ class SkyAtmosphere {
      */
     brightnessShift = 0.0;
 
-    _hueSaturationBrightness = new Cartesian3();
+    _hueSaturationBrightness = new Vector3();
 
-    _radiiAndDynamicAtmosphereColor: Cartesian3;
+    _radiiAndDynamicAtmosphereColor: Vector3;
     uniformMap: any;
     constructor (ellipsoid = Ellipsoid.WGS84) {
+        super();
         this._ellipsoid = ellipsoid;
 
         const outerEllipsoidScale = 1.025;
@@ -91,10 +97,10 @@ class SkyAtmosphere {
         this._command = new DrawMeshCommand();
         this._command.owner = this;
 
-        this._hueSaturationBrightness = new Cartesian3();
+        this._hueSaturationBrightness = new Vector3();
 
         // outer radius, inner radius, dynamic atmosphere color flag
-        const radiiAndDynamicAtmosphereColor = new Cartesian3();
+        const radiiAndDynamicAtmosphereColor = new Vector3();
 
         radiiAndDynamicAtmosphereColor.x = ellipsoid.maximumRadius * outerEllipsoidScale;
         radiiAndDynamicAtmosphereColor.y = ellipsoid.maximumRadius;
@@ -133,10 +139,10 @@ class SkyAtmosphere {
     /**
      * @private
      */
-    protected setDynamicAtmosphereColor (
+    setDynamicAtmosphereColor (
         enableLighting: boolean,
         useSunDirection: boolean
-    ) {
+    ): void {
         const lightEnum = enableLighting ? (useSunDirection ? 2.0 : 1.0) : 0.0;
         this._radiiAndDynamicAtmosphereColor.z = lightEnum;
     }
@@ -144,8 +150,8 @@ class SkyAtmosphere {
     /**
    * @private
    */
-    update (frameState: FrameState, globe: Globe) {
-        if (!this.show) {
+    update (frameState: FrameState, globe: Globe): any {
+        if (!this.visible) {
             return undefined;
         }
 
@@ -189,14 +195,17 @@ class SkyAtmosphere {
         const command = this._command;
 
         if (Object.keys(command.geometry.attributes).length === 0) {
-            // const geometry = EllipsoidGeometry.createGeometry(
-            //     new EllipsoidGeometry({
-            //         radii: new Cartesian3(1.0, 1.0, 1.0),
-            //         slicePartitions: 256,
-            //         stackPartitions: 256,
-            //         vertexFormat: VertexFormat.POSITION_ONLY
-            //     })
-            // );
+            const attributes = EllipsoidGeometry.createGeometry(
+                new EllipsoidGeometry({
+                    radii: new Cartesian3(1.0, 1.0, 1.0),
+                    slicePartitions: 256,
+                    stackPartitions: 256
+                    // vertexFormat: VertexFormat.POSITION_ONLY
+                })
+            );
+            const geometry = this._command.geometry;
+            geometry.setAttribute('position', new Float32BufferAttribute(Array.from(attributes.attributes.position.values), 3));
+            geometry.setIndex(attributes.indices);
             // const vertexArray = VertexArray.fromGeometry({
             //     context: context,
             //     geometry: geometry,
@@ -249,6 +258,11 @@ class SkyAtmosphere {
                 // attributeLocations: {}
             });
 
+            this._spSkyFromSpaceMaterial.vertexShader = this._spSkyFromSpace._vertexShaderText;
+            this._spSkyFromSpaceMaterial.fragmentShader = this._spSkyFromSpace._fragmentShaderText;
+            this._spSkyFromSpaceMaterial.uniforms.u_radiiAndDynamicAtmosphereColor.value = this._radiiAndDynamicAtmosphereColor;
+            this._spSkyFromSpaceMaterial.uniforms.u_hsbShift.value = this._hueSaturationBrightness;
+
             vs = new ShaderSource({
                 defines: defines.concat('SKY_FROM_ATMOSPHERE'),
                 sources: [SkyAtmosphereCommon, SkyAtmosphereVS]
@@ -265,6 +279,11 @@ class SkyAtmosphere {
                 fragmentShaderSource: fs
                 // attributeLocations: {}
             });
+
+            this._spSkyFromAtmosphereMaterial.vertexShader = this._spSkyFromAtmosphere._vertexShaderText;
+            this._spSkyFromAtmosphereMaterial.fragmentShader = this._spSkyFromAtmosphere._fragmentShaderText;
+            this._spSkyFromAtmosphereMaterial.uniforms.u_radiiAndDynamicAtmosphereColor.value = this._radiiAndDynamicAtmosphereColor;
+            this._spSkyFromAtmosphereMaterial.uniforms.u_hsbShift.value = this._hueSaturationBrightness;
         }
 
         const cameraPosition = frameState.camera.positionWC;
@@ -272,12 +291,15 @@ class SkyAtmosphere {
 
         if (cameraHeight > this._radiiAndDynamicAtmosphereColor.x) {
             // Camera in space
-            command.shaderProgram = this._spSkyFromSpace;
+            command.material = this._spSkyFromSpaceMaterial;
         } else {
             // Camera in atmosphere
-            command.shaderProgram = this._spSkyFromAtmosphere;
+            command.material = this._spSkyFromAtmosphereMaterial;
         }
+        command.material.transparent = true;
+        command.material.side = DoubleSide;
 
+        frameState.commandList.push(command);
         return command;
     }
 
@@ -319,3 +341,5 @@ class SkyAtmosphere {
         return destroyObject(this);
     }
 }
+
+export { SkyAtmosphere };

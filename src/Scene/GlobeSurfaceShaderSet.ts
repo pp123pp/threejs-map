@@ -2,6 +2,7 @@
 import { defined } from '@/Core/defined';
 import { SceneMode } from '@/Core/SceneMode';
 import { TerrainQuantization } from '@/Core/TerrainQuantization';
+import { GlobeSurfaceTileMaterial } from '@/Material/GlobeSurfaceTileMaterial';
 import { ShaderProgram } from '@/Renderer/ShaderProgram';
 import { ShaderSource } from '@/Renderer/ShaderSource';
 import { FrameState } from './FrameState';
@@ -429,7 +430,8 @@ class GlobeSurfaceShaderSet {
                 context: frameState.context,
                 vertexShaderSource: vs,
                 fragmentShaderSource: fs,
-                attributeLocations: terrainEncoding.getAttributeLocations()
+                attributeLocations: terrainEncoding.getAttributeLocations(),
+                material: new GlobeSurfaceTileMaterial()
             });
 
             surfaceShader = shadersByFlags[flags] = new GlobeSurfaceShader(

@@ -142,7 +142,6 @@ class TileMaterial extends ShaderMaterial {
             u_dayTextureTranslationAndScale: { value: [] },
             u_dayTextureTexCoordsRectangle: { value: [] },
             u_initialColor: { value: new Vector4(0, 0, 0.5, 1) },
-            diffuse: { value: new Vector4(Math.random(), Math.random(), Math.random(), 1.0) },
             u_tileRectangle: { value: new Vector4() },
             rtc: { value: new Vector3() },
             u_minMaxHeight: { value: new Vector2() },
@@ -161,7 +160,11 @@ class TileMaterial extends ShaderMaterial {
 
         // this.side = DoubleSide;
         // this.wireframe = true;
-    // this.depthWrite = false;
+        // this.depthWrite = false;
+        // this.onBeforeCompile = (shader, renderer) => {
+        //     debugger;
+        //     console.log(renderer.properties.get(this));
+        // };
     }
 
     get dayTextures (): Texture[] {
@@ -195,17 +198,6 @@ class TileMaterial extends ShaderMaterial {
             return;
         }
         this.uniforms.u_dayTextureTexCoordsRectangle.value = value;
-    }
-
-    get diffuse () {
-        return this.uniforms.diffuse.value;
-    }
-
-    set diffuse (value) {
-        if (!defined(value)) {
-            return;
-        }
-        this.uniforms.diffuse.value.copy(value);
     }
 
     get initialColor () {
@@ -291,7 +283,6 @@ class TileMaterial extends ShaderMaterial {
         varying vec3 v_textureCoordinates;
         varying vec2 vHighPrecisionZW;
         uniform vec4 u_initialColor;
-        uniform vec4 diffuse;
 
 
         #if TEXTURE_UNITS > 0

@@ -8,6 +8,7 @@ import { Camera } from '@/Scene/Camera';
 import { Globe } from '@/Scene/Globe';
 import { RenderStateParameters } from '@/Scene/MapRenderer';
 import { Scene } from '@/Scene/Scene';
+import { SkyAtmosphere } from '@/Scene/SkyAtmosphere';
 import { Clock } from 'three';
 import getElement from '../getElement';
 
@@ -80,7 +81,8 @@ class MapWidgets {
         useBrowserRecommendedResolution?: true,
         useDefaultRenderLoop?: true,
         targetFrameRate?: number,
-        globe?: Globe
+        globe?: Globe,
+        skyAtmosphere?: any
     }) {
         container = getElement(container);
 
@@ -135,7 +137,7 @@ class MapWidgets {
         const combineRenderState = combine({
             canvas: canvas,
             antialias: true,
-            logarithmicDepthBuffer: true
+            logarithmicDepthBuffer: false
         }, options.renderState);
 
         this._scene = new Scene({
@@ -169,6 +171,14 @@ class MapWidgets {
         this._screenSpaceEventHandler = new ScreenSpaceEventHandler(canvas);
 
         this._scene.camera.lookAt(this._scene.camera.direction);
+
+        let skyAtmosphere = options.skyAtmosphere;
+        if (!defined(skyAtmosphere)) {
+            skyAtmosphere = new SkyAtmosphere(ellipsoid);
+        }
+        if (skyAtmosphere !== false) {
+            this.scene.skyAtmosphere = skyAtmosphere;
+        }
     }
 
     get container (): Element {

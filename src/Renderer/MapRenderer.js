@@ -54,7 +54,6 @@ import { WebGLInfo } from 'three/src/renderers/webgl/WebGLInfo';
 import { WebGLMorphtargets } from 'three/src/renderers/webgl/WebGLMorphtargets';
 import { WebGLMultisampleRenderTarget } from 'three/src/renderers/WebGLMultisampleRenderTarget';
 import { WebGLObjects } from 'three/src/renderers/webgl/WebGLObjects';
-import { WebGLPrograms } from 'three/src/renderers/webgl/WebGLPrograms';
 import { WebGLProperties } from 'three/src/renderers/webgl/WebGLProperties';
 import { WebGLRenderLists } from 'three/src/renderers/webgl/WebGLRenderLists';
 import { WebGLRenderStates } from 'three/src/renderers/webgl/WebGLRenderStates';
@@ -66,6 +65,11 @@ import { WebGLUniforms } from 'three/src/renderers/webgl/WebGLUniforms';
 import { WebGLUtils } from 'three/src/renderers/webgl/WebGLUtils';
 import { WebXRManager } from 'three/src/renderers/webxr/WebXRManager';
 import { WebGLMaterials } from 'three/src/renderers/webgl/WebGLMaterials';
+import { WebGLPrograms } from './WebGL/WebGLPrograms';
+
+// WebGLPrograms;
+
+// import { WebGLPrograms } from 'three/src/renderers/webgl/WebGLPrograms';
 
 function createElementNS (name) {
     return document.createElementNS('http://www.w3.org/1999/xhtml', name);
@@ -302,6 +306,7 @@ class MapRenderer {
             _this.shadowMap = shadowMap;
             _this.state = state;
             _this.info = info;
+            _this.programCache = programCache;
         }
 
         initGLContext();

@@ -4,6 +4,7 @@ import { Cartesian3 } from '@/Core/Cartesian3';
 import { defined } from '@/Core/defined';
 import { RequestScheduler } from '@/Core/RequestScheduler';
 import { TweenCollection } from '@/Core/TweenCollection';
+import { DrawMeshCommand } from '@/Renderer/DrawMeshCommand';
 import { MapRenderer } from '@/Renderer/MapRenderer';
 import * as THREE from 'three';
 import { GLSL3, LinearToneMapping, Mesh, Raycaster, ShaderMaterial, SphereBufferGeometry, sRGBEncoding, Vector2 } from 'three';
@@ -22,12 +23,14 @@ import { Globe } from './Globe';
 import { GlobeTranslucencyState } from './GlobeTranslucencyState';
 import { ImageryLayerCollection } from './ImageryLayerCollection';
 import { RenderStateParameters } from './MapRenderer';
+import { OrthographicFrustumCamera } from './OrthographicFrustumCamera';
 // MapRenderer
 import { PerspectiveFrustumCamera } from './PerspectiveFrustumCamera';
 import { Picking } from './Picking';
 import { PrimitiveCollection } from './PrimitiveCollection';
 import { RenderCollection } from './RenderCollection';
 import { ScreenSpaceCameraController } from './ScreenSpaceCameraController';
+import { SkyAtmosphere } from './SkyAtmosphere';
 import { SkyBox } from './SkyBox';
 
 interface SceneOptions {
@@ -35,6 +38,32 @@ interface SceneOptions {
     enabledEffect?: false;
     requestRenderMode?: false;
     [name: string]: any
+}
+
+interface EnvironmentStateOptions {
+    skyBoxCommand?: DrawMeshCommand,
+    skyAtmosphereCommand?: SkyAtmosphere,
+    sunDrawCommand?: DrawMeshCommand,
+    sunComputeCommand?: DrawMeshCommand,
+    moonCommand?: DrawMeshCommand,
+
+    isSunVisible: boolean,
+    isMoonVisible: boolean,
+    isReadyForAtmosphere: boolean,
+    isSkyAtmosphereVisible: boolean,
+
+    clearGlobeDepth: boolean,
+    useDepthPlane: boolean,
+    renderTranslucentDepthForPick: boolean,
+
+    originalFramebuffer: undefined,
+    useGlobeDepthFramebuffer: boolean,
+    separatePrimitiveFramebuffer: boolean,
+    useOIT: boolean,
+    useInvertClassification: boolean,
+    usePostProcess: boolean,
+    usePostProcessSelected: boolean,
+    useWebVR: boolean
 }
 
 const requestRenderAfterFrame = function (scene: Scene) {
@@ -119,12 +148,8 @@ function render (scene:Scene) {
     us.update(frameState);
     if (defined(scene.globe)) {
         scene.globe.beginFrame(frameState);
-
-        if (!scene.globe.tilesLoaded) {
-            scene._renderRequested = true;
-        }
     }
-
+    scene.updateEnvironment();
     scene.updateAndExecuteCommands(scene.backgroundColor);
 
     if (defined(scene.globe)) {
@@ -287,6 +312,8 @@ class Scene extends THREE.Scene {
     useDepthPicking: boolean;
     skyBox: SkyBox;
     _globeTranslucencyState = new GlobeTranslucencyState();
+    skyAtmosphere?: SkyAtmosphere;
+    _environmentState: EnvironmentStateOptions;
     constructor (options: SceneOptions) {
         super();
 
@@ -391,6 +418,32 @@ class Scene extends THREE.Scene {
         this.useDepthPicking = true;
 
         this.skyBox = new SkyBox(this);
+
+        this._environmentState = {
+            skyBoxCommand: undefined,
+            skyAtmosphereCommand: undefined,
+            sunDrawCommand: undefined,
+            sunComputeCommand: undefined,
+            moonCommand: undefined,
+
+            isSunVisible: false,
+            isMoonVisible: false,
+            isReadyForAtmosphere: false,
+            isSkyAtmosphereVisible: false,
+
+            clearGlobeDepth: false,
+            useDepthPlane: false,
+            renderTranslucentDepthForPick: false,
+
+            originalFramebuffer: undefined,
+            useGlobeDepthFramebuffer: false,
+            separatePrimitiveFramebuffer: false,
+            useOIT: false,
+            useInvertClassification: false,
+            usePostProcess: false,
+            usePostProcessSelected: false,
+            useWebVR: false
+        };
     }
 
     get pixelRatio (): number {
@@ -473,6 +526,10 @@ class Scene extends THREE.Scene {
 
     get globeHeight (): number {
         return (this._globeHeight as number);
+    }
+
+    get environmentState (): EnvironmentStateOptions {
+        return this._environmentState;
     }
 
     requestRender () :void{
@@ -588,6 +645,41 @@ class Scene extends THREE.Scene {
         const mode = frameState.mode;
 
         executeCommandsInViewport(true, this, backgroundColor);
+    }
+
+    updateEnvironment () {
+        const frameState = this._frameState;
+        const environmentState = this._environmentState;
+        const renderPass = frameState.passes.render;
+        const skyAtmosphere = this.skyAtmosphere;
+        const globe = this.globe;
+        if (
+            !renderPass ||
+            (this._mode !== SceneMode.SCENE2D &&
+            this.camera.frustum instanceof OrthographicFrustumCamera)
+        ) {
+            environmentState.skyAtmosphereCommand = undefined;
+            environmentState.skyBoxCommand = undefined;
+            environmentState.sunDrawCommand = undefined;
+            environmentState.sunComputeCommand = undefined;
+            environmentState.moonCommand = undefined;
+        } else {
+            if (defined(skyAtmosphere)) {
+                if (defined(globe)) {
+                    (skyAtmosphere as SkyAtmosphere).setDynamicAtmosphereColor(
+                        globe.enableLighting && globe.dynamicAtmosphereLighting,
+                        globe.dynamicAtmosphereLightingFromSun
+                    );
+                    environmentState.isReadyForAtmosphere =
+                        environmentState.isReadyForAtmosphere ||
+                        globe._surface._tilesToRender.length > 0;
+                }
+                environmentState.skyAtmosphereCommand = (skyAtmosphere as SkyAtmosphere).update(
+                    frameState,
+                    globe
+                );
+            }
+        }
     }
 
     /**

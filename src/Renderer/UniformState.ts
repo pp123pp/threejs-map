@@ -32,6 +32,30 @@ function setInverseView (uniformState: UniformState, matrix: CesiumMatrix4) {
     CesiumMatrix4.getMatrix3(matrix, uniformState._inverseViewRotation);
 }
 
+function cleanModelViewProjection (uniformState: UniformState) {
+    if (uniformState._modelViewProjectionDirty) {
+        uniformState._modelViewProjectionDirty = false;
+
+        CesiumMatrix4.multiply(
+            uniformState._projection,
+            uniformState.modelView,
+            uniformState._modelViewProjection
+        );
+    }
+}
+
+function cleanModelView (uniformState: UniformState) {
+    if (uniformState._modelViewDirty) {
+        uniformState._modelViewDirty = false;
+
+        CesiumMatrix4.multiplyTransformation(
+            uniformState._view,
+            uniformState._model,
+            uniformState._modelView
+        );
+    }
+}
+
 class UniformState {
     _viewRotation = new CesiumMatrix3();
     _inverseViewRotation = new CesiumMatrix3();
@@ -123,6 +147,16 @@ class UniformState {
 
     get inverseViewRotation (): CesiumMatrix3 {
         return this._inverseViewRotation;
+    }
+
+    get modelViewProjection (): CesiumMatrix4 {
+        cleanModelViewProjection(this);
+        return this._modelViewProjection;
+    }
+
+    get modelView (): CesiumMatrix4 {
+        cleanModelView(this);
+        return this._modelView;
     }
 
     update (frameState: FrameState): void {

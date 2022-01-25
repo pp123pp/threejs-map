@@ -917,12 +917,6 @@ class CesiumMatrix4 {
      * var m3 = Cesium.Matrix4.multiplyTransformation(m1, m2, new Cesium.Matrix4());
      */
     static multiplyTransformation (left: CesiumMatrix4, right: CesiumMatrix4, result: CesiumMatrix4): CesiumMatrix4 {
-    // >>includeStart('debug', pragmas.debug);
-        Check.typeOf.object('left', left);
-        Check.typeOf.object('right', right);
-        Check.typeOf.object('result', result);
-        // >>includeEnd('debug');
-
         const left0 = left[0];
         const left1 = left[1];
         const left2 = left[2];

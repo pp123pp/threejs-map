@@ -1,8 +1,10 @@
 import { BoundingSphere } from '@/Core/BoundingSphere';
 import { defined } from '@/Core/defined';
 import { OrientedBoundingBox } from '@/Core/OrientedBoundingBox';
+import { Context } from '@/Scene/Context';
 import { FrameState } from '@/Scene/FrameState';
 import { BufferGeometry, Material, Mesh } from 'three';
+import { ShaderProgram } from './ShaderProgram';
 
 class DrawMeshCommand extends Mesh {
     derivedCommands: any;
@@ -11,7 +13,9 @@ class DrawMeshCommand extends Mesh {
     owner?: any;
     boundingVolume?: BoundingSphere;
     orientedBoundingBox?: OrientedBoundingBox
-    shaderProgram: any;
+    shaderProgram?: ShaderProgram;
+    _boundingVolume?: any;
+    _orientedBoundingBox?: any;
     constructor (geometry?: BufferGeometry, material?: Material) {
         super(geometry, material);
 
@@ -46,6 +50,20 @@ class DrawMeshCommand extends Mesh {
         // const geometry = this.geometry;
     }
 
+    static shallowClone (command?: DrawMeshCommand, result = new DrawMeshCommand()): DrawMeshCommand | undefined {
+        if (!defined(command)) {
+            return undefined;
+        }
+
+        result._boundingVolume = command?._boundingVolume;
+        result._orientedBoundingBox = command?._orientedBoundingBox;
+
+        result.geometry = (command as DrawMeshCommand).geometry;
+        (result.material as Material).copy((command?.material as Material));
+
+        return result;
+    }
+
     update (frameState: FrameState): void {
         // this.material.picking = false;
 
@@ -56,6 +74,10 @@ class DrawMeshCommand extends Mesh {
         // if (frameState.passes.pick) {
         //     this.material.picking = true;
         // }
+    }
+
+    execute (context: Context, passState?: any): void {
+        context.draw(this);
     }
 }
 

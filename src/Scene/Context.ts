@@ -1,5 +1,7 @@
 import { Cartesian2 } from '@/Core/Cartesian2';
+import { DrawMeshCommand } from '@/Renderer/DrawMeshCommand';
 import { ShaderCache } from '@/Renderer/ShaderCache';
+import { ShaderProgram } from '@/Renderer/ShaderProgram';
 import { UniformState } from '@/Renderer/UniformState';
 import { RGBFormat, Texture, WebGLMultisampleRenderTarget } from 'three';
 import { generateUUID } from 'three/src/math/MathUtils';
@@ -8,6 +10,7 @@ import { Scene } from './Scene';
 
 class Context {
     scene: Scene;
+    logShaderCompilation = false
     public cache: {
         [name: string]: any
     } = {};
@@ -71,6 +74,27 @@ class Context {
     get floatingPointTexture (): boolean {
         return true;
     }
+
+    get debugShaders (): any {
+        return {};
+    }
+
+    draw (drawCommand: DrawMeshCommand): void {
+        // beginDraw(this, drawCommand.shaderProgram as ShaderProgram);
+        (drawCommand.shaderProgram as ShaderProgram)._bind();
+    }
 }
 
+function beginDraw (
+    context: Context,
+
+    shaderProgram: ShaderProgram
+
+) {
+    // shaderProgram._bind();
+    // context._maxFrameTextureUnitIndex = Math.max(
+    //     context._maxFrameTextureUnitIndex,
+    //     shaderProgram.maximumTextureUnitIndex
+    // );
+}
 export { Context };

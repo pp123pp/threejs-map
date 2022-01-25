@@ -36,8 +36,9 @@
     "src/**/*.vue",
     "tests/**/*.ts",
     "tests/**/*.tsx"
-, "src/ThirdParty/when.ts"  ],
+, "src/ThirdParty/when.ts", "src/Renderer/WebGL/WebGLProgram.js"  ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "src/Renderer/WebGL"
   ]
 }

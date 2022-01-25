@@ -118,6 +118,10 @@ class Globe extends Object3DCollection {
     _surfaceShaderSet = new GlobeSurfaceShaderSet();
     _undergroundColor = CesiumColor.clone(CesiumColor.BLACK);
     _undergroundColorAlphaByDistance: NearFarScalar;
+
+    enableLighting = false;
+    dynamicAtmosphereLighting = false;
+    dynamicAtmosphereLightingFromSun = false;
     constructor (ellipsoid = Ellipsoid.WGS84) {
         super();
         const terrainProvider = new EllipsoidTerrainProvider({

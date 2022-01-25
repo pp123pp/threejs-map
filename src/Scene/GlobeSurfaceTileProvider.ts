@@ -1365,8 +1365,6 @@ const addDrawCommandsForTile = (tileProvider: GlobeSurfaceTileProvider, tile: an
         surfaceShaderSetOptions.showUndergroundColor = showUndergroundColor;
         surfaceShaderSetOptions.translucent = translucent;
 
-        setUniform(command, uniformMap, globeSurfaceMaterial);
-
         const shaderProgram = tileProvider._surfaceShaderSet.getShaderProgram(
             surfaceShaderSetOptions
         );
@@ -1375,10 +1373,14 @@ const addDrawCommandsForTile = (tileProvider: GlobeSurfaceTileProvider, tile: an
         command.geometry = mesh.geometry;
         command.material = material;
 
+        // setUniform(command, uniformMap, globeSurfaceMaterial);
         // command.material = globeSurfaceMaterial;
 
         // (command.material as GlobeSurfaceTileMaterial).vertexShader = shaderProgram._vertexShaderText;
         // (command.material as GlobeSurfaceTileMaterial).fragmentShader = shaderProgram._fragmentShaderText;
+
+        setUniform(command, uniformMap, shaderProgram.material);
+        // command.material = shaderProgram.material;
 
         const boundingVolume = command.boundingVolume;
         const orientedBoundingBox = command.orientedBoundingBox;
