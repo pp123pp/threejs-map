@@ -28,3 +28,5 @@ npm run lint
 另外，鼠标操作也是抄的Cesium，核心的一点就是Control最终计算的矩阵能对的上threejs的Camera的矩阵就ok了
 
 要用的话就拿去用吧，不过最后还是厚脸皮求个star！！！
+
+引流：有问题可以去QQ群问，群号：173306525
